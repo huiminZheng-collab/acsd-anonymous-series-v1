@@ -1,0 +1,84 @@
+{
+  "schema": "acsd-external-receipt-evidence/v1",
+  "profile": "acsd-v1.3.3-rfc3161-external",
+  "subject": {
+    "type": "predeposit-enrollment-core",
+    "hash_algorithm": "sha256",
+    "digest": "4fa07a74e029a97a9ecb284555ca7d05f3c234c28b2c8d81caf4d26d0d66d414"
+  },
+  "provider": {
+    "label_unverified": "ACSD-local-test-only",
+    "operator_independence": "not_established_by_cryptographic_verification"
+  },
+  "adapter": {
+    "protocol": "RFC3161",
+    "implementation": "OpenSSL 3.5.6 7 Apr 2026 (Library: OpenSSL 3.5.6 7 Apr 2026)",
+    "raw_artifacts_are_authoritative": true
+  },
+  "request": {
+    "path": "enrollment.tsq",
+    "media_type": "application/timestamp-query",
+    "sha256": "4ed78ca1ea21c22c03c59a093cc2f91b8e025d09e8a900686f030d5eb310f559",
+    "size_bytes": 69
+  },
+  "response": {
+    "path": "enrollment.tsr",
+    "media_type": "application/timestamp-reply",
+    "sha256": "5ade05fb47e4fb3b4ddfd0e74aab234401230fb00a435c700580f590143c412a",
+    "size_bytes": 2767
+  },
+  "pinned_trust_anchor": {
+    "path": "tsa-root.pem",
+    "media_type": "application/x-pem-file",
+    "sha256": "2239d6f2942cd68789f7039ca22a12495da5e828341bbf1ac74133e32942b077",
+    "size_bytes": 1265
+  },
+  "tsa_certificate": {
+    "path": "tsa-cert.pem",
+    "media_type": "application/x-pem-file",
+    "sha256": "008798c33aaac9cede34841e1d77b794c3b7a69c4ecf1c19d35340f18409b7e3",
+    "size_bytes": 1294
+  },
+  "parsed_untrusted_display": {
+    "query": {
+      "hash_algorithm": "sha256",
+      "message_imprint_hex": "4fa07a74e029a97a9ecb284555ca7d05f3c234c28b2c8d81caf4d26d0d66d414",
+      "policy_oid": "unspecified",
+      "nonce": "0x300DCB51983198B9",
+      "certificate_required": "yes"
+    },
+    "response": {
+      "status": "Granted.",
+      "policy_oid": "1.3.6.1.4.1.55555.1.3.3",
+      "hash_algorithm": "sha256",
+      "message_imprint_hex": "4fa07a74e029a97a9ecb284555ca7d05f3c234c28b2c8d81caf4d26d0d66d414",
+      "serial_number": "0x0A",
+      "gen_time_display": "Sep  7 00:17:29 2026 GMT",
+      "accuracy_display": "0x01 seconds, unspecified millis, unspecified micros",
+      "ordering": "yes",
+      "nonce": "0x300DCB51983198B9",
+      "tsa_name": "DirName:/CN=ACSD v1.3.3 HONEST TEST TSA/OU=NOT FOR PRODUCTION"
+    }
+  },
+  "validation": {
+    "status": "verified_under_supplied_pinned_anchor",
+    "checks": {
+      "openssl_full_query_verification": true,
+      "query_uses_sha256": true,
+      "reply_uses_sha256": true,
+      "query_imprint_matches_claimed_subject": true,
+      "reply_imprint_matches_claimed_subject": true,
+      "nonce_is_present": true,
+      "nonce_matches": true,
+      "response_is_granted": true
+    },
+    "openssl_stdout": "Verification: OK"
+  },
+  "semantics": {
+    "established": "The retained RFC 3161 response verifies for this nonce-bearing request and subject digest under the supplied trust anchor.",
+    "conditional": "Independent time evidence exists only if the trust anchor was pinned independently and the TSA operator and clock were actually independent of the claimant.",
+    "not_established": "Civil identity, contribution truth, consent, authorship, TSA governance, and public availability are outside this cryptographic check."
+  },
+  "canonical_utf8": "{\"adapter\":{\"implementation\":\"OpenSSL 3.5.6 7 Apr 2026 (Library: OpenSSL 3.5.6 7 Apr 2026)\",\"protocol\":\"RFC3161\",\"raw_artifacts_are_authoritative\":true},\"parsed_untrusted_display\":{\"query\":{\"certificate_required\":\"yes\",\"hash_algorithm\":\"sha256\",\"message_imprint_hex\":\"4fa07a74e029a97a9ecb284555ca7d05f3c234c28b2c8d81caf4d26d0d66d414\",\"nonce\":\"0x300DCB51983198B9\",\"policy_oid\":\"unspecified\"},\"response\":{\"accuracy_display\":\"0x01 seconds, unspecified millis, unspecified micros\",\"gen_time_display\":\"Sep  7 00:17:29 2026 GMT\",\"hash_algorithm\":\"sha256\",\"message_imprint_hex\":\"4fa07a74e029a97a9ecb284555ca7d05f3c234c28b2c8d81caf4d26d0d66d414\",\"nonce\":\"0x300DCB51983198B9\",\"ordering\":\"yes\",\"policy_oid\":\"1.3.6.1.4.1.55555.1.3.3\",\"serial_number\":\"0x0A\",\"status\":\"Granted.\",\"tsa_name\":\"DirName:/CN=ACSD v1.3.3 HONEST TEST TSA/OU=NOT FOR PRODUCTION\"}},\"pinned_trust_anchor\":{\"media_type\":\"application/x-pem-file\",\"path\":\"tsa-root.pem\",\"sha256\":\"2239d6f2942cd68789f7039ca22a12495da5e828341bbf1ac74133e32942b077\",\"size_bytes\":1265},\"profile\":\"acsd-v1.3.3-rfc3161-external\",\"provider\":{\"label_unverified\":\"ACSD-local-test-only\",\"operator_independence\":\"not_established_by_cryptographic_verification\"},\"request\":{\"media_type\":\"application/timestamp-query\",\"path\":\"enrollment.tsq\",\"sha256\":\"4ed78ca1ea21c22c03c59a093cc2f91b8e025d09e8a900686f030d5eb310f559\",\"size_bytes\":69},\"response\":{\"media_type\":\"application/timestamp-reply\",\"path\":\"enrollment.tsr\",\"sha256\":\"5ade05fb47e4fb3b4ddfd0e74aab234401230fb00a435c700580f590143c412a\",\"size_bytes\":2767},\"schema\":\"acsd-external-receipt-evidence/v1\",\"semantics\":{\"conditional\":\"Independent time evidence exists only if the trust anchor was pinned independently and the TSA operator and clock were actually independent of the claimant.\",\"established\":\"The retained RFC 3161 response verifies for this nonce-bearing request and subject digest under the supplied trust anchor.\",\"not_established\":\"Civil identity, contribution truth, consent, authorship, TSA governance, and public availability are outside this cryptographic check.\"},\"subject\":{\"digest\":\"4fa07a74e029a97a9ecb284555ca7d05f3c234c28b2c8d81caf4d26d0d66d414\",\"hash_algorithm\":\"sha256\",\"type\":\"predeposit-enrollment-core\"},\"tsa_certificate\":{\"media_type\":\"application/x-pem-file\",\"path\":\"tsa-cert.pem\",\"sha256\":\"008798c33aaac9cede34841e1d77b794c3b7a69c4ecf1c19d35340f18409b7e3\",\"size_bytes\":1294},\"validation\":{\"checks\":{\"nonce_is_present\":true,\"nonce_matches\":true,\"openssl_full_query_verification\":true,\"query_imprint_matches_claimed_subject\":true,\"query_uses_sha256\":true,\"reply_imprint_matches_claimed_subject\":true,\"reply_uses_sha256\":true,\"response_is_granted\":true},\"openssl_stdout\":\"Verification: OK\",\"status\":\"verified_under_supplied_pinned_anchor\"}}",
+  "digest": "801c1857b55c67a34c8e7e426b4f6101a8e21c4407510d37e99e2af122127b3f"
+}

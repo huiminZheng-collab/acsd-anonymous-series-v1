@@ -1,0 +1,9 @@
+{
+  "subject_digest": "4fa07a74e029a97a9ecb284555ca7d05f3c234c28b2c8d81caf4d26d0d66d414",
+  "timestamp_time_display": "Sep  7 00:17:29 2026 GMT",
+  "evidence_digest": "7d4b4ed76a3cf6d6f9e1b69a991444175cd223aeaca3c57a8a5786593bd71ee5",
+  "tests_passed": 10,
+  "tests_total": 10,
+  "parsed_imprint_matches": true,
+  "overall": "PASS"
+}

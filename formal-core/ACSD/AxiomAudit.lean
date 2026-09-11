@@ -1,0 +1,66 @@
+import ACSD.Core
+import ACSD.Lifecycle
+import ACSD.Team
+import ACSD.Lineage
+import ACSD.CitationBundle
+import ACSD.SeriesGraph
+import ACSD.CommitmentDAG
+import ACSD.ClaimObligation
+import ACSD.CitationWitness
+
+set_option autoImplicit false
+set_option warningAsError true
+
+#print axioms ACSD.accepted_covers_required
+#print axioms ACSD.semantic_nonamplification
+#print axioms ACSD.asserted_capability_not_accepted_without_catalog_grant
+#print axioms ACSD.authorship_truth_not_accepted_without_catalog_grant
+#print axioms ACSD.binding_exact
+#print axioms ACSD.missing_requirement_rejected
+#print axioms ACSD.accepted_selection_is_active
+#print axioms ACSD.accepted_selection_is_dependency_closed
+#print axioms ACSD.same_version_switch_rejected
+#print axioms ACSD.observed_head_preserved
+#print axioms ACSD.historical_label_requires_prior
+#print axioms ACSD.no_postcutoff_backfill
+#print axioms ACSD.suspension_unsat_if_necessary
+#print axioms ACSD.team_acceptance_binds_exact_manifest
+#print axioms ACSD.team_acceptance_has_signed_first_author
+#print axioms ACSD.team_acceptance_has_signed_corresponding_author
+#print axioms ACSD.team_acceptance_all_declared_members_approved
+#print axioms ACSD.team_attestation_is_catalog_covered
+#print axioms ACSD.team_contribution_truth_not_accepted_without_catalog_grant
+#print axioms ACSD.direct_revision_preserves_work
+#print axioms ACSD.direct_revision_increments_version
+#print axioms ACSD.direct_revision_binds_exact_predecessor
+#print axioms ACSD.same_slot_digest_switch_has_distinct_reference
+#print axioms ACSD.lineage_acceptance_binds_exact_team_and_revision_manifests
+#print axioms ACSD.lineage_acceptance_has_all_declared_team_approvals
+#print axioms ACSD.lineage_attestation_is_catalog_covered
+#print axioms ACSD.citation_bundle_acceptance_binds_all_manifests
+#print axioms ACSD.accepted_citation_has_internal_source
+#print axioms ACSD.accepted_mutual_citation_has_both_internal_sources
+#print axioms ACSD.citation_bundle_attestation_is_catalog_covered
+#print axioms ACSD.citation_temporal_priority_truth_not_accepted_without_catalog_grant
+#print axioms ACSD.resolved_work_binds_exact_work
+#print axioms ACSD.mutual_work_citation_declares_both_works
+#print axioms ACSD.series_graph_acceptance_binds_all_manifests
+#print axioms ACSD.accepted_series_graph_resolves_current_revision
+#print axioms ACSD.accepted_series_graph_has_commitment_rank
+#print axioms ACSD.accepted_semantic_citation_has_resolved_text_support
+#print axioms ACSD.accepted_mutual_work_citation_has_two_resolved_text_witnesses
+#print axioms ACSD.series_commitment_never_points_from_release_to_anchor
+#print axioms ACSD.mutual_citation_two_resolution_edges_are_one_way
+#print axioms ACSD.series_citation_temporal_priority_truth_not_accepted_without_catalog_grant
+#print axioms ACSD.commitment_step_strictly_descends
+#print axioms ACSD.commitment_path_strictly_descends
+#print axioms ACSD.ranked_commitment_skeleton_is_acyclic
+#print axioms ACSD.accepted_mutual_work_citation_has_acyclic_commitment_skeleton
+#print axioms ACSD.accepted_requested_attack_is_covered
+#print axioms ACSD.undischarged_requested_attack_is_listed_residual
+#print axioms ACSD.accepted_claim_obligation_model_binds_request_and_receipt
+#print axioms ACSD.accepted_listed_reference_has_exact_signed_byte_witness
+#print axioms ACSD.accepted_exact_byte_token_is_listed_reference
+#print axioms ACSD.witness_offset_mismatch_prevents_acceptance
+#print axioms ACSD.omitted_exact_byte_token_prevents_acceptance
+#print axioms ACSD.accepted_listed_reference_refines_to_series_text_citation

@@ -1,0 +1,19 @@
+Status info:
+Status: Granted.
+Status description: unspecified
+Failure info: unspecified
+
+TST info:
+Version: 1
+Policy OID: 1.3.6.1.4.1.55555.1.3.3
+Hash Algorithm: sha256
+Message data:
+    0000 - 4f a0 7a 74 e0 29 a9 7a-9e cb 28 45 55 ca 7d 05   O.zt.).z..(EU.}.
+    0010 - f3 c2 34 c2 8b 2c 8d 81-ca f4 d2 6d 0d 66 d4 14   ..4..,.....m.f..
+Serial number: 0x0A
+Time stamp: Sep  7 00:17:29 2026 GMT
+Accuracy: 0x01 seconds, unspecified millis, unspecified micros
+Ordering: yes
+Nonce: 0x300DCB51983198B9
+TSA: DirName:/CN=ACSD v1.3.3 HONEST TEST TSA/OU=NOT FOR PRODUCTION
+Extensions:

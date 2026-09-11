@@ -1,0 +1,96 @@
+{
+  "schema": "acsd-external-receipt-evidence/v1",
+  "profile": "acsd-v1.3.3-rfc3161-local-test",
+  "subject": {
+    "type": "predeposit-enrollment-core",
+    "hash_algorithm": "sha256",
+    "digest": "4fa07a74e029a97a9ecb284555ca7d05f3c234c28b2c8d81caf4d26d0d66d414",
+    "source_artifact_sha256": "6217f3bd3e2c2557eb5e24dbbad47657af394d24dee3fdb4f8b8e564e9589324"
+  },
+  "adapter": {
+    "protocol": "RFC3161",
+    "implementation": "OpenSSL ts",
+    "implementation_version": "OpenSSL 3.5.6 7 Apr 2026 (Library: OpenSSL 3.5.6 7 Apr 2026)",
+    "raw_artifacts_are_authoritative": true
+  },
+  "request": {
+    "path": "artifacts/enrollment.tsq",
+    "media_type": "application/timestamp-query",
+    "sha256": "4ed78ca1ea21c22c03c59a093cc2f91b8e025d09e8a900686f030d5eb310f559",
+    "size_bytes": 69
+  },
+  "response": {
+    "path": "artifacts/enrollment.tsr",
+    "media_type": "application/timestamp-reply",
+    "sha256": "5ade05fb47e4fb3b4ddfd0e74aab234401230fb00a435c700580f590143c412a",
+    "size_bytes": 2767
+  },
+  "token": {
+    "path": "artifacts/enrollment-token.der",
+    "media_type": "application/timestamp-token",
+    "sha256": "f83b0ac34961a18a51f6b7f015da19087365642d4af6f8649ab5e204d920c3a4",
+    "size_bytes": 2758
+  },
+  "tst_info": {
+    "path": "artifacts/enrollment-tstinfo.der",
+    "media_type": "application/timestamp-info",
+    "sha256": "ca6fc87f8473133a4ec9e4ccdf26439eadfaa1f8e41f6750dbd16c7acbfd9d20",
+    "size_bytes": 181
+  },
+  "parsed_untrusted_display": {
+    "status": "Granted.",
+    "policy_oid": "1.3.6.1.4.1.55555.1.3.3",
+    "hash_algorithm": "sha256",
+    "message_imprint_hex": "4fa07a74e029a97a9ecb284555ca7d05f3c234c28b2c8d81caf4d26d0d66d414",
+    "serial_number": "0x0A",
+    "gen_time_display": "Sep  7 00:17:29 2026 GMT",
+    "accuracy_display": "0x01 seconds, unspecified millis, unspecified micros",
+    "ordering": "yes",
+    "nonce": "0x300DCB51983198B9",
+    "tsa_name": "DirName:/CN=ACSD v1.3.3 HONEST TEST TSA/OU=NOT FOR PRODUCTION"
+  },
+  "trust": {
+    "root": {
+      "path": "artifacts/tsa-root.pem",
+      "media_type": "application/x-pem-file",
+      "sha256": "2239d6f2942cd68789f7039ca22a12495da5e828341bbf1ac74133e32942b077",
+      "size_bytes": 1265
+    },
+    "tsa_certificate": {
+      "path": "artifacts/tsa-cert.pem",
+      "media_type": "application/x-pem-file",
+      "sha256": "008798c33aaac9cede34841e1d77b794c3b7a69c4ecf1c19d35340f18409b7e3",
+      "size_bytes": 1294
+    },
+    "root_fingerprint_display": "sha256 Fingerprint=F8:B7:DC:60:F2:75:E1:6F:81:9B:85:EB:DA:16:B7:C6:C3:5D:D1:81:BA:28:12:ED:2F:66:CD:2C:6D:C8:6C:14",
+    "tsa_fingerprint_display": "sha256 Fingerprint=26:89:42:1E:DB:39:07:3D:BB:B0:29:9E:66:EB:19:5E:58:73:39:47:0B:E4:3B:8D:C5:51:D3:2B:6B:8E:85:44",
+    "anchor_selection": "locally pinned test root",
+    "operator_independence": "not_established"
+  },
+  "validation": {
+    "status": "verified_under_local_test_anchor",
+    "full_query_response_binding": true,
+    "message_imprint_matches_subject": true,
+    "timestamp_certificate_purpose_valid": true,
+    "test_results": {
+      "path": "artifacts/verification-results.json",
+      "media_type": "application/json",
+      "sha256": "7d061dc7305e282c2b0993c9212a9e947549096d28efc3d5640a6b536c33bff2",
+      "size_bytes": 5941
+    }
+  },
+  "semantics": {
+    "established": [
+      "A holder of the pinned local TSA key issued this RFC 3161 token over the enrollment-core digest.",
+      "The token is bound to the retained nonce-bearing request under the tested verification profile."
+    ],
+    "not_established": [
+      "The TSA was operated by a party independent of the claimant.",
+      "The TSA clock was externally disciplined or audited.",
+      "Any civil identity, actual contribution, consent, or authorship fact.",
+      "A public observer could retrieve this receipt at the stated time."
+    ]
+  },
+  "canonical_utf8": "{\"adapter\":{\"implementation\":\"OpenSSL ts\",\"implementation_version\":\"OpenSSL 3.5.6 7 Apr 2026 (Library: OpenSSL 3.5.6 7 Apr 2026)\",\"protocol\":\"RFC3161\",\"raw_artifacts_are_authoritative\":true},\"parsed_untrusted_display\":{\"accuracy_display\":\"0x01 seconds, unspecified millis, unspecified micros\",\"gen_time_display\":\"Sep  7 00:17:29 2026 GMT\",\"hash_algorithm\":\"sha256\",\"message_imprint_hex\":\"4fa07a74e029a97a9ecb284555ca7d05f3c234c28b2c8d81caf4d26d0d66d414\",\"nonce\":\"0x300DCB51983198B9\",\"ordering\":\"yes\",\"policy_oid\":\"1.3.6.1.4.1.55555.1.3.3\",\"serial_number\":\"0x0A\",\"status\":\"Granted.\",\"tsa_name\":\"DirName:/CN=ACSD v1.3.3 HONEST TEST TSA/OU=NOT FOR PRODUCTION\"},\"profile\":\"acsd-v1.3.3-rfc3161-local-test\",\"request\":{\"media_type\":\"application/timestamp-query\",\"path\":\"artifacts/enrollment.tsq\",\"sha256\":\"4ed78ca1ea21c22c03c59a093cc2f91b8e025d09e8a900686f030d5eb310f559\",\"size_bytes\":69},\"response\":{\"media_type\":\"application/timestamp-reply\",\"path\":\"artifacts/enrollment.tsr\",\"sha256\":\"5ade05fb47e4fb3b4ddfd0e74aab234401230fb00a435c700580f590143c412a\",\"size_bytes\":2767},\"schema\":\"acsd-external-receipt-evidence/v1\",\"semantics\":{\"established\":[\"A holder of the pinned local TSA key issued this RFC 3161 token over the enrollment-core digest.\",\"The token is bound to the retained nonce-bearing request under the tested verification profile.\"],\"not_established\":[\"The TSA was operated by a party independent of the claimant.\",\"The TSA clock was externally disciplined or audited.\",\"Any civil identity, actual contribution, consent, or authorship fact.\",\"A public observer could retrieve this receipt at the stated time.\"]},\"subject\":{\"digest\":\"4fa07a74e029a97a9ecb284555ca7d05f3c234c28b2c8d81caf4d26d0d66d414\",\"hash_algorithm\":\"sha256\",\"source_artifact_sha256\":\"6217f3bd3e2c2557eb5e24dbbad47657af394d24dee3fdb4f8b8e564e9589324\",\"type\":\"predeposit-enrollment-core\"},\"token\":{\"media_type\":\"application/timestamp-token\",\"path\":\"artifacts/enrollment-token.der\",\"sha256\":\"f83b0ac34961a18a51f6b7f015da19087365642d4af6f8649ab5e204d920c3a4\",\"size_bytes\":2758},\"trust\":{\"anchor_selection\":\"locally pinned test root\",\"operator_independence\":\"not_established\",\"root\":{\"media_type\":\"application/x-pem-file\",\"path\":\"artifacts/tsa-root.pem\",\"sha256\":\"2239d6f2942cd68789f7039ca22a12495da5e828341bbf1ac74133e32942b077\",\"size_bytes\":1265},\"root_fingerprint_display\":\"sha256 Fingerprint=F8:B7:DC:60:F2:75:E1:6F:81:9B:85:EB:DA:16:B7:C6:C3:5D:D1:81:BA:28:12:ED:2F:66:CD:2C:6D:C8:6C:14\",\"tsa_certificate\":{\"media_type\":\"application/x-pem-file\",\"path\":\"artifacts/tsa-cert.pem\",\"sha256\":\"008798c33aaac9cede34841e1d77b794c3b7a69c4ecf1c19d35340f18409b7e3\",\"size_bytes\":1294},\"tsa_fingerprint_display\":\"sha256 Fingerprint=26:89:42:1E:DB:39:07:3D:BB:B0:29:9E:66:EB:19:5E:58:73:39:47:0B:E4:3B:8D:C5:51:D3:2B:6B:8E:85:44\"},\"tst_info\":{\"media_type\":\"application/timestamp-info\",\"path\":\"artifacts/enrollment-tstinfo.der\",\"sha256\":\"ca6fc87f8473133a4ec9e4ccdf26439eadfaa1f8e41f6750dbd16c7acbfd9d20\",\"size_bytes\":181},\"validation\":{\"full_query_response_binding\":true,\"message_imprint_matches_subject\":true,\"status\":\"verified_under_local_test_anchor\",\"test_results\":{\"media_type\":\"application/json\",\"path\":\"artifacts/verification-results.json\",\"sha256\":\"7d061dc7305e282c2b0993c9212a9e947549096d28efc3d5640a6b536c33bff2\",\"size_bytes\":5941},\"timestamp_certificate_purpose_valid\":true}}",
+  "digest": "7d4b4ed76a3cf6d6f9e1b69a991444175cd223aeaca3c57a8a5786593bd71ee5"
+}

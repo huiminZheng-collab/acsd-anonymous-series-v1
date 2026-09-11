@@ -1,0 +1,4 @@
+private-test-keys/*.pem
+private-test-keys/*.csr
+private-test-keys/*.srl
+

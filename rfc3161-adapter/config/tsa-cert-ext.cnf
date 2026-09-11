@@ -1,0 +1,7 @@
+[tsa_cert]
+basicConstraints = critical,CA:FALSE
+keyUsage = critical,digitalSignature,nonRepudiation
+extendedKeyUsage = critical,timeStamping
+subjectKeyIdentifier = hash
+authorityKeyIdentifier = keyid,issuer
+

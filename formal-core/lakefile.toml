@@ -1,0 +1,6 @@
+name = "acsd-core"
+version = "0.1.0"
+defaultTargets = ["ACSD"]
+
+[[lean_lib]]
+name = "ACSD"

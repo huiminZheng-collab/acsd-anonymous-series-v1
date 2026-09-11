@@ -1,0 +1,150 @@
+{
+  "schema": "acsd-rfc3161-adapter-test-results/v1",
+  "profile": "acsd-v1.3.3-local-rfc3161",
+  "subject_digest": "4fa07a74e029a97a9ecb284555ca7d05f3c234c28b2c8d81caf4d26d0d66d414",
+  "parsed_message_imprint": "4fa07a74e029a97a9ecb284555ca7d05f3c234c28b2c8d81caf4d26d0d66d414",
+  "parsed_message_imprint_matches_subject": true,
+  "all_expected_outcomes_observed": true,
+  "probes": [
+    {
+      "name": "full_query_response_binding",
+      "expected_exit_code": 0,
+      "observed_exit_code": 0,
+      "passed": true,
+      "interpretation": "Checks CMS signature, timestamp certificate path, subject message imprint, and the request nonce.",
+      "stdout_tail": [
+        "Verification: OK"
+      ],
+      "stderr_tail": [
+        "Using configuration from /usr/ssl/openssl.cnf"
+      ]
+    },
+    {
+      "name": "correct_digest_without_query",
+      "expected_exit_code": 0,
+      "observed_exit_code": 0,
+      "passed": true,
+      "interpretation": "Digest-only verification succeeds but does not prove that this response answers the retained nonce-bearing request.",
+      "stdout_tail": [
+        "Verification: OK"
+      ],
+      "stderr_tail": [
+        "Using configuration from /usr/ssl/openssl.cnf"
+      ]
+    },
+    {
+      "name": "cms_signature_and_chain_verification",
+      "expected_exit_code": 0,
+      "observed_exit_code": 0,
+      "passed": true,
+      "interpretation": "The extracted CMS token signature and signer chain verify independently of the higher-level timestamp query check.",
+      "stdout_tail": [
+        ""
+      ],
+      "stderr_tail": [
+        "CMS Verification successful"
+      ]
+    },
+    {
+      "name": "wrong_subject_digest_rejected",
+      "expected_exit_code": 1,
+      "observed_exit_code": 1,
+      "passed": true,
+      "interpretation": "The signed message imprint cannot be rebound to a different enrollment digest.",
+      "stdout_tail": [
+        "Verification: FAILED"
+      ],
+      "stderr_tail": [
+        "Using configuration from /usr/ssl/openssl.cnf",
+        "100000000A000000:error:17800067:time stamp routines:ts_check_imprints:message imprint mismatch:crypto/ts/ts_rsp_verify.c:508:"
+      ]
+    },
+    {
+      "name": "different_nonce_query_rejected",
+      "expected_exit_code": 1,
+      "observed_exit_code": 1,
+      "passed": true,
+      "interpretation": "A query for the same digest but a different nonce is not the request answered by this response.",
+      "stdout_tail": [
+        "Verification: FAILED"
+      ],
+      "stderr_tail": [
+        "Using configuration from /usr/ssl/openssl.cnf",
+        "100000000A000000:error:17800068:time stamp routines:ts_check_nonces:nonce mismatch:crypto/ts/ts_rsp_verify.c:523:"
+      ]
+    },
+    {
+      "name": "tampered_der_rejected",
+      "expected_exit_code": 1,
+      "observed_exit_code": 1,
+      "passed": true,
+      "interpretation": "A one-bit mutation of the DER response is rejected.",
+      "stdout_tail": [
+        "Verification: FAILED"
+      ],
+      "stderr_tail": [
+        "100000000A000000:error:0200008A:rsa routines:RSA_padding_check_PKCS1_type_1:invalid padding:crypto/rsa/rsa_pk1.c:78:",
+        "100000000A000000:error:02000072:rsa routines:rsa_ossl_public_decrypt:padding check failed:crypto/rsa/rsa_ossl.c:788:",
+        "100000000A000000:error:1C880004:Provider routines:rsa_verify_directly:RSA lib:providers/implementations/signature/rsa_sig.c:1035:",
+        "100000000A000000:error:030000EA:digital envelope routines:EVP_PKEY_verify:provider signature failure:crypto/evp/signature.c:1174:RSA verify:",
+        "100000000A000000:error:10800069:PKCS7 routines:PKCS7_signatureVerify:signature failure:crypto/pkcs7/pk7_doit.c:1184:",
+        "100000000A000000:error:1780006D:time stamp routines:TS_RESP_verify_signature:signature failure:crypto/ts/ts_rsp_verify.c:146:"
+      ]
+    },
+    {
+      "name": "attacker_tsa_rejected_by_pinned_root",
+      "expected_exit_code": 1,
+      "observed_exit_code": 1,
+      "passed": true,
+      "interpretation": "A syntactically and cryptographically valid timestamp from an untrusted private TSA is rejected by the pinned honest root.",
+      "stdout_tail": [
+        "Verification: FAILED"
+      ],
+      "stderr_tail": [
+        "Using configuration from /usr/ssl/openssl.cnf",
+        "100000000A000000:error:17800064:time stamp routines:ts_verify_cert:certificate verify error:crypto/ts/ts_rsp_verify.c:190:Verify error:self-signed certificate in certificate chain"
+      ]
+    },
+    {
+      "name": "attacker_tsa_accepted_if_attacker_root_is_trusted",
+      "expected_exit_code": 0,
+      "observed_exit_code": 0,
+      "passed": true,
+      "interpretation": "Cryptographic validity is relative to the configured trust anchor; accepting a self-appointed root destroys independent-witness semantics.",
+      "stdout_tail": [
+        "Verification: OK"
+      ],
+      "stderr_tail": [
+        "Using configuration from /usr/ssl/openssl.cnf"
+      ]
+    },
+    {
+      "name": "wrong_eku_certificate_rejected_for_timestamp_purpose",
+      "expected_exit_code": 2,
+      "observed_exit_code": 2,
+      "passed": true,
+      "interpretation": "A certificate that chains correctly but is authorized only for code signing is not a valid TSA certificate.",
+      "stdout_tail": [
+        ""
+      ],
+      "stderr_tail": [
+        "CN=ACSD v1.3.3 WRONG EKU TEST CERT, OU=NOT FOR PRODUCTION",
+        "error 26 at 0 depth lookup: unsuitable certificate purpose",
+        "error adversarial/bad-eku-tsa-cert.pem: verification failed"
+      ]
+    },
+    {
+      "name": "tsa_certificate_has_timestamp_signing_purpose",
+      "expected_exit_code": 0,
+      "observed_exit_code": 0,
+      "passed": true,
+      "interpretation": "The signer certificate chains to the pinned root and has the RFC 3161 timestamp-signing purpose.",
+      "stdout_tail": [
+        "artifacts/tsa-cert.pem: OK"
+      ],
+      "stderr_tail": [
+        ""
+      ]
+    }
+  ]
+}

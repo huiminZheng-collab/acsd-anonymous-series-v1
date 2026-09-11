@@ -1,0 +1,35 @@
+{
+  "schema": "acsd-rfc3161-public-submission-envelope/v1",
+  "profile": "acsd-v1.3.3-rfc3161",
+  "state": "prepared_not_submitted",
+  "network_action_performed": false,
+  "authorization": "not_granted_for_external_write",
+  "target": {
+    "tsa_operator": null,
+    "endpoint": null,
+    "trust_anchor_source": null
+  },
+  "http_request": {
+    "method": "POST",
+    "content_type": "application/timestamp-query",
+    "accept": "application/timestamp-reply",
+    "body": {
+      "path": "artifacts/enrollment.tsq",
+      "media_type": "application/timestamp-query",
+      "sha256": "4ed78ca1ea21c22c03c59a093cc2f91b8e025d09e8a900686f030d5eb310f559",
+      "size_bytes": 69
+    }
+  },
+  "response_acceptance": [
+    "retain the raw DER response and the exact nonce-bearing request",
+    "verify the response against a trust anchor obtained independently of the claimant and TSA response",
+    "require the response message imprint to equal the enrollment-core SHA-256 digest",
+    "require the timestamp signer certificate to be valid for timestamp signing",
+    "record operator policy, retention promise, and clock/audit claims separately from cryptographic validity"
+  ],
+  "prohibited_shortcuts": [
+    "do not trust a root certificate supplied only by the claimant",
+    "do not accept a parsed time string without the raw signed response",
+    "do not discard the request and fall back to digest-only verification when nonce binding is required"
+  ]
+}
