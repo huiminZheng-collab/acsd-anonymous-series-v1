@@ -61,14 +61,21 @@ prove that the Python or Node.js implementations refine the model.
 
 ## Reproduction
 
-Use PowerShell and Node.js. The artifact driver is offline after checkout; it
-uses the locked Python wheel in `artifact/vendor/`.
+Use PowerShell or bash and Node.js. The artifact driver is offline after
+checkout; it uses the locked Python wheel in `artifact/vendor/`.
 
 ```powershell
 Set-Location artifact
 .\run.ps1
 Set-Location ..
 node .\verify-release-manifest.cjs
+```
+
+On Linux or macOS, run the equivalent entry point:
+
+```bash
+cd artifact && ./run.sh && cd ..
+node ./verify-release-manifest.cjs
 ```
 
 For the Lean source, install the pinned Lean 4.33.1 toolchain and run:
@@ -94,3 +101,5 @@ describes how a separately selected TSA receipt can be checked offline.
 
 See [ANONYMITY.md](ANONYMITY.md), [AI-USE-DISCLOSURE.md](AI-USE-DISCLOSURE.md),
 and [BUILD-AND-VERIFY.md](BUILD-AND-VERIFY.md) before relying on the artifact.
+The repository is released under [MIT](LICENSE); citation metadata is in
+[CITATION.cff](CITATION.cff).

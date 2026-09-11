@@ -1,0 +1,9 @@
+cff-version: 1.2.0
+message: "If you use the ACSD v1.0.0 release, please cite this repository."
+title: "ACSD v1.0.0 - Anonymous Scholarly Claim and Disclosure"
+version: "v1.0.0"
+date-released: 2026-09-11
+repository-code: "https://github.com/huiminZheng-collab/acsd-anonymous-series-v1"
+license: MIT
+authors:
+  - name: "ACSD contributors"

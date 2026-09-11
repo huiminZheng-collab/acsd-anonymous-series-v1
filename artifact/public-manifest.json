@@ -9,6 +9,11 @@
   ],
   "files": [
     {
+      "path": "EXAMPLE-OUTPUT.md",
+      "size_bytes": 400,
+      "sha256": "05ae57b8f17af7f10e818fe69437d7fbc2cc0f46726d32012b5746953eb3f384"
+    },
+    {
       "path": "README.md",
       "size_bytes": 3875,
       "sha256": "ad55eae06d969234a49e1150e8fee9fbb94f3f8fa3804f2176309a8d649f18a3"
@@ -477,6 +482,11 @@
       "path": "run.ps1",
       "size_bytes": 1445,
       "sha256": "9145bf4aaa0de91c76cb642f1633f13f05e3d293f287717bbf1709fa9511a2ac"
+    },
+    {
+      "path": "run.sh",
+      "size_bytes": 740,
+      "sha256": "154175ca0f8e8d62befb2e219f12140813a3225f167bf181de7d6eeed93c1d9b"
     },
     {
       "path": "source-provenance.json",
