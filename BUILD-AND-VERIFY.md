@@ -11,10 +11,17 @@ To verify a checkout without regenerating anything:
 node .\verify-release-manifest.cjs
 ```
 
-To replay the executable artifact and then verify the resulting public tree:
+To replay the executable artifact on Windows and then verify the resulting public tree:
 
 ```powershell
 .\verify.ps1
+```
+
+On Linux or macOS, use the equivalent offline driver:
+
+```bash
+./artifact/run.sh
+node ./verify-release-manifest.cjs
 ```
 
 `verify.ps1` creates ignored runtime directories such as `artifact/.deps/` and
@@ -22,6 +29,6 @@ To replay the executable artifact and then verify the resulting public tree:
 manifest that omits or adds any non-ignored public file, and rejects a manifest
 that names paths reserved for private keys or build caches.
 
-The paper source and LaTeX build logs are intentionally not published. This
-reduces the anonymity surface; the PDF is the canonical manuscript byte
-sequence for this release.
+The LaTeX build logs and generated auxiliary files are not published. The
+source supplement is published separately under `paper-source-v1.0.1/`; the
+PDF remains the canonical manuscript byte sequence for v1.0.0.
