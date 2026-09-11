@@ -9,6 +9,31 @@ metadata, timing, or a public signing key can link a release to a person. No
 claim of natural-person authorship, originality, independent discovery, peer
 review, legal nonrepudiation, or venue acceptance is made here.
 
+## Motivation
+
+When a venue or repository puts a manuscript on hold—for example while an
+arXiv endorsement or moderation step is pending—authors may want a public,
+content-anonymous priority record without pretending that it proves who wrote
+the work. ACSD provides that intermediate evidence package: signed releases,
+explicit series lineage, citation witnesses, and independently checkable
+manifests.
+
+## Quickstart
+
+To reproduce this release from a clean checkout:
+
+```powershell
+Set-Location artifact
+.\run.ps1
+Set-Location ..
+node .\verify-release-manifest.cjs
+```
+
+The command regenerates the fixtures and verifies the public manifest. The
+LaTeX source supplement is available under
+[`paper-source-v1.0.1/`](paper-source-v1.0.1/); it is an additive source release
+for this paper and does not alter the v1.0.0 artifact manifest.
+
 ## Contents
 
 - `paper/acsd-v1.pdf` - the anonymous technical paper.
