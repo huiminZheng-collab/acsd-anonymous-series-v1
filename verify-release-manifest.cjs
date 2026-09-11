@@ -25,7 +25,7 @@ const manifestPath = path.join(root, manifestName);
 if (!fs.existsSync(manifestPath)) fail(`missing ${manifestName}`);
 const expected = new Map();
 const body = fs.readFileSync(manifestPath, 'utf8');
-for (const line of body.trimEnd().split('\n')) {
+for (const line of body.trimEnd().split(/\r?\n/)) {
   const match = linePattern.exec(line);
   if (!match) fail(`invalid manifest line: ${line}`);
   const [, digest, rel] = match;

@@ -34,6 +34,25 @@ LaTeX source supplement is available under
 [`paper-source-v1.0.1/`](paper-source-v1.0.1/); it is an additive source release
 for this paper and does not alter the v1.0.0 artifact manifest.
 
+## v2.0.0 Provenance Evidence Capsule
+
+The additive [`v2.0.0/`](v2.0.0/) release introduces the Provenance Evidence
+Capsule (PEC): exact release and governance bindings, unanimous pseudonymous-key
+approval, event-chain checks, claim-policy non-amplification, and selectively
+openable salted dialogue commitments. It includes a content-anonymous paper,
+16 Python tests, a strict package-manifest verifier, and a standalone Lean
+4.33.1 project with four new abstract PEC acceptance theorems.
+
+Verify the v2 file set before executing it:
+
+```powershell
+python .\v2.0.0\verify_release.py .\v2.0.0
+```
+
+Then run its complete gate from `v2.0.0/`. Set `ACSD_LAKE` if `lake` is not on
+`PATH`; the three v1 integration tests discover this repository through the
+parent directory or an explicit `ACSD_V1_ROOT`.
+
 ## Contents
 
 - `paper/acsd-v1.pdf` - the anonymous technical paper.
@@ -44,6 +63,8 @@ for this paper and does not alter the v1.0.0 artifact manifest.
 - `rfc3161-adapter/` - an offline RFC 3161 request/receipt verification
   adapter with local test fixtures. It never contacts a TSA by itself.
 - `RELEASE-MANIFEST.sha256` - SHA-256 manifest for the exact public payload.
+- `v2.0.0/` - additive PEC paper, implementation, tests, formal model, and its
+  own complete SHA-256 manifest.
 
 ## Claims that can be checked
 

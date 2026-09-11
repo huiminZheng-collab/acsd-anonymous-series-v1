@@ -1,0 +1,6 @@
+* text=auto eol=lf
+*.pdf -text
+*.cbor -text
+*.cose -text
+*.tsq -text
+*.tsr -text
