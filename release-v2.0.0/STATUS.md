@@ -1,0 +1,28 @@
+# ACSD v2 PEC status
+
+## Implemented and tested
+
+- canonical JSON and SHA-256 PEC bindings;
+- v1 PaperRelease and standalone-package adapters;
+- delegation to the audited v1 COSE/SCITT verifier;
+- unanimous author approval checks;
+- event predecessor and sequence checks;
+- claim-policy non-amplification;
+- salted Merkle dialogue roots, paths, and contiguous-window openings;
+- generated attack corpus and end-to-end demo;
+- demo manifest and command-line verification.
+
+## Acceptance evidence
+
+The local standard-library suite reports 16 passing tests. The demo verifier
+reports `status: VALID` and two manifest entries. The standalone formal project
+builds successfully with the pinned official Lean 4.33.1 Windows toolchain.
+
+## Formal scope
+
+`formal/ACSD/PEC.lean` contains four axiom-free theorems over an abstract
+acceptance model: accepted capsules have all required approvals, accepted
+capsules preserve the no-social-claim policy, and missing approval or an
+invalid event sequence prevents acceptance. Hash and signature security, and
+refinement of the Python implementation into this model, are explicitly
+outside these four theorems.

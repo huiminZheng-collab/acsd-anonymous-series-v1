@@ -1,0 +1,6 @@
+name = "acsd-pec"
+version = "0.2.0"
+defaultTargets = ["ACSD"]
+
+[[lean_lib]]
+name = "ACSD"

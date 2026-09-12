@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+formal/.lake/
+paper/build/
+*.aux
+*.log
+*.synctex.gz
