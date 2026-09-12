@@ -104,7 +104,7 @@ class TestCLISigning(unittest.TestCase):
             self.assertEqual(json.loads(r.stdout)["data"]["state"], "finalized-untimestamped")
             r = run("verify", str(rel), "--json")
             self.assertEqual(r.returncode, 0, r.stderr)
-            self.assertNotIn("EXTERNALLY_NOT_AFTER", json.loads(r.stdout)["data"]["granted_outcomes"])
+            self.assertNotIn("externally_not_after", json.loads(r.stdout)["data"])
 
     def test_forged_tsr_rejected_by_pinned_cert(self):
         import sys as _sys
@@ -125,6 +125,30 @@ class TestCLISigning(unittest.TestCase):
             r = run("verify", str(rel), "--json")
             self.assertEqual(r.returncode, 1)
             self.assertIn("TSR_UNTRUSTED_SIGNER", json.loads(r.stdout)["data"]["error_code"])
+
+    def test_tampered_policy_and_events_rejected(self):
+        from pec_core import canonical
+        with tempfile.TemporaryDirectory() as d:
+            alice, bob, rel = self._setup(d)
+            run("approve", str(rel), "--key", alice["private_key"])
+            run("approve", str(rel), "--key", bob["private_key"])
+            pec_path = rel / "pec/pec.json"
+            # tamper 1: inject a forbidden social claim into permitted_outcomes
+            pec = json.loads(pec_path.read_text(encoding="utf-8"))
+            pec["claim_policy"]["permitted_outcomes"].append("NATURAL_PERSON_AUTHORSHIP")
+            pec_path.write_bytes(canonical(pec) + b"\n")
+            self.assertEqual(run("finalize", str(rel)).returncode, 0)
+            r = run("verify", str(rel), "--json")
+            self.assertEqual(r.returncode, 1)
+            self.assertEqual(json.loads(r.stdout)["data"]["error_code"], "SOCIAL_CLAIM_FORBIDDEN")
+            # tamper 2: break the event chain
+            pec["claim_policy"]["permitted_outcomes"].remove("NATURAL_PERSON_AUTHORSHIP")
+            pec["events"] = [{"sequence": 5, "event_id": "x", "previous_event_digest": None, "kind": "note"}]
+            pec_path.write_bytes(canonical(pec) + b"\n")
+            self.assertEqual(run("finalize", str(rel)).returncode, 0)
+            r = run("verify", str(rel), "--json")
+            self.assertEqual(r.returncode, 1)
+            self.assertEqual(json.loads(r.stdout)["data"]["error_code"], "EVENT_CHAIN_BROKEN")
 
 
 if __name__ == "__main__":

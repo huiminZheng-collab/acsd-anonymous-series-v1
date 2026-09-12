@@ -2,7 +2,7 @@ import copy
 from pec_core import digest, validate_pec, verify_disclosure
 
 def valid_fixture():
-    release = {"digest":"a"*64,"content_sha256":"b"*64,"author_key_ids":["k1","k2"]}
+    release = {"digest":"a"*64,"content_sha256":"b"*64,"author_key_ids":["k1","k2"],"work_id":"urn:uuid:demo"}
     governance = {"digest":"c"*64}
     pec = {"schema":"acsd-pec/v0.1","pec_id":"pec-demo-01",
       "subject":{"work_id":"urn:uuid:demo","release_digest":release["digest"]},

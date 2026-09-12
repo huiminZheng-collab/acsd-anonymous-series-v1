@@ -185,24 +185,43 @@ def build_pec(work_id, adapted, gov_digest, content_sha256, ai_digest, key_ids):
         },
         "events": [],
         "claim_policy": {
-            "permitted_outcomes": ["KEY_ASSENT", "GOVERNANCE_ASSENT"],
+            "permitted_outcomes": ["KEY_ASSENT", "GOVERNANCE_ASSENT", "EXTERNALLY_NOT_AFTER"],
             "global_non_claims": list(NON_CLAIMS),
+            "required_capabilities": {
+                "EXTERNALLY_NOT_AFTER": ["rfc3161-exact-pec-imprint"],
+            },
         },
         "issuer_key_id": key_ids[0],
     }
 
 
-def check_bindings(pec, adapted, gov_digest, content_sha256):
+def check_bindings(pec, adapted, governance):
     require(pec.get("schema") == "acsd-pec/v0.1", "PEC_SCHEMA")
     subject, gov = pec["subject"], pec["governance"]
     require(subject["release_digest"] == adapted["digest"], "SUBJECT_RELEASE_MISMATCH")
-    require(gov["statement_digest"] == gov_digest, "GOVERNANCE_BINDING_MISMATCH")
-    require(gov["manuscript_sha256"] == content_sha256, "GOVERNANCE_BINDING_MISMATCH")
+    require(subject["work_id"] == adapted["work_id"], "SUBJECT_WORK_ID_MISMATCH")
+    require(gov["statement_digest"] == digest(governance), "GOVERNANCE_BINDING_MISMATCH")
+    require(gov["manuscript_sha256"] == adapted["content_sha256"], "GOVERNANCE_BINDING_MISMATCH")
+    require(gov["ai_use_declaration_digest"] == digest(governance["ai_use_declaration"]), "AI_USE_BINDING_MISMATCH")
     require(
         gov["required_pec_approval_key_ids"] == sorted(adapted["author_key_ids"]),
         "GOVERNANCE_BINDING_MISMATCH",
     )
     require(pec.get("issuer_key_id") in adapted["author_key_ids"], "PEC_ISSUER_UNAUTHORIZED")
+    events = pec.get("events", [])
+    previous = None
+    event_ids = set()
+    for i, event in enumerate(events):
+        require(event["sequence"] == i, "EVENT_CHAIN_BROKEN")
+        require(event["event_id"] not in event_ids, "EVENT_CHAIN_BROKEN")
+        event_ids.add(event["event_id"])
+        require(event["previous_event_digest"] == previous, "EVENT_CHAIN_BROKEN")
+        previous = digest(event)
+    policy = pec["claim_policy"]
+    required = {"natural_person_authorship", "contribution_truth", "originality_truth", "legal_nonrepudiation", "peer_review"}
+    require(required.issubset(set(policy["global_non_claims"])), "CLAIM_POLICY_INCOMPLETE")
+    forbidden_outcomes = {"NATURAL_PERSON_AUTHORSHIP", "CONTRIBUTION_TRUTH", "ORIGINALITY_TRUTH", "LEGAL_NONREPUDIATION"}
+    require(not forbidden_outcomes.intersection(policy["permitted_outcomes"]), "SOCIAL_CLAIM_FORBIDDEN")
 
 
 def manifest_entries(root: pathlib.Path) -> str:
@@ -277,7 +296,7 @@ def cmd_init(args):
     gov_digest = digest(governance)
     ai_digest = digest(governance["ai_use_declaration"])
     pec = build_pec(work_id, adapted, gov_digest, content_sha256, ai_digest, key_ids)
-    check_bindings(pec, adapted, gov_digest, content_sha256)
+    check_bindings(pec, adapted, governance)
 
     out.mkdir(parents=True, exist_ok=True)
     for d in ("paper", "release", "governance", "pec", "public-keys", "endorsements"):
@@ -395,6 +414,7 @@ def cmd_finalize(args):
                 "nonce": nonce.hex(),
                 "tsa_url": tsa_url,
                 "tsa_cert_fingerprint": tsa_cert_fp,
+                "capability": "rfc3161-exact-pec-imprint",
             })
             timestamped = True
 
@@ -427,9 +447,8 @@ def verify_release_dir(root: pathlib.Path):
     content_bytes = (root / release["content"]["path"]).read_bytes()
     if hashlib.sha256(content_bytes).hexdigest() != release["content"]["sha256"]:
         return EXIT_VERIFY_FAIL, "TAMPERED", {"error_code": "CONTENT_DIGEST_MISMATCH"}
-    gov_digest = digest(governance)
     try:
-        check_bindings(pec, adapted, gov_digest, release["content"]["sha256"])
+        check_bindings(pec, adapted, governance)
     except ValueError as e:
         return EXIT_VERIFY_FAIL, "TAMPERED", {"error_code": str(e)}
 
@@ -471,7 +490,8 @@ def verify_release_dir(root: pathlib.Path):
         except ValueError as e:
             return EXIT_VERIFY_FAIL, "TAMPERED", {"error_code": str(e)}
         data["externally_not_after"] = str(info["genTime"])
-        data["granted_outcomes"] = list(data["granted_outcomes"]) + ["EXTERNALLY_NOT_AFTER"]
+        # EXTERNALLY_NOT_AFTER is already in the claim_policy's permitted_outcomes;
+        # do not re-append it (that would double-report the outcome).
     # manifest verification for finalized states
     if state.get("state") in ("finalized", "finalized-untimestamped"):
         expected = manifest_entries(root)

@@ -8,7 +8,8 @@ from pathlib import Path
 
 HEX = re.compile(r"^[0-9a-f]{64}$")
 
-def _check_json(value):
+def _check_json(value, depth=0):
+    if depth > 200: raise ValueError("JSON_TOO_DEEP")
     if isinstance(value, bool) or value is None: return
     if isinstance(value, str):
         if any(0xD800 <= ord(c) <= 0xDFFF for c in value):
@@ -19,12 +20,13 @@ def _check_json(value):
         return
     if isinstance(value, float): raise ValueError("FLOAT_FORBIDDEN")
     if isinstance(value, list):
-        for item in value: _check_json(item)
+        for item in value: _check_json(item, depth + 1)
         return
     if isinstance(value, dict):
         for key, item in value.items():
-            if not isinstance(key, str) or any(ord(c) > 127 for c in key): raise ValueError("NONASCII_KEY")
-            _check_json(item)
+            if not isinstance(key, str): raise ValueError("JSON_KEY_TYPE_FORBIDDEN")
+            if any(ord(c) > 127 for c in key): raise ValueError("NONASCII_KEY")
+            _check_json(item, depth + 1)
         return
     raise ValueError("JSON_TYPE_FORBIDDEN")
 
@@ -85,6 +87,7 @@ def validate_pec(pec, approvals, release, governance, predecessor_pec=None):
     subject, gov = pec["subject"], pec["governance"]
     require(HEX.fullmatch(subject["release_digest"]), "RELEASE_DIGEST")
     require(subject["release_digest"] == release["digest"], "SUBJECT_RELEASE_MISMATCH")
+    require(subject["work_id"] == release["work_id"], "SUBJECT_WORK_ID_MISMATCH")
     require(gov["statement_digest"] == governance["digest"], "GOVERNANCE_BINDING_MISMATCH")
     require(gov["manuscript_sha256"] == release["content_sha256"], "GOVERNANCE_BINDING_MISMATCH")
     keys = sorted(release["author_key_ids"])

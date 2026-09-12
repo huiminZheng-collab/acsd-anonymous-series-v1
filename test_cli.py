@@ -45,7 +45,7 @@ class TestCLI(unittest.TestCase):
             out = json.loads(r.stdout)
             self.assertEqual(out["data"]["missing_approvals"], sorted(key_ids))
             self.assertIn("natural_person_authorship", out["data"]["non_claims"])
-            self.assertEqual(out["data"]["granted_outcomes"], ["KEY_ASSENT", "GOVERNANCE_ASSENT"])
+            self.assertEqual(out["data"]["granted_outcomes"], ["KEY_ASSENT", "GOVERNANCE_ASSENT", "EXTERNALLY_NOT_AFTER"])
             self.assertEqual(run("inspect", str(rel)).returncode, 0)
 
     def test_tamper_detected(self):

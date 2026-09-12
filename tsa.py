@@ -19,7 +19,6 @@ from cryptography import x509
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec, padding, rsa
-from cryptography.hazmat.primitives.serialization import pkcs7
 from cryptography.x509.oid import ExtendedKeyUsageOID, NameOID
 
 SHA256_OID = "2.16.840.1.101.3.4.2.1"
@@ -268,12 +267,16 @@ def _verify_sig(pub, signature, data, hash_obj):
         raise ValueError("TSR_UNSUPPORTED_KEY")
 
 
-def verify_tsr(tsr: bytes, expected_imprint: bytes, trusted_cert_der: bytes = None, trusted_fingerprint: str = None):
+def verify_tsr(tsr: bytes, expected_imprint: bytes, trusted_cert_der: bytes = None, trusted_fingerprint: str = None, allow_self_signed: bool = False):
     """Verify a TimeStampResp: PKI status, imprint binding, signer certificate
     validity, messageDigest over the TSTInfo, and the CMS signature (RSA or
     ECDSA). The signer certificate is taken from the CMS when embedded,
-    otherwise from trusted_cert_der. A non-self-signed certificate requires
-    trusted_fingerprint (SHA-256 hex) as its trust anchor."""
+    otherwise from trusted_cert_der.
+
+    Trust anchoring: a SHA-256 fingerprint pin is the only default trust
+    anchor. Without one, a self-signed certificate is accepted only with
+    `allow_self_signed=True` (for the local test TSA); otherwise the response
+    is rejected as untrusted."""
     status, cms_der = _parse_tsr(tsr)
     if status != 0:
         raise ValueError(f"TSR_STATUS_{status}")
@@ -296,10 +299,10 @@ def verify_tsr(tsr: bytes, expected_imprint: bytes, trusted_cert_der: bytes = No
     if trusted_fingerprint is not None:
         if cert.fingerprint(hashes.SHA256()).hex() != trusted_fingerprint:
             raise ValueError("TSR_UNTRUSTED_SIGNER")
-    elif cert.subject != cert.issuer:
-        raise ValueError("TSR_UNTRUSTED_SIGNER")
-    else:
+    elif cert.subject == cert.issuer and allow_self_signed:
         _verify_sig(cert.public_key(), cert.signature, cert.tbs_certificate_bytes, cert.signature_hash_algorithm)
+    else:
+        raise ValueError("TSR_UNTRUSTED_SIGNER")
 
     hash_cls = _HASH_BY_OID.get(parsed["digest_alg_oid"])
     if hash_cls is None:
@@ -321,6 +324,53 @@ def verify_tsr(tsr: bytes, expected_imprint: bytes, trusted_cert_der: bytes = No
     else:
         raise ValueError("TSR_SIGNATURE_INVALID")
     return info
+
+
+def _set(content: bytes) -> bytes:
+    return _tag(0x31, content)
+
+
+def _build_cms(tstinfo: bytes, cert: x509.Certificate, key) -> bytes:
+    """Build a single-signer CMS SignedData (RSA/SHA-256) around tstinfo.
+
+    cryptography's PKCS7SignatureBuilder rewrites 0x0A (LF) bytes in the
+    content to 0x0D 0x0A (CRLF) (OpenSSL text-mode normalization), which
+    corrupts a TSTInfo whose imprint happens to contain 0x0A. We build the
+    SignedData ourselves so the content bytes stay exact.
+    """
+    oid_id_data = "1.2.840.113549.1.7.1"
+    oid_content_type = "1.2.840.113549.1.9.3"
+    oid_message_digest = "1.2.840.113549.1.9.4"
+    oid_sha256_with_rsa = "1.2.840.113549.1.1.11"
+
+    digest = hashlib.sha256(tstinfo).digest()
+    # signedAttrs [0] IMPLICIT SET OF { contentType, messageDigest }
+    content_type_attr = _seq(_oid(oid_content_type) + _set(_oid(oid_id_data)))
+    message_digest_attr = _seq(_oid(oid_message_digest) + _set(_octet(digest)))
+    signed_attrs = _tag(0xA0, content_type_attr + message_digest_attr)
+    signature = key.sign(signed_attrs, padding.PKCS1v15(), hashes.SHA256())
+
+    issuer_der = cert.issuer.public_bytes()
+    sid = _seq(issuer_der + _int(cert.serial_number))
+    signer_info = _seq(
+        _int(1)
+        + sid
+        + _seq(_oid(SHA256_OID))
+        + signed_attrs
+        + _seq(_oid(oid_sha256_with_rsa))
+        + _octet(signature)
+    )
+
+    encap_content_info = _seq(_oid(oid_id_data) + _tag(0xA0, _octet(tstinfo)))
+    cert_der = cert.public_bytes(serialization.Encoding.DER)
+    signed_data = _seq(
+        _int(1)
+        + _set(_seq(_oid(SHA256_OID)))
+        + encap_content_info
+        + _tag(0xA0, cert_der)
+        + _set(signer_info)
+    )
+    return _seq(_oid(OID_SIGNED_DATA) + _tag(0xA0, signed_data))
 
 
 # --- local test TSA (protocol test only, not independent evidence) ----------
@@ -359,7 +409,6 @@ class LocalTSA:
             + _tag(0x18, datetime.now(timezone.utc).strftime("%Y%m%d%H%M%SZ").encode())
         )
         self._serial += 1
-        builder = pkcs7.PKCS7SignatureBuilder().set_data(tstinfo).add_signer(self.cert, self._key, hashes.SHA256())
-        cms = builder.sign(serialization.Encoding.DER, [])
+        cms = _build_cms(tstinfo, self.cert, self._key)
         # TimeStampResp = SEQUENCE { PKIStatusInfo (granted), ContentInfo }
         return _seq(_seq(_int(0)) + cms)

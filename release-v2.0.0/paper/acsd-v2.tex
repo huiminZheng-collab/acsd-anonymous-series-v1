@@ -130,9 +130,9 @@ A minimal release fragment is conceptually:
    "byte_offset":35,"byte_length":45}]}
 \end{verbatim}
 The ellipses above are presentation placeholders only. The released demo
-fixture likewise uses placeholder digests and a synthetic work identifier to
-exercise the binding rules; it does not demonstrate a real content binding.
-Real releases are produced by the v1 fixture generator.
+fixture binds a real manuscript's bytes, digest, and work identifier (the
+governance and PEC objects are real, not placeholders), using synthetic author
+identifiers. Real series releases are produced by the v1 fixture generator.
 
 \section{Series Layer and Cyclic Citations}
 
@@ -181,7 +181,7 @@ There is no circularity: the timestamp receipt is a sidecar over the already fro
 
 The v1 prototype uses Python for deterministic fixture generation and a zero-dependency Node.js verifier for strict CBOR/COSE and profile validation; the two paths are intentionally separate. The package is designed for offline replay: locked dependencies are included, and the verification driver regenerates fixtures, verifies a standalone release, independently verifies the series profile, builds a manifest, and verifies that manifest.
 
-A command-line tool (\texttt{acsd.py}) now turns the profile into an executable workflow: \texttt{keygen} (Ed25519), \texttt{init} (a release directory from a manuscript and a team file), \texttt{approve} (per-author COSE Sign1 endorsement), \texttt{finalize} (signature-complete package assembly with optional RFC~3161 timestamping), and \texttt{verify} (offline re-verification with explicit outcomes and non-claims). The canonical JSON layer is exercised by a 64-vector Python--Node differential harness that enforces byte agreement across implementations; two divergences it surfaced (unpaired surrogate code points and tuples) are now rejected by both implementations.
+A command-line tool (\texttt{acsd.py}) now turns the profile into an executable workflow: \texttt{keygen} (Ed25519), \texttt{init} (a release directory from a manuscript and a team file), \texttt{approve} (per-author COSE Sign1 endorsement), \texttt{finalize} (signature-complete package assembly with optional RFC~3161 timestamping), and \texttt{verify} (offline re-verification with explicit outcomes and non-claims). The canonical JSON layer is exercised by a 64-vector Python--Node differential harness that enforces accept/reject agreement across implementations; two divergences it surfaced (unpaired surrogate code points and tuples) are now rejected by both implementations, and three remaining object-layer float divergences are documented in the canonical specification.
 
 \begin{table}[t]
 \centering
@@ -197,7 +197,7 @@ Closed normal, attack, and indeterminate scenarios & 13 / 13 expected outcomes \
 Independent profile checks & 30 / 30 passed \\
 Canonical JSON regression cases & 11 / 11 Python--Node agreement \\
 Public-manifest entries & 113 / 113 verified \\
-v2 differential canonical-JSON vectors & 64 / 64 Python--Node agreement \\
+v2 differential canonical-JSON vectors & 64 / 64 accept/reject agreement \\
 New PEC theorems in the abstract core & 10, no axiom dependency \\
 \bottomrule
 \end{tabular}
@@ -211,7 +211,7 @@ series generators, records verification/manifest/rank time and peak memory,
 and runs a seeded Python--Node differential fuzzer. Until those experiments
 are complete, performance is unknown after this check.
 
-The new Lean development models the PEC as concrete data structures rather than uninterpreted propositions: required and approved key lists, a claim policy with explicit non-claims, and an event list with consecutive sequences and predecessor-digest links. Its ten axioms-free theorems prove, by induction, that a valid event chain has consecutive sequences, that approval is transitive and monotone, that a forbidden social claim is never a permitted outcome, and that acceptance implies full approval, a valid chain, and a non-amplifying policy. The earlier v1 core
+The new Lean development models the PEC as concrete data structures rather than uninterpreted propositions: required and approved key lists, a claim policy with explicit non-claims, and an event list with consecutive sequences and predecessor-digest links. Its ten axioms-free theorems establish that a valid event chain has consecutive sequences (proved by induction), that approval is transitive and monotone, that a forbidden social claim is never a permitted outcome, and that acceptance implies full approval, a valid chain, and a non-amplifying policy. The earlier v1 core
 contains the broader citation-witness and rank arguments; those inherited
 results are not counted as new v2 PEC theorems here. These are proofs about an
 abstract verifier. They do not prove that the Python or Node parser refines the

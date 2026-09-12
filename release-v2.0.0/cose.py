@@ -130,7 +130,8 @@ def sig_structure(protected: bytes, payload: bytes) -> bytes:
 def cose_sign1(payload: bytes, private_key: Ed25519PrivateKey) -> bytes:
     protected = _protected_header()
     sig = private_key.sign(sig_structure(protected, payload))
-    return cbor_array([
+    # COSE_Sign1 is CBOR tag 18 wrapping a 4-element array (RFC 9052 §4.2).
+    return b"\xd2" + cbor_array([
         cbor_bstr(protected),
         cbor_map([]),  # unprotected header: empty
         cbor_bstr(payload),
@@ -139,6 +140,9 @@ def cose_sign1(payload: bytes, private_key: Ed25519PrivateKey) -> bytes:
 
 
 def cose_verify(cose_bytes: bytes, public_key: Ed25519PublicKey, expected_payload: bytes = None) -> bytes:
+    # accept both tagged (RFC 9052) and bare-array encodings for tolerance
+    if cose_bytes and cose_bytes[0] == 0xD2:
+        cose_bytes = cose_bytes[1:]
     arr = decode(cose_bytes)
     if not isinstance(arr, list) or len(arr) != 4:
         raise ValueError("COSE_SIGN1_STRUCTURE")

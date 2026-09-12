@@ -3,7 +3,7 @@ import unittest
 from pec_core import canonical, digest, validate_pec, verify_disclosure
 
 def fixture():
-    release = {"digest": "a"*64, "content_sha256": "b"*64, "author_key_ids": ["k1", "k2"]}
+    release = {"digest": "a"*64, "content_sha256": "b"*64, "author_key_ids": ["k1", "k2"], "work_id": "w"}
     governance = {"digest": "c"*64}
     pec = {"schema":"acsd-pec/v0.1", "pec_id":"p", "subject":{"work_id":"w","release_digest":release["digest"]},
       "governance":{"statement_digest":governance["digest"],"manuscript_sha256":release["content_sha256"],"required_pec_approval_key_ids":["k1","k2"]},
