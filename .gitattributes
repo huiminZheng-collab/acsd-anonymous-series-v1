@@ -1,0 +1,5 @@
+# The v1 fixture corpus must stay byte-exact: its digests, signed artifacts
+# (.scitt), vendored archives (.whl/.zip), and public-manifest hashes all
+# depend on exact bytes. Force no EOL/text conversion for it.
+v1-fixture/** -text
+release-v2.0.0/v1-fixture/** -text
