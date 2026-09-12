@@ -11,6 +11,7 @@ ROOT = Path(__file__).resolve().parent
 DEST = ROOT / "release-v2.0.0"
 FILES = (
     "ACCEPTANCE-MATRIX.md",
+    "acsd.py",
     "fixtures.py",
     "generate_demo.py",
     "install-lean.ps1",
@@ -20,6 +21,7 @@ FILES = (
     "SPEC.md",
     "STATUS.md",
     "TEST-PLAN.md",
+    "test_cli.py",
     "test_corpus.py",
     "test_demo.py",
     "test_dialogue_merkle.py",
@@ -32,8 +34,11 @@ FILES = (
     "verify_pec.py",
     "verify_release.py",
     "demo/dialogue-disclosure.json",
+    "demo/governance.json",
     "demo/MANIFEST.sha256",
+    "demo/manuscript.txt",
     "demo/pec.json",
+    "demo/release.json",
     "formal/ACSD.lean",
     "formal/ACSD/Core.lean",
     "formal/ACSD/PEC.lean",

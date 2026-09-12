@@ -15,7 +15,7 @@ silently treat their synthetic test keys or local timestamp services as real
 external evidence.
 
 The first reference implementation is now present in `pec_core.py`, with a
-generated attack corpus and a standard-library suite of 19 test methods (16
+generated attack corpus and a standard-library suite of 22 test methods (19
 pass by default; 3 v1-integration tests skip unless a v1 fixture workspace is
 present). It validates exact
 canonical bindings, unanimous approval, event-chain integrity, claim-policy

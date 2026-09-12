@@ -24,6 +24,15 @@ class TestPECCore(unittest.TestCase):
     # (JSON.stringify). Escaping would split the canonical byte image.
     self.assertEqual(canonical({"label": "匿名"}), '{"label":"匿名"}'.encode("utf-8"))
 
+  def test_canonical_rejects_lone_surrogate(self):
+    lone = chr(0xD800)  # unpaired high surrogate
+    with self.assertRaisesRegex(ValueError, "LONE_SURROGATE"): canonical({"s": lone})
+
+  def test_canonical_rejects_tuple(self):
+    # Tuples are not a JSON type; json.dumps silently coerces them, so the
+    # canonical contract must reject them explicitly (v1 behavior).
+    with self.assertRaisesRegex(ValueError, "JSON_TYPE_FORBIDDEN"): canonical({"a": (1, 2)})
+
   def test_valid_and_disclosure(self):
     r,g,p = fixture(); result=validate_pec(p,["k1","k2"],r,g)
     d={"pec_digest":result["pec_digest"],"event_id":"e","event_sequence":0,"kind":"research_note_snapshot","approval_key_ids":["k1"]}
