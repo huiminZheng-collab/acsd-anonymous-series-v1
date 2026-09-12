@@ -514,17 +514,17 @@
       "note": "lone high surrogate must be rejected",
       "py": {
         "accept": false,
-        "err": "'utf-8' codec can't encode character '\\ud800' in position 6: surrogates not allowed",
+        "err": "LONE_SURROGATE",
         "hex": null
       },
       "node": {
-        "accept": true,
-        "err": null,
-        "hex": "7b2273223a225c7564383030227d"
+        "accept": false,
+        "err": "LONE_SURROGATE",
+        "hex": null
       },
-      "verdict": "DIVERGE-TYPE",
-      "expectation_ok": false,
-      "known_divergence": true
+      "verdict": "AGREE-REJECT",
+      "expectation_ok": true,
+      "known_divergence": false
     },
     {
       "id": "str-lone-low-esc",
@@ -532,17 +532,17 @@
       "note": "lone low surrogate must be rejected",
       "py": {
         "accept": false,
-        "err": "'utf-8' codec can't encode character '\\udfff' in position 6: surrogates not allowed",
+        "err": "LONE_SURROGATE",
         "hex": null
       },
       "node": {
-        "accept": true,
-        "err": null,
-        "hex": "7b2273223a225c7564666666227d"
+        "accept": false,
+        "err": "LONE_SURROGATE",
+        "hex": null
       },
-      "verdict": "DIVERGE-TYPE",
-      "expectation_ok": false,
-      "known_divergence": true
+      "verdict": "AGREE-REJECT",
+      "expectation_ok": true,
+      "known_divergence": false
     },
     {
       "id": "str-quote-backslash",
@@ -1160,9 +1160,9 @@
   "summary": {
     "total": 64,
     "agree_bytes": 46,
-    "agree_reject": 13,
-    "diverge_type": 5,
+    "agree_reject": 15,
+    "diverge_type": 3,
     "diverge_bytes": 0,
-    "unexpected_failures": 2
+    "unexpected_failures": 0
   }
 }

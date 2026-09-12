@@ -9,12 +9,16 @@ from pathlib import Path
 HEX = re.compile(r"^[0-9a-f]{64}$")
 
 def _check_json(value):
-    if isinstance(value, bool) or value is None or isinstance(value, str): return
+    if isinstance(value, bool) or value is None: return
+    if isinstance(value, str):
+        if any(0xD800 <= ord(c) <= 0xDFFF for c in value):
+            raise ValueError("LONE_SURROGATE")
+        return
     if isinstance(value, int):
         if abs(value) > 9007199254740991: raise ValueError("UNSAFE_INTEGER")
         return
     if isinstance(value, float): raise ValueError("FLOAT_FORBIDDEN")
-    if isinstance(value, (list, tuple)):
+    if isinstance(value, list):
         for item in value: _check_json(item)
         return
     if isinstance(value, dict):
@@ -139,7 +143,7 @@ def dialogue_proof(turns, index):
     while len(level) > 1:
         if len(level) % 2: level.append(level[-1])
         sibling = position ^ 1
-        path.append((level[sibling].hex(), "R" if position % 2 == 0 else "L"))
+        path.append([level[sibling].hex(), "R" if position % 2 == 0 else "L"])
         level = [hashlib.sha256(b"ACSD-PEC-DIALOGUE-NODE-v1\0" + level[i] + level[i+1]).digest() for i in range(0,len(level),2)]
         position //= 2
     return path

@@ -14,7 +14,10 @@ const fs = require('fs');
 function canonicalJson(value) {
   if (value === null) return 'null';
   if (typeof value === 'boolean') return value ? 'true' : 'false';
-  if (typeof value === 'string') return JSON.stringify(value);
+  if (typeof value === 'string') {
+    if (!value.isWellFormed()) throw new Error('LONE_SURROGATE');
+    return JSON.stringify(value);
+  }
   if (typeof value === 'number') {
     if (!Number.isSafeInteger(value)) throw new Error('UNSAFE_INTEGER');
     return String(value);

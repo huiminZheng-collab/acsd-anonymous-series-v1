@@ -83,9 +83,13 @@
 - **D5 — tuple（API 层）**：v2 接受、v1 拒绝、Node 无此类型。JSON 文本层
   不可达，但 API 层应统一。裁决：**拒绝**（与 v1 一致）。补丁见 §5-P3。
 
-## 5. 补丁建议（不修改主项目，由 GPT/作者裁决后落地）
+## 5. 补丁（P1/P2/P3 已落地）
 
-- **P1 `pec_core.py::_check_json`**（~4 行）：
+> 状态：2026-09-12 已落地 P1（lone surrogate 拒绝）、P2（Node isWellFormed）、
+> P3（拒绝 tuple）。差分测试 64/64 全绿（46 AGREE-BYTES / 15 AGREE-REJECT /
+> 3 已知对象层 DIVERGE，0 unexpected failure）。P4 待 GPT/作者同步进 SPEC.md。
+
+- **P1 `pec_core.py::_check_json`**（已落地）：
   ```python
   if isinstance(value, str):
       if any(0xD800 <= ord(c) <= 0xDFFF for c in value):

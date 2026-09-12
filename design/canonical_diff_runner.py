@@ -107,10 +107,10 @@ VECTORS = [
 ]
 
 KNOWN_DIVERGENCES = {
-    # vector ids where Python and Node are known to disagree today;
-    # CANONICAL-SPEC.md adjudicates each and proposes patches.
+    # Remaining object-layer divergences only (text layer already agrees on
+    # all of these). The lone-surrogate divergences were fixed by P1/P2 and are
+    # now AGREE-REJECT.
     "float-1.0", "float-exponent", "negative-zero-float",
-    "str-lone-high-esc", "str-lone-low-esc",
 }
 
 
