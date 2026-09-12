@@ -5,18 +5,20 @@ extract the TSTInfo fields (message imprint and genTime) from a response. A
 local test TSA is included for protocol testing only; it is NOT independent
 time evidence (mirrors the existing v1 local-TSA disclaimer).
 
-Full CMS signature-chain verification is deliberately out of scope for the
-MVP: verify_tsr checks the imprint binding and reads genTime, but does not yet
-validate the signer chain. That remains an explicit security boundary.
+verify_tsr validates the imprint binding, the signer certificate (validity and
+trust-anchor fingerprint pinning), the signedAttrs messageDigest over the
+TSTInfo, and the CMS signature itself.
 """
 from __future__ import annotations
 
+import hashlib
 import struct
 from datetime import datetime, timedelta, timezone
 
 from cryptography import x509
+from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.primitives.asymmetric import padding, rsa
 from cryptography.hazmat.primitives.serialization import pkcs7
 from cryptography.x509.oid import ExtendedKeyUsageOID, NameOID
 
@@ -127,31 +129,147 @@ def parse_tstinfo(tstinfo_der: bytes):
     return {"imprint": imprint, "genTime": gen_time}
 
 
-def _extract_tstinfo_from_cms(cms_der: bytes) -> bytes:
-    """Pull the encapContentInfo eContent (TSTInfo DER) out of a SignedData."""
+def _read_full_tlv(bs: bytes, off: int):
+    """Like _read_tlv but returns the full tag+length+value bytes."""
+    start = off
+    tag = bs[off]
+    off += 1
+    length = bs[off]
+    off += 1
+    if length & 0x80:
+        n = length & 0x7F
+        length = int.from_bytes(bs[off:off + n], "big")
+        off += n
+    return tag, bs[start:off + length], off + length
+
+
+OID_MESSAGE_DIGEST = "1.2.840.113549.1.9.4"
+
+
+def _oid_bytes_to_str(b: bytes) -> str:
+    if not b:
+        return ""
+    first = b[0]
+    parts = [first // 40, first % 40]
+    val = 0
+    for byte in b[1:]:
+        val = (val << 7) | (byte & 0x7F)
+        if not (byte & 0x80):
+            parts.append(val)
+            val = 0
+    return ".".join(str(p) for p in parts)
+
+
+def _parse_signed_attrs(sa_der: bytes) -> dict:
+    """Parse signedAttrs [0] IMPLICIT SET OF Attribute -> {oid: value}."""
+    _, body, _ = _read_tlv(sa_der, 0)
+    attrs = {}
+    off = 0
+    while off < len(body):
+        _, attr_val, off = _read_tlv(body, off)
+        ap = list(_children(attr_val))
+        oid = _oid_bytes_to_str(ap[0][1])
+        vals = list(_children(ap[1][1]))
+        attrs[oid] = vals[0][1] if vals else None
+    return attrs
+
+
+def _parse_cms(cms_der: bytes) -> dict:
+    """Extract TSTInfo, signer certificate, signedAttrs and signature from a
+    CMS SignedData. Assumes a single signer (cryptography's builder output)."""
     _, ci_body, _ = _read_tlv(cms_der, 0)
-    # ci_body = OID(signedData) + [0] EXPLICIT SignedData
-    parts = list(_children(ci_body))
-    # parts[0] = OID, parts[1] = A0 wrapped SignedData
-    _, sd_wrap, _ = _read_tlv(parts[1][1], 0)
-    sd_parts = list(_children(sd_wrap))
-    # sd_parts[2] = encapContentInfo SEQ { eContentType OID, [0] EXPLICIT OCTET STRING }
-    eci = sd_parts[2][1]
-    eci_parts = list(_children(eci))
-    econtent = eci_parts[1][1]  # A0 wrapped OCTET STRING
-    _, tstinfo_der, _ = _read_tlv(econtent, 0)
-    return tstinfo_der
+    ci = []
+    off = 0
+    while off < len(ci_body):
+        tag, full, off = _read_full_tlv(ci_body, off)
+        ci.append((tag, full))
+    sd_full = ci[1][1]  # [0] SignedData
+    _, sd_inner, _ = _read_tlv(sd_full, 0)  # strip 0xA0 -> SignedData DER (0x30...)
+    _, sd_body, _ = _read_tlv(sd_inner, 0)  # strip 0x30 -> SignedData body
+    sd = []
+    off = 0
+    while off < len(sd_body):
+        tag, full, off = _read_full_tlv(sd_body, off)
+        sd.append((tag, full))
+    # sd: [0]=version [1]=digestAlgs [2]=encapContentInfo [3]=certificates [4]=signerInfos
+    eci = sd[2][1]
+    _, eci_body, _ = _read_tlv(eci, 0)
+    eci_c = []
+    off = 0
+    while off < len(eci_body):
+        tag, full, off = _read_full_tlv(eci_body, off)
+        eci_c.append((tag, full))
+    _, octet_der, _ = _read_tlv(eci_c[1][1], 0)  # strip 0xA0 -> OCTET STRING DER
+    _, tstinfo, _ = _read_tlv(octet_der, 0)  # strip 0x04 -> TSTInfo DER
+
+    _, certs_body, _ = _read_tlv(sd[3][1], 0)
+    _, cert_der, _ = _read_full_tlv(certs_body, 0)  # first certificate, full DER
+
+    _, si_body, _ = _read_tlv(sd[4][1], 0)
+    _, si_full, _ = _read_full_tlv(si_body, 0)
+    _, si_inner, _ = _read_tlv(si_full, 0)
+    si = []
+    off = 0
+    while off < len(si_inner):
+        tag, full, off = _read_full_tlv(si_inner, off)
+        si.append((tag, full))
+    # si: [0]=version [1]=sid [2]=digestAlg [3]=signedAttrs [4]=sigAlg [5]=signature
+    signed_attrs_der = si[3][1]
+    _, signature, _ = _read_tlv(si[5][1], 0)
+    return {
+        "tstinfo": tstinfo,
+        "cert_der": cert_der,
+        "signed_attrs_der": signed_attrs_der,
+        "signed_attrs": _parse_signed_attrs(signed_attrs_der),
+        "signature": signature,
+    }
 
 
-def verify_tsr(tsr: bytes, expected_imprint: bytes):
-    """Verify imprint binding and return genTime. Signature-chain verification
-    is intentionally not performed here (MVP boundary)."""
-    tstinfo = _extract_tstinfo_from_cms(tsr)
-    info = parse_tstinfo(tstinfo)
+def verify_tsr(tsr: bytes, expected_imprint: bytes, trusted_fingerprint: str = None):
+    """Verify a TimeStampResp: imprint binding, signer certificate validity,
+    messageDigest over the TSTInfo, and the CMS signature. If
+    trusted_fingerprint is None, the signer certificate must be self-signed
+    (test TSA mode); otherwise it must match the given SHA-256 fingerprint."""
+    parsed = _parse_cms(tsr)
+    info = parse_tstinfo(parsed["tstinfo"])
     if info["imprint"] != expected_imprint:
         raise ValueError("TSR_IMPRINT_MISMATCH")
     if info["genTime"] is None:
         raise ValueError("TSR_GENTIME_MISSING")
+
+    cert = x509.load_der_x509_certificate(parsed["cert_der"])
+    now = datetime.now(timezone.utc)
+    if now < cert.not_valid_before_utc or now > cert.not_valid_after_utc:
+        raise ValueError("TSR_CERT_EXPIRED")
+    if trusted_fingerprint is not None:
+        if cert.fingerprint(hashes.SHA256()).hex() != trusted_fingerprint:
+            raise ValueError("TSR_UNTRUSTED_SIGNER")
+    else:
+        if cert.subject != cert.issuer:
+            raise ValueError("TSR_UNTRUSTED_SIGNER")
+        cert.public_key().verify(
+            cert.signature, cert.tbs_certificate_bytes,
+            padding.PKCS1v15(), cert.signature_hash_algorithm,
+        )
+
+    md = parsed["signed_attrs"].get(OID_MESSAGE_DIGEST)
+    if md != hashlib.sha256(parsed["tstinfo"]).digest():
+        raise ValueError("TSR_MESSAGE_DIGEST_MISMATCH")
+    # signature is over the signedAttrs DER. cryptography signs the SET form
+    # (0x31); the RFC's [0] IMPLICIT form (0xA0) is tried first, then the SET
+    # form, to interoperate with both encoders.
+    _, sa_body, _ = _read_tlv(parsed["signed_attrs_der"], 0)
+    for candidate in (parsed["signed_attrs_der"], _tag(0x31, sa_body)):
+        try:
+            cert.public_key().verify(
+                parsed["signature"], candidate,
+                padding.PKCS1v15(), hashes.SHA256(),
+            )
+            break
+        except InvalidSignature:
+            continue
+    else:
+        raise ValueError("TSR_SIGNATURE_INVALID")
     return info
 
 

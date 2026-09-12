@@ -18,7 +18,7 @@ import sys
 import urllib.request
 import uuid
 
-from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey, Ed25519PublicKey
 
 ROOT = pathlib.Path(__file__).resolve().parent
@@ -362,9 +362,14 @@ def cmd_finalize(args):
         tsq = tsa.build_tsq(pec_digest_bytes, nonce)
         try:
             if tsa_url == "local":
-                tsr = tsa.LocalTSA().respond(tsq)
+                local_tsa = tsa.LocalTSA()
+                tsr = local_tsa.respond(tsq)
+                tsa_cert_der = local_tsa.cert.public_bytes(serialization.Encoding.DER)
+                tsa_cert_fp = local_tsa.cert.fingerprint(hashes.SHA256()).hex()
             else:
                 tsr = _send_tsq(tsq, tsa_url)
+                tsa_cert_der = tsa._parse_cms(tsr)["cert_der"]
+                tsa_cert_fp = hashlib.sha256(tsa_cert_der).hex()
         except Exception as e:
             if not getattr(args, "allow_untimestamped", False):
                 shutil.rmtree(staging)
@@ -374,11 +379,13 @@ def cmd_finalize(args):
             (staging / "receipts").mkdir(exist_ok=True)
             (staging / "receipts/request.tsq").write_bytes(tsq)
             (staging / "receipts/response.tsr").write_bytes(tsr)
+            (staging / "receipts/tsa-cert.der").write_bytes(tsa_cert_der)
             write_canonical(staging / "receipts/report.json", {
                 "schema": "acsd-receipt-report/v1",
                 "pec_digest": digest(pec),
                 "nonce": nonce.hex(),
                 "tsa_url": tsa_url,
+                "tsa_cert_fingerprint": tsa_cert_fp,
             })
             timestamped = True
 
@@ -446,8 +453,10 @@ def verify_release_dir(root: pathlib.Path):
     tsr_path = root / "receipts/response.tsr"
     if tsr_path.exists():
         pec_digest_bytes = bytes.fromhex(digest(pec))
+        report = read_canonical(root / "receipts/report.json")
+        fp = report.get("tsa_cert_fingerprint")
         try:
-            info = tsa.verify_tsr(tsr_path.read_bytes(), pec_digest_bytes)
+            info = tsa.verify_tsr(tsr_path.read_bytes(), pec_digest_bytes, trusted_fingerprint=fp)
         except ValueError as e:
             return EXIT_VERIFY_FAIL, "TAMPERED", {"error_code": str(e)}
         data["externally_not_after"] = str(info["genTime"])

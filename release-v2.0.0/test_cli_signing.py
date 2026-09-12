@@ -106,6 +106,26 @@ class TestCLISigning(unittest.TestCase):
             self.assertEqual(r.returncode, 0, r.stderr)
             self.assertNotIn("EXTERNALLY_NOT_AFTER", json.loads(r.stdout)["data"]["granted_outcomes"])
 
+    def test_forged_tsr_rejected_by_pinned_cert(self):
+        import sys as _sys
+        _sys.path.insert(0, str(ROOT))
+        import tsa as tsa_mod
+        from pec_core import digest
+        with tempfile.TemporaryDirectory() as d:
+            alice, bob, rel = self._setup(d)
+            run("approve", str(rel), "--key", alice["private_key"])
+            run("approve", str(rel), "--key", bob["private_key"])
+            self.assertEqual(run("finalize", str(rel), "--tsa", "local").returncode, 0)
+            # forge a response from a different TSA (different cert fingerprint)
+            pec = json.loads((rel / "pec/pec.json").read_text(encoding="utf-8"))
+            imprint = bytes.fromhex(digest(pec))
+            fake = tsa_mod.LocalTSA()
+            fake_tsr = fake.respond(tsa_mod.build_tsq(imprint, b"\x00" * 16))
+            (rel / "receipts/response.tsr").write_bytes(fake_tsr)
+            r = run("verify", str(rel), "--json")
+            self.assertEqual(r.returncode, 1)
+            self.assertIn("TSR_UNTRUSTED_SIGNER", json.loads(r.stdout)["data"]["error_code"])
+
 
 if __name__ == "__main__":
     unittest.main()
