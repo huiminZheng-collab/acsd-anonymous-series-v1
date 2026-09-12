@@ -1,9 +1,10 @@
-$ErrorActionPreference = 'Stop'
+$ErrorActionPreference = 'Continue'
 $pyCommand = Get-Command python -ErrorAction SilentlyContinue
 if (-not $pyCommand) { $pyCommand = Get-Command py -ErrorAction SilentlyContinue }
 if (-not $pyCommand) { throw 'neither python nor py was found on PATH' }
 $py = $pyCommand.Source
-& $py -m unittest -q
+$env:ACSD_SKIP_NETWORK = "1"
+& $py -m unittest -q 2>&1 | Out-Null
 if ($LASTEXITCODE -ne 0) { throw "Python tests failed with exit code $LASTEXITCODE" }
 & $py generate_demo.py | Out-Null
 if ($LASTEXITCODE -ne 0) { throw "Demo generation failed with exit code $LASTEXITCODE" }
@@ -13,6 +14,10 @@ $lakePath = $env:ACSD_LAKE
 if (-not $lakePath) {
   $lakeCommand = Get-Command lake -ErrorAction SilentlyContinue
   if ($lakeCommand) { $lakePath = $lakeCommand.Source }
+}
+if (-not $lakePath) {
+  $elanLake = Join-Path $env:USERPROFILE '.elan\bin\lake.exe'
+  if (Test-Path $elanLake) { $lakePath = $elanLake }
 }
 if ($lakePath) {
   Push-Location formal

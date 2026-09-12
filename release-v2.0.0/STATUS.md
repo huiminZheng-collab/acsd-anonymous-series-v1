@@ -21,7 +21,9 @@ The local standard-library suite has 30 test methods: 27 run and pass by
 default, and 3 v1-integration tests skip unless a v1 fixture workspace is
 present (via `ACSD_V1_ROOT`). The demo verifier reports `status: VALID` and
 five manifest entries. The standalone formal project
-builds successfully with the pinned official Lean 4.33.1 Windows toolchain.
+builds successfully with the pinned official Lean 4.33.1 Windows toolchain
+(verified 2026-09-12 via `~/.elan/bin/lake.exe`; the `run_all.ps1` gate
+auto-detects it).
 
 ## Formal scope
 

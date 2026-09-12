@@ -98,11 +98,12 @@ python .\design\canonical_diff_runner.py
 
 ## Combined gate and release
 
-The combined PowerShell gate is `./run_all.ps1`; it runs all local tests, the
-demo verifier, and the standalone Lean project in `formal/`. It reports
-`PENDING_TOOLCHAIN` rather than silently skipping Lean when `lake` is
-unavailable. The formal project pins Lean 4.33.1; set `ACSD_LAKE` to the full
-path of `lake.exe` if it is not on `PATH`.
+The combined PowerShell gate is `./run_all.ps1`; it runs all local tests
+(network TSA interop skipped), the demo verifier, and the standalone Lean
+project in `formal/`. It auto-detects `lake` on `PATH` or at
+`~/.elan/bin/lake.exe`; if neither is found it reports `PENDING_TOOLCHAIN`
+rather than silently skipping Lean. The formal project pins Lean 4.33.1; set
+`ACSD_LAKE` to the full path of `lake.exe` to override auto-detection.
 
 For a packaged release, verify the complete file set and every payload digest
 before executing anything:
