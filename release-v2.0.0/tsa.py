@@ -18,7 +18,7 @@ from datetime import datetime, timedelta, timezone
 from cryptography import x509
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import padding, rsa
+from cryptography.hazmat.primitives.asymmetric import ec, padding, rsa
 from cryptography.hazmat.primitives.serialization import pkcs7
 from cryptography.x509.oid import ExtendedKeyUsageOID, NameOID
 
@@ -174,6 +174,23 @@ def _parse_signed_attrs(sa_der: bytes) -> dict:
     return attrs
 
 
+def _parse_tsr(tsr: bytes):
+    """Parse a TimeStampResp: SEQUENCE { PKIStatusInfo, ContentInfo OPTIONAL }.
+    Returns (status, cms_der)."""
+    _, body, _ = _read_tlv(tsr, 0)
+    parts = []
+    off = 0
+    while off < len(body):
+        tag, full, off = _read_full_tlv(body, off)
+        parts.append((tag, full))
+    status_info = parts[0][1]
+    _, si_body, _ = _read_tlv(status_info, 0)
+    si_parts = list(_children(si_body))
+    status = int.from_bytes(si_parts[0][1], "big") if si_parts else -1
+    cms_der = parts[1][1] if len(parts) > 1 else None
+    return status, cms_der
+
+
 def _parse_cms(cms_der: bytes) -> dict:
     """Extract TSTInfo, signer certificate, signedAttrs and signature from a
     CMS SignedData. Assumes a single signer (cryptography's builder output)."""
@@ -202,10 +219,16 @@ def _parse_cms(cms_der: bytes) -> dict:
     _, octet_der, _ = _read_tlv(eci_c[1][1], 0)  # strip 0xA0 -> OCTET STRING DER
     _, tstinfo, _ = _read_tlv(octet_der, 0)  # strip 0x04 -> TSTInfo DER
 
-    _, certs_body, _ = _read_tlv(sd[3][1], 0)
-    _, cert_der, _ = _read_full_tlv(certs_body, 0)  # first certificate, full DER
+    # certificates [0] (0xA0) is optional; if absent, sd[3] is signerInfos
+    cert_der = None
+    if sd[3][0] == 0xA0:
+        _, certs_body, _ = _read_tlv(sd[3][1], 0)
+        _, cert_der, _ = _read_full_tlv(certs_body, 0)  # first certificate, full DER
+        si_idx = 4
+    else:
+        si_idx = 3
 
-    _, si_body, _ = _read_tlv(sd[4][1], 0)
+    _, si_body, _ = _read_tlv(sd[si_idx][1], 0)
     _, si_full, _ = _read_full_tlv(si_body, 0)
     _, si_inner, _ = _read_tlv(si_full, 0)
     si = []
@@ -216,57 +239,84 @@ def _parse_cms(cms_der: bytes) -> dict:
     # si: [0]=version [1]=sid [2]=digestAlg [3]=signedAttrs [4]=sigAlg [5]=signature
     signed_attrs_der = si[3][1]
     _, signature, _ = _read_tlv(si[5][1], 0)
+    _, da_body, _ = _read_tlv(si[2][1], 0)
+    digest_alg_oid = _oid_bytes_to_str(list(_children(da_body))[0][1])
     return {
         "tstinfo": tstinfo,
         "cert_der": cert_der,
         "signed_attrs_der": signed_attrs_der,
         "signed_attrs": _parse_signed_attrs(signed_attrs_der),
         "signature": signature,
+        "digest_alg_oid": digest_alg_oid,
     }
 
 
-def verify_tsr(tsr: bytes, expected_imprint: bytes, trusted_fingerprint: str = None):
-    """Verify a TimeStampResp: imprint binding, signer certificate validity,
-    messageDigest over the TSTInfo, and the CMS signature. If
-    trusted_fingerprint is None, the signer certificate must be self-signed
-    (test TSA mode); otherwise it must match the given SHA-256 fingerprint."""
-    parsed = _parse_cms(tsr)
+_HASH_BY_OID = {
+    "2.16.840.1.101.3.4.2.1": hashes.SHA256,
+    "2.16.840.1.101.3.4.2.2": hashes.SHA384,
+    "2.16.840.1.101.3.4.2.3": hashes.SHA512,
+    "1.3.14.3.2.26": hashes.SHA1,
+}
+
+
+def _verify_sig(pub, signature, data, hash_obj):
+    if isinstance(pub, rsa.RSAPublicKey):
+        pub.verify(signature, data, padding.PKCS1v15(), hash_obj)
+    elif isinstance(pub, ec.EllipticCurvePublicKey):
+        pub.verify(signature, data, ec.ECDSA(hash_obj))
+    else:
+        raise ValueError("TSR_UNSUPPORTED_KEY")
+
+
+def verify_tsr(tsr: bytes, expected_imprint: bytes, trusted_cert_der: bytes = None, trusted_fingerprint: str = None):
+    """Verify a TimeStampResp: PKI status, imprint binding, signer certificate
+    validity, messageDigest over the TSTInfo, and the CMS signature (RSA or
+    ECDSA). The signer certificate is taken from the CMS when embedded,
+    otherwise from trusted_cert_der. A non-self-signed certificate requires
+    trusted_fingerprint (SHA-256 hex) as its trust anchor."""
+    status, cms_der = _parse_tsr(tsr)
+    if status != 0:
+        raise ValueError(f"TSR_STATUS_{status}")
+    if cms_der is None:
+        raise ValueError("TSR_NO_TOKEN")
+    parsed = _parse_cms(cms_der)
     info = parse_tstinfo(parsed["tstinfo"])
     if info["imprint"] != expected_imprint:
         raise ValueError("TSR_IMPRINT_MISMATCH")
     if info["genTime"] is None:
         raise ValueError("TSR_GENTIME_MISSING")
 
-    cert = x509.load_der_x509_certificate(parsed["cert_der"])
+    cert_der = parsed["cert_der"] if parsed["cert_der"] is not None else trusted_cert_der
+    if cert_der is None:
+        raise ValueError("TSR_NO_SIGNER_CERT")
+    cert = x509.load_der_x509_certificate(cert_der)
     now = datetime.now(timezone.utc)
     if now < cert.not_valid_before_utc or now > cert.not_valid_after_utc:
         raise ValueError("TSR_CERT_EXPIRED")
     if trusted_fingerprint is not None:
         if cert.fingerprint(hashes.SHA256()).hex() != trusted_fingerprint:
             raise ValueError("TSR_UNTRUSTED_SIGNER")
+    elif cert.subject != cert.issuer:
+        raise ValueError("TSR_UNTRUSTED_SIGNER")
     else:
-        if cert.subject != cert.issuer:
-            raise ValueError("TSR_UNTRUSTED_SIGNER")
-        cert.public_key().verify(
-            cert.signature, cert.tbs_certificate_bytes,
-            padding.PKCS1v15(), cert.signature_hash_algorithm,
-        )
+        _verify_sig(cert.public_key(), cert.signature, cert.tbs_certificate_bytes, cert.signature_hash_algorithm)
 
+    hash_cls = _HASH_BY_OID.get(parsed["digest_alg_oid"])
+    if hash_cls is None:
+        raise ValueError("TSR_UNSUPPORTED_DIGEST")
     md = parsed["signed_attrs"].get(OID_MESSAGE_DIGEST)
-    if md != hashlib.sha256(parsed["tstinfo"]).digest():
+    h = hashes.Hash(hash_cls())
+    h.update(parsed["tstinfo"])
+    if md != h.finalize():
         raise ValueError("TSR_MESSAGE_DIGEST_MISMATCH")
-    # signature is over the signedAttrs DER. cryptography signs the SET form
-    # (0x31); the RFC's [0] IMPLICIT form (0xA0) is tried first, then the SET
-    # form, to interoperate with both encoders.
+
+    pub = cert.public_key()
     _, sa_body, _ = _read_tlv(parsed["signed_attrs_der"], 0)
     for candidate in (parsed["signed_attrs_der"], _tag(0x31, sa_body)):
         try:
-            cert.public_key().verify(
-                parsed["signature"], candidate,
-                padding.PKCS1v15(), hashes.SHA256(),
-            )
+            _verify_sig(pub, parsed["signature"], candidate, hash_cls())
             break
-        except InvalidSignature:
+        except (InvalidSignature, ValueError):
             continue
     else:
         raise ValueError("TSR_SIGNATURE_INVALID")
@@ -310,4 +360,6 @@ class LocalTSA:
         )
         self._serial += 1
         builder = pkcs7.PKCS7SignatureBuilder().set_data(tstinfo).add_signer(self.cert, self._key, hashes.SHA256())
-        return builder.sign(serialization.Encoding.DER, [])
+        cms = builder.sign(serialization.Encoding.DER, [])
+        # TimeStampResp = SEQUENCE { PKIStatusInfo (granted), ContentInfo }
+        return _seq(_seq(_int(0)) + cms)

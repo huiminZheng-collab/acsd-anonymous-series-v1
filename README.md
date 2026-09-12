@@ -88,7 +88,7 @@ real digests (no placeholders), but uses synthetic author identifiers.
 
 ## Tests
 
-The standard-library suite has 29 test methods: 26 pass by default, and 3
+The standard-library suite has 30 test methods: 27 pass by default, and 3
 v1-integration tests skip unless a v1 fixture workspace is present (via
 `ACSD_V1_ROOT`). The differential canonical tests live in
 `design/canonical_diff_runner.py` (Python vs Node, 64 vectors).

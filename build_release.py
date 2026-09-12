@@ -31,6 +31,7 @@ FILES = (
     "test_package_adapter.py",
     "test_pec_core.py",
     "test_sidecar.py",
+    "test_tsa_interop.py",
     "test_v1_adapter.py",
     "tsa.py",
     "verify_demo.py",

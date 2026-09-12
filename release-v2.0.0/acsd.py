@@ -18,6 +18,7 @@ import sys
 import urllib.request
 import uuid
 
+from cryptography import x509
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey, Ed25519PublicKey
 
@@ -368,8 +369,16 @@ def cmd_finalize(args):
                 tsa_cert_fp = local_tsa.cert.fingerprint(hashes.SHA256()).hex()
             else:
                 tsr = _send_tsq(tsq, tsa_url)
-                tsa_cert_der = tsa._parse_cms(tsr)["cert_der"]
-                tsa_cert_fp = hashlib.sha256(tsa_cert_der).hex()
+                cert_der = tsa._parse_cms(tsr)["cert_der"]
+                if cert_der is None:
+                    cert_path = getattr(args, "tsa_cert", None)
+                    if not cert_path:
+                        shutil.rmtree(staging)
+                        return EXIT_EXTERNAL, "TSA_CERT_REQUIRED", {}
+                    cert_pem = pathlib.Path(cert_path).read_bytes()
+                    cert_der = x509.load_pem_x509_certificate(cert_pem).public_bytes(serialization.Encoding.DER)
+                tsa_cert_der = cert_der
+                tsa_cert_fp = x509.load_der_x509_certificate(cert_der).fingerprint(hashes.SHA256()).hex()
         except Exception as e:
             if not getattr(args, "allow_untimestamped", False):
                 shutil.rmtree(staging)
@@ -455,8 +464,10 @@ def verify_release_dir(root: pathlib.Path):
         pec_digest_bytes = bytes.fromhex(digest(pec))
         report = read_canonical(root / "receipts/report.json")
         fp = report.get("tsa_cert_fingerprint")
+        tsa_cert_der = (root / "receipts/tsa-cert.der").read_bytes()
         try:
-            info = tsa.verify_tsr(tsr_path.read_bytes(), pec_digest_bytes, trusted_fingerprint=fp)
+            info = tsa.verify_tsr(tsr_path.read_bytes(), pec_digest_bytes,
+                                  trusted_cert_der=tsa_cert_der, trusted_fingerprint=fp)
         except ValueError as e:
             return EXIT_VERIFY_FAIL, "TAMPERED", {"error_code": str(e)}
         data["externally_not_after"] = str(info["genTime"])
@@ -540,6 +551,7 @@ def main(argv=None):
     pf = sub.add_parser("finalize", parents=[common], help="assemble the final package")
     pf.add_argument("release_dir")
     pf.add_argument("--tsa", help="RFC 3161 TSA URL, or 'local' for the built-in test TSA")
+    pf.add_argument("--tsa-cert", help="TSA signer certificate (PEM), required when the TSA response has no embedded certificate")
     pf.add_argument("--allow-untimestamped", action="store_true", help="finalize without a timestamp if the TSA fails")
     pf.set_defaults(func=cmd_finalize)
 
