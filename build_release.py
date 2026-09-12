@@ -12,6 +12,7 @@ DEST = ROOT / "release-v2.0.0"
 FILES = (
     "ACCEPTANCE-MATRIX.md",
     "acsd.py",
+    "cose.py",
     "fixtures.py",
     "generate_demo.py",
     "install-lean.ps1",
@@ -22,6 +23,7 @@ FILES = (
     "STATUS.md",
     "TEST-PLAN.md",
     "test_cli.py",
+    "test_cli_signing.py",
     "test_corpus.py",
     "test_demo.py",
     "test_dialogue_merkle.py",

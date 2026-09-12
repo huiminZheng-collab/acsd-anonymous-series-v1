@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """ACSD CLI — anonymous scholarly claim and disclosure tool.
 
-Stage 3: init / verify / inspect. Signing (approve/finalize) arrives in stage 4,
-RFC 3161 in stage 5. This file reuses pec_core for canonicalization and
-binding checks and never invents cryptography of its own.
+Commands: keygen / init / approve / finalize / verify / inspect.
+
+Signing uses Ed25519 via `cryptography` and a minimal COSE Sign1 encoding
+(cose.py). The canonical/digest/binding core (pec_core) stays dependency-free.
 """
 from __future__ import annotations
 
@@ -11,12 +12,17 @@ import argparse
 import hashlib
 import json
 import pathlib
+import shutil
 import sys
 import uuid
+
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey, Ed25519PublicKey
 
 ROOT = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
 
+import cose  # noqa: E402
 from pec_core import adapt_v1_release, canonical, digest, require  # noqa: E402
 
 TEAM_SCHEMA = "acsd-team/v1"
@@ -38,12 +44,37 @@ EXIT_EXTERNAL = 4
 EXIT_INCOMPLETE = 5
 
 
-def read_canonical(path: pathlib.Path):
-    """Read a JSON file and require it to be byte-exact canonical.
+# --- key helpers -----------------------------------------------------------
 
-    A single trailing newline (POSIX file convention) is tolerated; canonical
-    JSON itself has no insignificant whitespace, so any other difference fails.
-    """
+
+def key_id_of(pub: Ed25519PublicKey) -> str:
+    der = pub.public_bytes(
+        encoding=serialization.Encoding.DER,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo,
+    )
+    return hashlib.sha256(der).hexdigest()
+
+
+def load_private_key(path) -> Ed25519PrivateKey:
+    data = pathlib.Path(path).read_bytes()
+    return serialization.load_pem_private_key(data, password=None)
+
+
+def load_public_key_bytes(data: bytes) -> Ed25519PublicKey:
+    return serialization.load_pem_public_key(data)
+
+
+def public_pem(pub: Ed25519PublicKey) -> bytes:
+    return pub.public_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo,
+    )
+
+
+# --- canonical read --------------------------------------------------------
+
+
+def read_canonical(path: pathlib.Path):
     raw = path.read_bytes()
     if raw.endswith(b"\n"):
         raw = raw[:-1]
@@ -56,13 +87,26 @@ def read_canonical(path: pathlib.Path):
     return obj
 
 
+def write_canonical(path: pathlib.Path, obj):
+    path.write_bytes(canonical(obj) + b"\n")
+
+
+# --- object builders -------------------------------------------------------
+
+
 def load_team(path):
     team = json.loads(pathlib.Path(path).read_text(encoding="utf-8"))
     require(team.get("schema") == TEAM_SCHEMA, "TEAM_INVALID")
     authors = team.get("authors") or []
     require(len(authors) >= 1, "TEAM_INVALID")
-    key_ids = [a.get("key_id") for a in authors]
-    require(all(isinstance(k, str) and k for k in key_ids), "TEAM_INVALID")
+    for a in authors:
+        pub_pem = a.get("public_key")
+        require(isinstance(pub_pem, str) and "PUBLIC KEY" in pub_pem, "TEAM_INVALID")
+        kid = key_id_of(load_public_key_bytes(pub_pem.encode()))
+        if "key_id" in a:
+            require(a["key_id"] == kid, "TEAM_KEY_ID_MISMATCH")
+        a["key_id"] = kid
+    key_ids = [a["key_id"] for a in authors]
     require(len(set(key_ids)) == len(key_ids), "TEAM_DUPLICATE_KEY")
     return team
 
@@ -76,9 +120,9 @@ def build_release(work_id, content_sha256, content_path, team):
             "role": a.get("role", "co-first"),
             "corresponding": bool(a.get("corresponding")),
             "contributions": a.get("contributions", []),
-            "issuer": a.get("issuer", f"urn:acsd:pseudonym:{a['key_id']}"),
-            "kid_hex": hashlib.sha256(a["key_id"].encode()).hexdigest()[:16],
-            "public_key_path": a.get("public_key_path", f"public-keys/{a['key_id']}.pem"),
+            "issuer": a.get("issuer", f"urn:acsd:pseudonym:{a['key_id'][:12]}"),
+            "kid_hex": a["key_id"][:16],
+            "public_key_path": f"public-keys/{a['key_id']}.pub",
         })
     return {
         "schema": RELEASE_SCHEMA,
@@ -145,7 +189,6 @@ def build_pec(work_id, adapted, gov_digest, content_sha256, ai_digest, key_ids):
 
 
 def check_bindings(pec, adapted, gov_digest, content_sha256):
-    """Structural bindings only (no signature check — that is stage 4)."""
     require(pec.get("schema") == "acsd-pec/v0.1", "PEC_SCHEMA")
     subject, gov = pec["subject"], pec["governance"]
     require(subject["release_digest"] == adapted["digest"], "SUBJECT_RELEASE_MISMATCH")
@@ -156,6 +199,47 @@ def check_bindings(pec, adapted, gov_digest, content_sha256):
         "GOVERNANCE_BINDING_MISMATCH",
     )
     require(pec.get("issuer_key_id") in adapted["author_key_ids"], "PEC_ISSUER_UNAUTHORIZED")
+
+
+def manifest_entries(root: pathlib.Path) -> str:
+    entries = []
+    for p in sorted(root.rglob("*")):
+        if p.is_file() and p.name != "MANIFEST.sha256":
+            rel = p.relative_to(root).as_posix()
+            entries.append(f"{hashlib.sha256(p.read_bytes()).hexdigest()}  {rel}")
+    return "\n".join(entries) + "\n"
+
+
+# --- commands --------------------------------------------------------------
+
+
+def cmd_keygen(args):
+    out_dir = pathlib.Path(args.out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    name = args.name or "author"
+    key_path = out_dir / f"{name}.key"
+    if key_path.exists():
+        return EXIT_STATE_CONFLICT, "KEY_EXISTS", {"path": str(key_path)}
+    key = Ed25519PrivateKey.generate()
+    pub = key.public_key()
+    kid = key_id_of(pub)
+    private_pem = key.private_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PrivateFormat.PKCS8,
+        encryption_algorithm=serialization.NoEncryption(),
+    )
+    key_path.write_bytes(private_pem)
+    (out_dir / f"{name}.pub").write_bytes(public_pem(pub))
+    try:
+        key_path.chmod(0o600)
+    except OSError:
+        pass
+    return EXIT_OK, "key generated", {
+        "name": name,
+        "key_id": kid,
+        "private_key": str(key_path),
+        "public_key": (out_dir / f"{name}.pub").read_text(),
+    }
 
 
 def cmd_init(args):
@@ -186,26 +270,96 @@ def cmd_init(args):
     check_bindings(pec, adapted, gov_digest, content_sha256)
 
     out.mkdir(parents=True, exist_ok=True)
-    for d in ("paper", "release", "governance", "pec"):
+    for d in ("paper", "release", "governance", "pec", "public-keys", "endorsements"):
         (out / d).mkdir(exist_ok=True)
     (out / content_rel).write_bytes(content_bytes)
-    (out / "release/release.json").write_bytes(canonical(release) + b"\n")
-    (out / "governance/statement.json").write_bytes(canonical(governance) + b"\n")
-    (out / "pec/pec.json").write_bytes(canonical(pec) + b"\n")
-    (out / "team.json").write_bytes(canonical(team) + b"\n")
-    state = {
+    for a in team["authors"]:
+        (out / f"public-keys/{a['key_id']}.pub").write_bytes(a["public_key"].encode())
+    write_canonical(out / "release/release.json", release)
+    write_canonical(out / "governance/statement.json", governance)
+    write_canonical(out / "pec/pec.json", pec)
+    write_canonical(out / "team.json", team)
+    write_canonical(out / "state.json", {
         "schema": "acsd-state/v1",
         "state": "awaiting-approvals",
         "work_id": work_id,
         "release_digest": adapted["digest"],
         "required_approvals": key_ids,
         "received_approvals": [],
-    }
-    (out / "state.json").write_bytes(canonical(state) + b"\n")
+    })
     return EXIT_OK, "initialized", {
         "work_id": work_id,
         "release_digest": adapted["digest"],
         "state": "awaiting-approvals",
+    }
+
+
+def cmd_approve(args):
+    root = pathlib.Path(args.release_dir)
+    key = load_private_key(args.key)
+    kid = key_id_of(key.public_key())
+    release = read_canonical(root / "release/release.json")
+    adapted = adapt_v1_release(release)
+    if kid not in adapted["author_key_ids"]:
+        return EXIT_VERIFY_FAIL, "UNKNOWN_AUTHOR_KEY", {"key_id": kid}
+    state = read_canonical(root / "state.json")
+    if state.get("state") != "awaiting-approvals":
+        return EXIT_STATE_CONFLICT, "STATE_CONFLICT", {"state": state.get("state")}
+    received = set(state.get("received_approvals", []))
+    if kid in received:
+        return EXIT_STATE_CONFLICT, "DUPLICATE_APPROVAL", {"key_id": kid}
+    endorsement = cose.cose_sign1(canonical(release), key)
+    (root / f"endorsements/{kid}.cose").write_bytes(endorsement)
+    received.add(kid)
+    state["received_approvals"] = sorted(received)
+    write_canonical(root / "state.json", state)
+    return EXIT_OK, "approved", {"key_id": kid, "remaining": sorted(set(adapted["author_key_ids"]) - received)}
+
+
+def cmd_finalize(args):
+    root = pathlib.Path(args.release_dir)
+    state = read_canonical(root / "state.json")
+    release = read_canonical(root / "release/release.json")
+    governance = read_canonical(root / "governance/statement.json")
+    pec = read_canonical(root / "pec/pec.json")
+    adapted = adapt_v1_release(release)
+    required = sorted(adapted["author_key_ids"])
+    received = sorted(state.get("received_approvals", []))
+    missing = [k for k in required if k not in received]
+    if missing:
+        return EXIT_INCOMPLETE, "APPROVALS_INCOMPLETE", {"missing_keys": missing}
+    # verify every endorsement signature against the release bytes
+    release_bytes = canonical(release)
+    for kid in required:
+        pub = load_public_key_bytes((root / f"public-keys/{kid}.pub").read_bytes())
+        endo = (root / f"endorsements/{kid}.cose").read_bytes()
+        try:
+            cose.cose_verify(endo, pub, expected_payload=release_bytes)
+        except Exception as e:
+            return EXIT_VERIFY_FAIL, "ENDORSEMENT_INVALID", {"key_id": kid, "error": str(e)}
+
+    # atomic finalize: stage a complete package, then swap it in
+    staging = root.with_name(root.name + ".staging")
+    if staging.exists():
+        shutil.rmtree(staging)
+    shutil.copytree(root, staging)
+    (staging / "MANIFEST.sha256").write_text(manifest_entries(staging), encoding="ascii")
+    final_state = dict(state)
+    final_state["state"] = "finalized"
+    write_canonical(staging / "state.json", final_state)
+    # re-write manifest now that state.json changed
+    (staging / "MANIFEST.sha256").write_text(manifest_entries(staging), encoding="ascii")
+
+    backup = root.with_name(root.name + ".old")
+    if backup.exists():
+        shutil.rmtree(backup)
+    root.rename(backup)
+    staging.rename(root)
+    shutil.rmtree(backup)
+    return EXIT_OK, "finalized", {
+        "state": "finalized",
+        "release_digest": adapted["digest"],
+        "pec_digest": digest(pec),
     }
 
 
@@ -223,9 +377,21 @@ def verify_release_dir(root: pathlib.Path):
         check_bindings(pec, adapted, gov_digest, release["content"]["sha256"])
     except ValueError as e:
         return EXIT_VERIFY_FAIL, "TAMPERED", {"error_code": str(e)}
+
     key_ids = sorted(adapted["author_key_ids"])
-    received = state.get("received_approvals", [])
-    missing = [k for k in key_ids if k not in received]
+    release_bytes = canonical(release)
+    valid = {}
+    for kid in key_ids:
+        endo_path = root / f"endorsements/{kid}.cose"
+        if not endo_path.exists():
+            continue
+        pub = load_public_key_bytes((root / f"public-keys/{kid}.pub").read_bytes())
+        try:
+            cose.cose_verify(endo_path.read_bytes(), pub, expected_payload=release_bytes)
+            valid[kid] = True
+        except Exception:
+            valid[kid] = False
+    missing = [k for k in key_ids if not valid.get(k)]
     data = {
         "work_id": adapted["work_id"],
         "release_digest": adapted["digest"],
@@ -237,6 +403,11 @@ def verify_release_dir(root: pathlib.Path):
     }
     if missing:
         return EXIT_INCOMPLETE, "INCOMPLETE", data
+    if state.get("state") == "finalized":
+        expected = manifest_entries(root)
+        actual = (root / "MANIFEST.sha256").read_text(encoding="ascii")
+        if expected != actual:
+            return EXIT_VERIFY_FAIL, "TAMPERED", {"error_code": "MANIFEST_MISMATCH"}
     return EXIT_OK, "VALID", data
 
 
@@ -265,6 +436,9 @@ def cmd_inspect(args):
     }
 
 
+# --- output -----------------------------------------------------------------
+
+
 def emit_json(command, code, message, data):
     print(json.dumps({
         "command": command,
@@ -288,11 +462,25 @@ def main(argv=None):
     p = argparse.ArgumentParser(prog="acsd", description="ACSD provenance evidence capsule CLI")
     sub = p.add_subparsers(dest="command", required=True)
 
-    pi = sub.add_parser("init", parents=[common], help="create a release directory from a manuscript and team file")
+    pk = sub.add_parser("keygen", parents=[common], help="generate an Ed25519 keypair")
+    pk.add_argument("--name", help="key base name (default author)")
+    pk.add_argument("--out-dir", default="keys", help="output directory")
+    pk.set_defaults(func=cmd_keygen)
+
+    pi = sub.add_parser("init", parents=[common], help="create a release directory")
     pi.add_argument("content", help="manuscript file (PDF or text)")
     pi.add_argument("--team", required=True, help="team.json")
     pi.add_argument("--out", default="release-dir", help="output directory")
     pi.set_defaults(func=cmd_init)
+
+    pa = sub.add_parser("approve", parents=[common], help="endorse a release with a private key")
+    pa.add_argument("release_dir")
+    pa.add_argument("--key", required=True, help="author private key PEM")
+    pa.set_defaults(func=cmd_approve)
+
+    pf = sub.add_parser("finalize", parents=[common], help="assemble the final package")
+    pf.add_argument("release_dir")
+    pf.set_defaults(func=cmd_finalize)
 
     pv = sub.add_parser("verify", parents=[common], help="verify a release directory offline")
     pv.add_argument("release_dir")

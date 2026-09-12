@@ -14,7 +14,7 @@
 
 ## Acceptance evidence
 
-The local standard-library suite has 22 test methods: 19 run and pass by
+The local standard-library suite has 26 test methods: 23 run and pass by
 default, and 3 v1-integration tests skip unless a v1 fixture workspace is
 present (via `ACSD_V1_ROOT`). The demo verifier reports `status: VALID` and
 five manifest entries. The standalone formal project
