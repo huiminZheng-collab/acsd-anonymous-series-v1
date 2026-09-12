@@ -1,4 +1,5 @@
 import hashlib
+import os
 import secrets
 import socket
 import unittest
@@ -18,7 +19,11 @@ def _network_ok():
         return False
 
 
-@unittest.skipUnless(_network_ok(), "freetsa.org unreachable; skipping real-TSA interop")
+def _should_skip():
+    return (not _network_ok()) or os.environ.get("ACSD_SKIP_NETWORK") == "1"
+
+
+@unittest.skipUnless(not _should_skip(), "freetsa.org unreachable or ACSD_SKIP_NETWORK set")
 class TestTSAInterop(unittest.TestCase):
     def test_freetsa_ecdsa_p384(self):
         """End-to-end against the real freeTSA.org service (ECDSA P-384,

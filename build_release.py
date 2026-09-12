@@ -17,6 +17,7 @@ FILES = (
     "generate_demo.py",
     "install-lean.ps1",
     "pec_core.py",
+    "pyproject.toml",
     "README.md",
     "run_all.ps1",
     "SPEC.md",

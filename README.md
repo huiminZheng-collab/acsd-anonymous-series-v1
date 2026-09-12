@@ -15,15 +15,13 @@ minimal COSE Sign1 module (`cose.py`) and RFC 3161 support (`tsa.py`). The
 canonical/digest/binding core is dependency-free; signing and timestamping use
 the `cryptography` package.
 
-## Dependencies
-
-Python 3.9+ and:
+## Install
 
 ```powershell
-python -m pip install cryptography
+python -m pip install .      # installs the `acsd` command and its dependency
 ```
 
-Everything else is the standard library. The core verification path
+Dependencies: Python 3.9+ and `cryptography`. The core verification path
 (canonical JSON, digests, bindings, manifest) has no third-party dependency.
 
 ## CLI quick start

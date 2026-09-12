@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "acsd-pec"
+version = "2.0.0"
+description = "ACSD anonymous scholarly claim and disclosure — provenance evidence capsule CLI"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+dependencies = ["cryptography>=41"]
+
+[project.scripts]
+acsd = "acsd:main"
+
+[tool.setuptools]
+py-modules = ["acsd", "cose", "tsa", "pec_core"]
