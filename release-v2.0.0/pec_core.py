@@ -26,7 +26,10 @@ def _check_json(value):
 
 def canonical(obj):
     _check_json(obj)
-    return json.dumps(obj, ensure_ascii=True, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
+    # ensure_ascii=False matches the v1 reference (generate.py) and the Node
+    # verifier (JSON.stringify), which both keep non-ASCII string values as raw
+    # UTF-8 bytes. Escaping them here would split the canonical byte image.
+    return json.dumps(obj, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
 
 def digest(obj):
     return hashlib.sha256(canonical(obj)).hexdigest()

@@ -18,6 +18,12 @@ class TestPECCore(unittest.TestCase):
     with self.assertRaisesRegex(ValueError, "FLOAT_FORBIDDEN"): canonical({"x": 1.5})
     with self.assertRaisesRegex(ValueError, "NONASCII_KEY"): canonical({"键": 1})
 
+  def test_canonical_nonascii_value_kept_verbatim(self):
+    # Non-ASCII string VALUES must stay raw UTF-8 bytes (ensure_ascii=False),
+    # matching the v1 reference (generate.py) and the Node verifier
+    # (JSON.stringify). Escaping would split the canonical byte image.
+    self.assertEqual(canonical({"label": "匿名"}), '{"label":"匿名"}'.encode("utf-8"))
+
   def test_valid_and_disclosure(self):
     r,g,p = fixture(); result=validate_pec(p,["k1","k2"],r,g)
     d={"pec_digest":result["pec_digest"],"event_id":"e","event_sequence":0,"kind":"research_note_snapshot","approval_key_ids":["k1"]}

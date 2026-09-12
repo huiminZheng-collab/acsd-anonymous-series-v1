@@ -15,7 +15,9 @@ silently treat their synthetic test keys or local timestamp services as real
 external evidence.
 
 The first reference implementation is now present in `pec_core.py`, with a
-generated attack corpus and 16 standard-library tests. It validates exact
+generated attack corpus and a standard-library suite of 17 test methods (14
+pass by default; 3 v1-integration tests skip unless a v1 fixture workspace is
+present). It validates exact
 canonical bindings, unanimous approval, event-chain integrity, claim-policy
 non-amplification, and delegates v1 COSE verification to the audited Node
 verifier.
