@@ -27,9 +27,10 @@ auto-detects it).
 
 ## Formal scope
 
-`formal/ACSD/PEC.lean` contains four axiom-free theorems over an abstract
-acceptance model: accepted capsules have all required approvals, accepted
-capsules preserve the no-social-claim policy, and missing approval or an
-invalid event sequence prevents acceptance. Hash and signature security, and
-refinement of the Python implementation into this model, are explicitly
-outside these four theorems.
+`formal/ACSD/PEC.lean` models the PEC as concrete data structures (key lists,
+claim policy, event list) and proves ten axiom-free theorems: by induction, a
+valid event chain has consecutive sequences; approval is transitive and
+monotone; a forbidden social claim is never a permitted outcome; and acceptance
+implies full approval, a valid chain, and a non-amplifying policy. Hash and
+signature security, and refinement of the Python implementation into this
+model, remain explicitly outside the model.

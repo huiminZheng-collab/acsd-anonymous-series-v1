@@ -197,7 +197,7 @@ Closed normal, attack, and indeterminate scenarios & 13 / 13 expected outcomes \
 Independent profile checks & 30 / 30 passed \\
 Canonical JSON regression cases & 11 / 11 Python--Node agreement \\
 Public-manifest entries & 111 / 111 verified \\
-New PEC theorems in the abstract core & 4, no axiom dependency \\
+New PEC theorems in the abstract core & 10, no axiom dependency \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -210,10 +210,7 @@ series generators, records verification/manifest/rank time and peak memory,
 and runs a seeded Python--Node differential fuzzer. Until those experiments
 are complete, performance is unknown after this check.
 
-The new Lean development models four selected PEC acceptance contracts. It
-proves that acceptance implies approval by every required pseudonymous key and
-preservation of the no-social-claim policy, and that a missing required
-approval or invalid event sequence precludes acceptance. The earlier v1 core
+The new Lean development models the PEC as concrete data structures rather than uninterpreted propositions: required and approved key lists, a claim policy with explicit non-claims, and an event list with consecutive sequences and predecessor-digest links. Its ten axioms-free theorems prove, by induction, that a valid event chain has consecutive sequences, that approval is transitive and monotone, that a forbidden social claim is never a permitted outcome, and that acceptance implies full approval, a valid chain, and a non-amplifying policy. The earlier v1 core
 contains the broader citation-witness and rank arguments; those inherited
 results are not counted as new v2 PEC theorems here. These are proofs about an
 abstract verifier. They do not prove that the Python or Node parser refines the
