@@ -1,0 +1,386 @@
+[
+  {
+    "id": "empty-object",
+    "text": "{}",
+    "expect_accept": true,
+    "note": "smallest valid object"
+  },
+  {
+    "id": "empty-array",
+    "text": "[]",
+    "expect_accept": true,
+    "note": "smallest valid array"
+  },
+  {
+    "id": "null-root",
+    "text": "null",
+    "expect_accept": true,
+    "note": "null is a valid root"
+  },
+  {
+    "id": "true-root",
+    "text": "true",
+    "expect_accept": true,
+    "note": "boolean root"
+  },
+  {
+    "id": "false-root",
+    "text": "false",
+    "expect_accept": true,
+    "note": "boolean root"
+  },
+  {
+    "id": "string-root",
+    "text": "\"x\"",
+    "expect_accept": true,
+    "note": "string root"
+  },
+  {
+    "id": "int-zero",
+    "text": "{\"a\":0}",
+    "expect_accept": true,
+    "note": "zero"
+  },
+  {
+    "id": "int-positive",
+    "text": "{\"a\":42}",
+    "expect_accept": true,
+    "note": "positive safe int"
+  },
+  {
+    "id": "int-negative",
+    "text": "{\"a\":-42}",
+    "expect_accept": true,
+    "note": "negative safe int"
+  },
+  {
+    "id": "int-safe-max",
+    "text": "{\"a\":9007199254740991}",
+    "expect_accept": true,
+    "note": "2^53-1 accepted"
+  },
+  {
+    "id": "int-safe-min",
+    "text": "{\"a\":-9007199254740991}",
+    "expect_accept": true,
+    "note": "-(2^53-1) accepted"
+  },
+  {
+    "id": "int-unsafe-over",
+    "text": "{\"a\":9007199254740992}",
+    "expect_accept": false,
+    "note": "2^53 rejected"
+  },
+  {
+    "id": "int-unsafe-under",
+    "text": "{\"a\":-9007199254740992}",
+    "expect_accept": false,
+    "note": "-2^53 rejected"
+  },
+  {
+    "id": "bignum",
+    "text": "{\"a\":123456789012345678901234567890}",
+    "expect_accept": false,
+    "note": "far beyond safe range"
+  },
+  {
+    "id": "float-decimal",
+    "text": "{\"a\":1.5}",
+    "expect_accept": false,
+    "note": "fractional"
+  },
+  {
+    "id": "float-1.0",
+    "text": "{\"a\":1.0}",
+    "expect_accept": false,
+    "note": "decimal point even when integral"
+  },
+  {
+    "id": "float-exponent",
+    "text": "{\"a\":1e3}",
+    "expect_accept": false,
+    "note": "exponent form"
+  },
+  {
+    "id": "float-small",
+    "text": "{\"a\":0.1}",
+    "expect_accept": false,
+    "note": "small fraction"
+  },
+  {
+    "id": "negative-zero-int",
+    "text": "{\"a\":-0}",
+    "expect_accept": false,
+    "note": "-0 is not the canonical form; canonical is 0"
+  },
+  {
+    "id": "negative-zero-float",
+    "text": "{\"a\":-0.0}",
+    "expect_accept": false,
+    "note": "float -0.0 rejected"
+  },
+  {
+    "id": "nan-literal",
+    "text": "{\"a\":NaN}",
+    "expect_accept": false,
+    "note": "NaN is not JSON"
+  },
+  {
+    "id": "infinity-literal",
+    "text": "{\"a\":Infinity}",
+    "expect_accept": false,
+    "note": "Infinity is not JSON"
+  },
+  {
+    "id": "str-empty",
+    "text": "{\"s\":\"\"}",
+    "expect_accept": true,
+    "note": "empty string"
+  },
+  {
+    "id": "str-ascii",
+    "text": "{\"s\":\"hello world\"}",
+    "expect_accept": true,
+    "note": "plain ASCII"
+  },
+  {
+    "id": "str-cjk",
+    "text": "{\"s\":\"匿名\"}",
+    "expect_accept": true,
+    "note": "CJK kept as raw UTF-8 bytes"
+  },
+  {
+    "id": "str-combining",
+    "text": "{\"s\":\"é\"}",
+    "expect_accept": true,
+    "note": "combining sequence untouched"
+  },
+  {
+    "id": "str-precomposed",
+    "text": "{\"s\":\"é\"}",
+    "expect_accept": true,
+    "note": "precomposed untouched"
+  },
+  {
+    "id": "str-emoji-pair",
+    "text": "{\"s\":\"😀\"}",
+    "expect_accept": true,
+    "note": "astral character kept raw"
+  },
+  {
+    "id": "str-lone-high-esc",
+    "text": "{\"s\":\"\\ud800\"}",
+    "expect_accept": false,
+    "note": "lone high surrogate must be rejected"
+  },
+  {
+    "id": "str-lone-low-esc",
+    "text": "{\"s\":\"\\udfff\"}",
+    "expect_accept": false,
+    "note": "lone low surrogate must be rejected"
+  },
+  {
+    "id": "str-quote-backslash",
+    "text": "{\"s\":\"a\\\"b\\\\c\"}",
+    "expect_accept": true,
+    "note": "quote and backslash escaping"
+  },
+  {
+    "id": "str-newline",
+    "text": "{\"s\":\"a\\nb\"}",
+    "expect_accept": true,
+    "note": "backslash-n shorthand"
+  },
+  {
+    "id": "str-tab",
+    "text": "{\"s\":\"a\\tb\"}",
+    "expect_accept": true,
+    "note": "backslash-t shorthand"
+  },
+  {
+    "id": "str-cr",
+    "text": "{\"s\":\"a\\rb\"}",
+    "expect_accept": true,
+    "note": "backslash-r shorthand"
+  },
+  {
+    "id": "str-backspace-u-esc",
+    "text": "{\"s\":\"a\\u0008b\"}",
+    "expect_accept": false,
+    "note": "backslash-u0008 is NOT the canonical form; both sides emit backslash-b"
+  },
+  {
+    "id": "str-backspace-abbrev",
+    "text": "{\"s\":\"a\\bb\"}",
+    "expect_accept": true,
+    "note": "backslash-b shorthand IS the canonical form (both sides agree)"
+  },
+  {
+    "id": "str-formfeed-u-esc",
+    "text": "{\"s\":\"a\\u000cb\"}",
+    "expect_accept": false,
+    "note": "backslash-u000c is NOT the canonical form; both sides emit backslash-f"
+  },
+  {
+    "id": "str-formfeed-abbrev",
+    "text": "{\"s\":\"a\\fb\"}",
+    "expect_accept": true,
+    "note": "backslash-f shorthand IS the canonical form (both sides agree)"
+  },
+  {
+    "id": "str-nul-esc",
+    "text": "{\"s\":\"a\\u0000b\"}",
+    "expect_accept": true,
+    "note": "NUL as backslash-u0000"
+  },
+  {
+    "id": "str-us-esc",
+    "text": "{\"s\":\"a\\u001fb\"}",
+    "expect_accept": true,
+    "note": "US as backslash-u001f"
+  },
+  {
+    "id": "str-del-raw",
+    "text": "{\"s\":\"\"}",
+    "expect_accept": true,
+    "note": "DEL is printable-range, kept raw"
+  },
+  {
+    "id": "str-u2028-raw",
+    "text": "{\"s\":\" \"}",
+    "expect_accept": true,
+    "note": "U+2028 kept raw (ES2019+)"
+  },
+  {
+    "id": "str-u2029-raw",
+    "text": "{\"s\":\" \"}",
+    "expect_accept": true,
+    "note": "U+2029 kept raw (ES2019+)"
+  },
+  {
+    "id": "str-solidus",
+    "text": "{\"s\":\"a\\/b\"}",
+    "expect_accept": false,
+    "note": "escaped solidus is NOT canonical"
+  },
+  {
+    "id": "str-solidus-raw",
+    "text": "{\"s\":\"a/b\"}",
+    "expect_accept": true,
+    "note": "raw solidus is canonical"
+  },
+  {
+    "id": "key-order-simple",
+    "text": "{\"b\":1,\"a\":2}",
+    "expect_accept": false,
+    "note": "unsorted keys are not canonical"
+  },
+  {
+    "id": "key-order-many",
+    "text": "{\"z\":1,\"a\":2,\"m\":3,\"B\":4,\"0\":5}",
+    "expect_accept": false,
+    "note": "multi-key ordering"
+  },
+  {
+    "id": "key-sorted-ok",
+    "text": "{\"a\":1,\"b\":2,\"c\":3}",
+    "expect_accept": true,
+    "note": "already sorted"
+  },
+  {
+    "id": "key-nonascii",
+    "text": "{\"键\":1}",
+    "expect_accept": false,
+    "note": "non-ASCII key rejected"
+  },
+  {
+    "id": "key-control-char",
+    "text": "{\"a\\u0001b\":1}",
+    "expect_accept": true,
+    "note": "control char in ASCII key accepted; escaped form is canonical"
+  },
+  {
+    "id": "key-with-escape",
+    "text": "{\"a\\nb\":1}",
+    "expect_accept": true,
+    "note": "escaped newline in ASCII key accepted; shorthand is canonical"
+  },
+  {
+    "id": "key-empty",
+    "text": "{\"\":1}",
+    "expect_accept": true,
+    "note": "empty key is legal and canonical"
+  },
+  {
+    "id": "nested-mixed",
+    "text": "{\"n\":null,\"b\":true,\"i\":42,\"s\":\"x\",\"l\":[\"匿名\",1,{\"k\":\"v\"}],\"o\":{}}",
+    "expect_accept": false,
+    "note": "unsorted top-level"
+  },
+  {
+    "id": "nested-sorted",
+    "text": "{\"a\":{\"c\":1,\"b\":2},\"d\":[1,2,3]}",
+    "expect_accept": false,
+    "note": "inner object unsorted"
+  },
+  {
+    "id": "deep-nesting",
+    "text": "{\"a\":{\"b\":{\"c\":{\"d\":[1,2,3]}}}}",
+    "expect_accept": true,
+    "note": "single-key chain is sorted"
+  },
+  {
+    "id": "array-of-strings",
+    "text": "[\"匿名\",\"test\",\"é\"]",
+    "expect_accept": true,
+    "note": "array with non-ASCII values"
+  },
+  {
+    "id": "duplicate-key",
+    "text": "{\"a\":1,\"a\":2}",
+    "expect_accept": false,
+    "note": "duplicate keys rejected at text layer"
+  },
+  {
+    "id": "whitespace-padded",
+    "text": "  {\"a\":1}  ",
+    "expect_accept": false,
+    "note": "insignificant whitespace is not canonical"
+  },
+  {
+    "id": "whitespace-inside",
+    "text": "{\"a\" : 1}",
+    "expect_accept": false,
+    "note": "inner whitespace not canonical"
+  },
+  {
+    "id": "trailing-comma-array",
+    "text": "{\"a\":[1,2,]}",
+    "expect_accept": false,
+    "note": "trailing comma is not JSON"
+  },
+  {
+    "id": "trailing-comma-object",
+    "text": "{\"a\":1,}",
+    "expect_accept": false,
+    "note": "trailing comma is not JSON"
+  },
+  {
+    "id": "single-quoted",
+    "text": "{'a':1}",
+    "expect_accept": false,
+    "note": "single quotes are not JSON"
+  },
+  {
+    "id": "invalid-json",
+    "text": "{\"a\":",
+    "expect_accept": false,
+    "note": "truncated"
+  },
+  {
+    "id": "comma-only",
+    "text": ",",
+    "expect_accept": false,
+    "note": "garbage"
+  }
+]

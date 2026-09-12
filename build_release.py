@@ -9,9 +9,10 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parent
-DEST = ROOT / "release-v2.1.0"
+DEST = ROOT / "release-v2.1.1"
 FILES = (
     "ACCEPTANCE-MATRIX.md",
+    "ANONYMITY.md",
     "CITATION.cff",
     "LICENSE",
     "acsd.py",
@@ -142,7 +143,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--check", action="store_true", help="rebuild separately and compare with the candidate")
     args = parser.parse_args()
-    staging = ROOT / "release-v2.1.0.staging"
+    staging = ROOT / "release-v2.1.1.staging"
     if args.check:
         if not DEST.is_dir():
             raise FileNotFoundError(DEST.name)
