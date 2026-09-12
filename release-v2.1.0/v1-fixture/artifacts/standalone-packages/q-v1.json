@@ -1,0 +1,37 @@
+{
+  "schema": "acsd-v1.6.0-standalone-paper-package/v1",
+  "release_key": "q-v1",
+  "release_id": "urn:sha256:c4050d68a25eba856ba80b2d0c87e45a2c8b8e11680a4d87ae850f31335fceb4",
+  "release_path": "artifacts/releases/q-v1.json",
+  "content_path": "artifacts/contents/q-v1.txt",
+  "endorsement_ids": [
+    "q-v1--q-slot-1",
+    "q-v1--q-slot-2",
+    "q-v1--q-slot-3"
+  ],
+  "endorsements": [
+    {
+      "id": "q-v1--q-slot-1",
+      "release_key": "q-v1",
+      "author_key_id": "q-slot-1",
+      "path": "artifacts/endorsements/q-v1--q-slot-1.scitt",
+      "sha256": "acac57b14ad8af82f02e84cbcf938f4c69a240506f2c8152a901791613a3bc24"
+    },
+    {
+      "id": "q-v1--q-slot-2",
+      "release_key": "q-v1",
+      "author_key_id": "q-slot-2",
+      "path": "artifacts/endorsements/q-v1--q-slot-2.scitt",
+      "sha256": "8f86163e2d06b81b884058d4991cc58acb50396ebba5825e76df80a08fa4b3ee"
+    },
+    {
+      "id": "q-v1--q-slot-3",
+      "release_key": "q-v1",
+      "author_key_id": "q-slot-3",
+      "path": "artifacts/endorsements/q-v1--q-slot-3.scitt",
+      "sha256": "56b3f03e882ca08821625416927036ab107df8aa8549e36837e01d6925da037a"
+    }
+  ],
+  "content_type": "application/vnd.acsd.paper-release+json",
+  "series_required_for_verification": false
+}

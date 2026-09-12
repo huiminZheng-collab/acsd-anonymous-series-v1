@@ -1,0 +1,15 @@
+{
+  "schema": "acsd-v1.6.0-series-graph-model-results/v1",
+  "cryptographic_dependency_graph": {
+    "node_count": 10,
+    "edge_count": 15,
+    "has_cycle": false
+  },
+  "semantic_reference_graph": {
+    "node_count": 2,
+    "edge_count": 2,
+    "has_cycle": true
+  },
+  "two_phase_rule": "Paper releases cite stable WorkIDs; a later signed bundle maps WorkIDs to exact release hashes.",
+  "single_paper_requires_series": false
+}
