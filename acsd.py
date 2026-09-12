@@ -12,8 +12,10 @@ import argparse
 import hashlib
 import json
 import pathlib
+import secrets
 import shutil
 import sys
+import urllib.request
 import uuid
 
 from cryptography.hazmat.primitives import serialization
@@ -23,6 +25,7 @@ ROOT = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
 
 import cose  # noqa: E402
+import tsa  # noqa: E402
 from pec_core import adapt_v1_release, canonical, digest, require  # noqa: E402
 
 TEAM_SCHEMA = "acsd-team/v1"
@@ -210,6 +213,12 @@ def manifest_entries(root: pathlib.Path) -> str:
     return "\n".join(entries) + "\n"
 
 
+def _send_tsq(tsq: bytes, url: str) -> bytes:
+    req = urllib.request.Request(url, data=tsq, headers={"Content-Type": "application/timestamp-query"})
+    with urllib.request.urlopen(req, timeout=30) as resp:
+        return resp.read()
+
+
 # --- commands --------------------------------------------------------------
 
 
@@ -343,9 +352,39 @@ def cmd_finalize(args):
     if staging.exists():
         shutil.rmtree(staging)
     shutil.copytree(root, staging)
+
+    # optional RFC 3161 timestamp over the exact PEC digest
+    timestamped = False
+    tsa_url = getattr(args, "tsa", None)
+    if tsa_url:
+        pec_digest_bytes = bytes.fromhex(digest(pec))
+        nonce = secrets.token_bytes(16)
+        tsq = tsa.build_tsq(pec_digest_bytes, nonce)
+        try:
+            if tsa_url == "local":
+                tsr = tsa.LocalTSA().respond(tsq)
+            else:
+                tsr = _send_tsq(tsq, tsa_url)
+        except Exception as e:
+            if not getattr(args, "allow_untimestamped", False):
+                shutil.rmtree(staging)
+                return EXIT_EXTERNAL, "TSA_FAILED", {"error": str(e)}
+            timestamped = False
+        else:
+            (staging / "receipts").mkdir(exist_ok=True)
+            (staging / "receipts/request.tsq").write_bytes(tsq)
+            (staging / "receipts/response.tsr").write_bytes(tsr)
+            write_canonical(staging / "receipts/report.json", {
+                "schema": "acsd-receipt-report/v1",
+                "pec_digest": digest(pec),
+                "nonce": nonce.hex(),
+                "tsa_url": tsa_url,
+            })
+            timestamped = True
+
     (staging / "MANIFEST.sha256").write_text(manifest_entries(staging), encoding="ascii")
     final_state = dict(state)
-    final_state["state"] = "finalized"
+    final_state["state"] = "finalized" if timestamped else "finalized-untimestamped"
     write_canonical(staging / "state.json", final_state)
     # re-write manifest now that state.json changed
     (staging / "MANIFEST.sha256").write_text(manifest_entries(staging), encoding="ascii")
@@ -357,7 +396,7 @@ def cmd_finalize(args):
     staging.rename(root)
     shutil.rmtree(backup)
     return EXIT_OK, "finalized", {
-        "state": "finalized",
+        "state": final_state["state"],
         "release_digest": adapted["digest"],
         "pec_digest": digest(pec),
     }
@@ -403,7 +442,18 @@ def verify_release_dir(root: pathlib.Path):
     }
     if missing:
         return EXIT_INCOMPLETE, "INCOMPLETE", data
-    if state.get("state") == "finalized":
+    # optional timestamp verification (imprint binding + genTime)
+    tsr_path = root / "receipts/response.tsr"
+    if tsr_path.exists():
+        pec_digest_bytes = bytes.fromhex(digest(pec))
+        try:
+            info = tsa.verify_tsr(tsr_path.read_bytes(), pec_digest_bytes)
+        except ValueError as e:
+            return EXIT_VERIFY_FAIL, "TAMPERED", {"error_code": str(e)}
+        data["externally_not_after"] = str(info["genTime"])
+        data["granted_outcomes"] = list(data["granted_outcomes"]) + ["EXTERNALLY_NOT_AFTER"]
+    # manifest verification for finalized states
+    if state.get("state") in ("finalized", "finalized-untimestamped"):
         expected = manifest_entries(root)
         actual = (root / "MANIFEST.sha256").read_text(encoding="ascii")
         if expected != actual:
@@ -480,6 +530,8 @@ def main(argv=None):
 
     pf = sub.add_parser("finalize", parents=[common], help="assemble the final package")
     pf.add_argument("release_dir")
+    pf.add_argument("--tsa", help="RFC 3161 TSA URL, or 'local' for the built-in test TSA")
+    pf.add_argument("--allow-untimestamped", action="store_true", help="finalize without a timestamp if the TSA fails")
     pf.set_defaults(func=cmd_finalize)
 
     pv = sub.add_parser("verify", parents=[common], help="verify a release directory offline")

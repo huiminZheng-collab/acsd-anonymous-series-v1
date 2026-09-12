@@ -32,6 +32,7 @@ FILES = (
     "test_pec_core.py",
     "test_sidecar.py",
     "test_v1_adapter.py",
+    "tsa.py",
     "verify_demo.py",
     "verify_pec.py",
     "verify_release.py",

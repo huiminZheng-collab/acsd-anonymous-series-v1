@@ -75,6 +75,37 @@ class TestCLISigning(unittest.TestCase):
             self.assertEqual(r.returncode, 3)
             self.assertEqual(json.loads(r.stdout)["message"], "DUPLICATE_APPROVAL")
 
+    def test_timestamp_flow(self):
+        with tempfile.TemporaryDirectory() as d:
+            alice, bob, rel = self._setup(d)
+            run("approve", str(rel), "--key", alice["private_key"])
+            run("approve", str(rel), "--key", bob["private_key"])
+            r = run("finalize", str(rel), "--tsa", "local", "--json")
+            self.assertEqual(r.returncode, 0, r.stderr)
+            self.assertEqual(json.loads(r.stdout)["data"]["state"], "finalized")
+            r = run("verify", str(rel), "--json")
+            self.assertEqual(r.returncode, 0, r.stderr)
+            data = json.loads(r.stdout)["data"]
+            self.assertIn("EXTERNALLY_NOT_AFTER", data["granted_outcomes"])
+            self.assertIn("externally_not_after", data)
+
+    def test_timestamp_failure_degrades(self):
+        with tempfile.TemporaryDirectory() as d:
+            alice, bob, rel = self._setup(d)
+            run("approve", str(rel), "--key", alice["private_key"])
+            run("approve", str(rel), "--key", bob["private_key"])
+            # unreachable TSA without --allow-untimestamped -> exit 4
+            r = run("finalize", str(rel), "--tsa", "http://127.0.0.1:1", "--json")
+            self.assertEqual(r.returncode, 4, r.stderr)
+            self.assertEqual(json.loads(r.stdout)["message"], "TSA_FAILED")
+            # with --allow-untimestamped -> degrades to finalized-untimestamped
+            r = run("finalize", str(rel), "--tsa", "http://127.0.0.1:1", "--allow-untimestamped", "--json")
+            self.assertEqual(r.returncode, 0, r.stderr)
+            self.assertEqual(json.loads(r.stdout)["data"]["state"], "finalized-untimestamped")
+            r = run("verify", str(rel), "--json")
+            self.assertEqual(r.returncode, 0, r.stderr)
+            self.assertNotIn("EXTERNALLY_NOT_AFTER", json.loads(r.stdout)["data"]["granted_outcomes"])
+
 
 if __name__ == "__main__":
     unittest.main()
