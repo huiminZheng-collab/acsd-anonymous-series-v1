@@ -1,0 +1,1168 @@
+{
+  "implementations": {
+    "python": "pec_core.canonical (v2, ensure_ascii=False after fix b882149)",
+    "node": "canonical_ref.cjs (semantics of v1 verify-standalone.cjs)"
+  },
+  "vectors": [
+    {
+      "id": "empty-object",
+      "expect_accept": true,
+      "note": "smallest valid object",
+      "py": {
+        "accept": true,
+        "err": null,
+        "hex": "7b7d"
+      },
+      "node": {
+        "accept": true,
+        "err": null,
+        "hex": "7b7d"
+      },
+      "verdict": "AGREE-BYTES",
+      "expectation_ok": true,
+      "known_divergence": false
+    },
+    {
+      "id": "empty-array",
+      "expect_accept": true,
+      "note": "smallest valid array",
+      "py": {
+        "accept": true,
+        "err": null,
+        "hex": "5b5d"
+      },
+      "node": {
+        "accept": true,
+        "err": null,
+        "hex": "5b5d"
+      },
+      "verdict": "AGREE-BYTES",
+      "expectation_ok": true,
+      "known_divergence": false
+    },
+    {
+      "id": "null-root",
+      "expect_accept": true,
+      "note": "null is a valid root",
+      "py": {
+        "accept": true,
+        "err": null,
+        "hex": "6e756c6c"
+      },
+      "node": {
+        "accept": true,
+        "err": null,
+        "hex": "6e756c6c"
+      },
+      "verdict": "AGREE-BYTES",
+      "expectation_ok": true,
+      "known_divergence": false
+    },
+    {
+      "id": "true-root",
+      "expect_accept": true,
+      "note": "boolean root",
+      "py": {
+        "accept": true,
+        "err": null,
+        "hex": "74727565"
+      },
+      "node": {
+        "accept": true,
+        "err": null,
+        "hex": "74727565"
+      },
+      "verdict": "AGREE-BYTES",
+      "expectation_ok": true,
+      "known_divergence": false
+    },
+    {
+      "id": "false-root",
+      "expect_accept": true,
+      "note": "boolean root",
+      "py": {
+        "accept": true,
+        "err": null,
+        "hex": "66616c7365"
+      },
+      "node": {
+        "accept": true,
+        "err": null,
+        "hex": "66616c7365"
+      },
+      "verdict": "AGREE-BYTES",
+      "expectation_ok": true,
+      "known_divergence": false
+    },
+    {
+      "id": "string-root",
+      "expect_accept": true,
+      "note": "string root",
+      "py": {
+        "accept": true,
+        "err": null,
+        "hex": "227822"
+      },
+      "node": {
+        "accept": true,
+        "err": null,
+        "hex": "227822"
+      },
+      "verdict": "AGREE-BYTES",
+      "expectation_ok": true,
+      "known_divergence": false
+    },
+    {
+      "id": "int-zero",
+      "expect_accept": true,
+      "note": "zero",
+      "py": {
+        "accept": true,
+        "err": null,
+        "hex": "7b2261223a307d"
+      },
+      "node": {
+        "accept": true,
+        "err": null,
+        "hex": "7b2261223a307d"
+      },
+      "verdict": "AGREE-BYTES",
+      "expectation_ok": true,
+      "known_divergence": false
+    },
+    {
+      "id": "int-positive",
+      "expect_accept": true,
+      "note": "positive safe int",
+      "py": {
+        "accept": true,
+        "err": null,
+        "hex": "7b2261223a34327d"
+      },
+      "node": {
+        "accept": true,
+        "err": null,
+        "hex": "7b2261223a34327d"
+      },
+      "verdict": "AGREE-BYTES",
+      "expectation_ok": true,
+      "known_divergence": false
+    },
+    {
+      "id": "int-negative",
+      "expect_accept": true,
+      "note": "negative safe int",
+      "py": {
+        "accept": true,
+        "err": null,
+        "hex": "7b2261223a2d34327d"
+      },
+      "node": {
+        "accept": true,
+        "err": null,
+        "hex": "7b2261223a2d34327d"
+      },
+      "verdict": "AGREE-BYTES",
+      "expectation_ok": true,
+      "known_divergence": false
+    },
+    {
+      "id": "int-safe-max",
+      "expect_accept": true,
+      "note": "2^53-1 accepted",
+      "py": {
+        "accept": true,
+        "err": null,
+        "hex": "7b2261223a393030373139393235343734303939317d"
+      },
+      "node": {
+        "accept": true,
+        "err": null,
+        "hex": "7b2261223a393030373139393235343734303939317d"
+      },
+      "verdict": "AGREE-BYTES",
+      "expectation_ok": true,
+      "known_divergence": false
+    },
+    {
+      "id": "int-safe-min",
+      "expect_accept": true,
+      "note": "-(2^53-1) accepted",
+      "py": {
+        "accept": true,
+        "err": null,
+        "hex": "7b2261223a2d393030373139393235343734303939317d"
+      },
+      "node": {
+        "accept": true,
+        "err": null,
+        "hex": "7b2261223a2d393030373139393235343734303939317d"
+      },
+      "verdict": "AGREE-BYTES",
+      "expectation_ok": true,
+      "known_divergence": false
+    },
+    {
+      "id": "int-unsafe-over",
+      "expect_accept": false,
+      "note": "2^53 rejected",
+      "py": {
+        "accept": false,
+        "err": "UNSAFE_INTEGER",
+        "hex": null
+      },
+      "node": {
+        "accept": false,
+        "err": "UNSAFE_INTEGER",
+        "hex": null
+      },
+      "verdict": "AGREE-REJECT",
+      "expectation_ok": true,
+      "known_divergence": false
+    },
+    {
+      "id": "int-unsafe-under",
+      "expect_accept": false,
+      "note": "-2^53 rejected",
+      "py": {
+        "accept": false,
+        "err": "UNSAFE_INTEGER",
+        "hex": null
+      },
+      "node": {
+        "accept": false,
+        "err": "UNSAFE_INTEGER",
+        "hex": null
+      },
+      "verdict": "AGREE-REJECT",
+      "expectation_ok": true,
+      "known_divergence": false
+    },
+    {
+      "id": "bignum",
+      "expect_accept": false,
+      "note": "far beyond safe range",
+      "py": {
+        "accept": false,
+        "err": "UNSAFE_INTEGER",
+        "hex": null
+      },
+      "node": {
+        "accept": false,
+        "err": "UNSAFE_INTEGER",
+        "hex": null
+      },
+      "verdict": "AGREE-REJECT",
+      "expectation_ok": true,
+      "known_divergence": false
+    },
+    {
+      "id": "float-decimal",
+      "expect_accept": false,
+      "note": "fractional",
+      "py": {
+        "accept": false,
+        "err": "FLOAT_FORBIDDEN",
+        "hex": null
+      },
+      "node": {
+        "accept": false,
+        "err": "UNSAFE_INTEGER",
+        "hex": null
+      },
+      "verdict": "AGREE-REJECT",
+      "expectation_ok": true,
+      "known_divergence": false
+    },
+    {
+      "id": "float-1.0",
+      "expect_accept": false,
+      "note": "decimal point even when integral",
+      "py": {
+        "accept": false,
+        "err": "FLOAT_FORBIDDEN",
+        "hex": null
+      },
+      "node": {
+        "accept": false,
+        "err": null,
+        "hex": "7b2261223a317d"
+      },
+      "verdict": "DIVERGE-TYPE",
+      "expectation_ok": true,
+      "known_divergence": true
+    },
+    {
+      "id": "float-exponent",
+      "expect_accept": false,
+      "note": "exponent form",
+      "py": {
+        "accept": false,
+        "err": "FLOAT_FORBIDDEN",
+        "hex": null
+      },
+      "node": {
+        "accept": false,
+        "err": null,
+        "hex": "7b2261223a313030307d"
+      },
+      "verdict": "DIVERGE-TYPE",
+      "expectation_ok": true,
+      "known_divergence": true
+    },
+    {
+      "id": "float-small",
+      "expect_accept": false,
+      "note": "small fraction",
+      "py": {
+        "accept": false,
+        "err": "FLOAT_FORBIDDEN",
+        "hex": null
+      },
+      "node": {
+        "accept": false,
+        "err": "UNSAFE_INTEGER",
+        "hex": null
+      },
+      "verdict": "AGREE-REJECT",
+      "expectation_ok": true,
+      "known_divergence": false
+    },
+    {
+      "id": "negative-zero-int",
+      "expect_accept": false,
+      "note": "-0 is not the canonical form; canonical is 0",
+      "py": {
+        "accept": false,
+        "err": null,
+        "hex": "7b2261223a307d"
+      },
+      "node": {
+        "accept": false,
+        "err": null,
+        "hex": "7b2261223a307d"
+      },
+      "verdict": "AGREE-BYTES",
+      "expectation_ok": true,
+      "known_divergence": false
+    },
+    {
+      "id": "negative-zero-float",
+      "expect_accept": false,
+      "note": "float -0.0 rejected",
+      "py": {
+        "accept": false,
+        "err": "FLOAT_FORBIDDEN",
+        "hex": null
+      },
+      "node": {
+        "accept": false,
+        "err": null,
+        "hex": "7b2261223a307d"
+      },
+      "verdict": "DIVERGE-TYPE",
+      "expectation_ok": true,
+      "known_divergence": true
+    },
+    {
+      "id": "nan-literal",
+      "expect_accept": false,
+      "note": "NaN is not JSON",
+      "py": {
+        "accept": false,
+        "err": "FLOAT_FORBIDDEN",
+        "hex": null
+      },
+      "node": {
+        "accept": false,
+        "err": "PARSE_ERROR",
+        "hex": null
+      },
+      "verdict": "AGREE-REJECT",
+      "expectation_ok": true,
+      "known_divergence": false
+    },
+    {
+      "id": "infinity-literal",
+      "expect_accept": false,
+      "note": "Infinity is not JSON",
+      "py": {
+        "accept": false,
+        "err": "FLOAT_FORBIDDEN",
+        "hex": null
+      },
+      "node": {
+        "accept": false,
+        "err": "PARSE_ERROR",
+        "hex": null
+      },
+      "verdict": "AGREE-REJECT",
+      "expectation_ok": true,
+      "known_divergence": false
+    },
+    {
+      "id": "str-empty",
+      "expect_accept": true,
+      "note": "empty string",
+      "py": {
+        "accept": true,
+        "err": null,
+        "hex": "7b2273223a22227d"
+      },
+      "node": {
+        "accept": true,
+        "err": null,
+        "hex": "7b2273223a22227d"
+      },
+      "verdict": "AGREE-BYTES",
+      "expectation_ok": true,
+      "known_divergence": false
+    },
+    {
+      "id": "str-ascii",
+      "expect_accept": true,
+      "note": "plain ASCII",
+      "py": {
+        "accept": true,
+        "err": null,
+        "hex": "7b2273223a2268656c6c6f20776f726c64227d"
+      },
+      "node": {
+        "accept": true,
+        "err": null,
+        "hex": "7b2273223a2268656c6c6f20776f726c64227d"
+      },
+      "verdict": "AGREE-BYTES",
+      "expectation_ok": true,
+      "known_divergence": false
+    },
+    {
+      "id": "str-cjk",
+      "expect_accept": true,
+      "note": "CJK kept as raw UTF-8 bytes",
+      "py": {
+        "accept": true,
+        "err": null,
+        "hex": "7b2273223a22e58cbfe5908d227d"
+      },
+      "node": {
+        "accept": true,
+        "err": null,
+        "hex": "7b2273223a22e58cbfe5908d227d"
+      },
+      "verdict": "AGREE-BYTES",
+      "expectation_ok": true,
+      "known_divergence": false
+    },
+    {
+      "id": "str-combining",
+      "expect_accept": true,
+      "note": "combining sequence untouched",
+      "py": {
+        "accept": true,
+        "err": null,
+        "hex": "7b2273223a2265cc81227d"
+      },
+      "node": {
+        "accept": true,
+        "err": null,
+        "hex": "7b2273223a2265cc81227d"
+      },
+      "verdict": "AGREE-BYTES",
+      "expectation_ok": true,
+      "known_divergence": false
+    },
+    {
+      "id": "str-precomposed",
+      "expect_accept": true,
+      "note": "precomposed untouched",
+      "py": {
+        "accept": true,
+        "err": null,
+        "hex": "7b2273223a22c3a9227d"
+      },
+      "node": {
+        "accept": true,
+        "err": null,
+        "hex": "7b2273223a22c3a9227d"
+      },
+      "verdict": "AGREE-BYTES",
+      "expectation_ok": true,
+      "known_divergence": false
+    },
+    {
+      "id": "str-emoji-pair",
+      "expect_accept": true,
+      "note": "astral character kept raw",
+      "py": {
+        "accept": true,
+        "err": null,
+        "hex": "7b2273223a22f09f9880227d"
+      },
+      "node": {
+        "accept": true,
+        "err": null,
+        "hex": "7b2273223a22f09f9880227d"
+      },
+      "verdict": "AGREE-BYTES",
+      "expectation_ok": true,
+      "known_divergence": false
+    },
+    {
+      "id": "str-lone-high-esc",
+      "expect_accept": false,
+      "note": "lone high surrogate must be rejected",
+      "py": {
+        "accept": false,
+        "err": "'utf-8' codec can't encode character '\\ud800' in position 6: surrogates not allowed",
+        "hex": null
+      },
+      "node": {
+        "accept": true,
+        "err": null,
+        "hex": "7b2273223a225c7564383030227d"
+      },
+      "verdict": "DIVERGE-TYPE",
+      "expectation_ok": false,
+      "known_divergence": true
+    },
+    {
+      "id": "str-lone-low-esc",
+      "expect_accept": false,
+      "note": "lone low surrogate must be rejected",
+      "py": {
+        "accept": false,
+        "err": "'utf-8' codec can't encode character '\\udfff' in position 6: surrogates not allowed",
+        "hex": null
+      },
+      "node": {
+        "accept": true,
+        "err": null,
+        "hex": "7b2273223a225c7564666666227d"
+      },
+      "verdict": "DIVERGE-TYPE",
+      "expectation_ok": false,
+      "known_divergence": true
+    },
+    {
+      "id": "str-quote-backslash",
+      "expect_accept": true,
+      "note": "quote and backslash escaping",
+      "py": {
+        "accept": true,
+        "err": null,
+        "hex": "7b2273223a22615c22625c5c63227d"
+      },
+      "node": {
+        "accept": true,
+        "err": null,
+        "hex": "7b2273223a22615c22625c5c63227d"
+      },
+      "verdict": "AGREE-BYTES",
+      "expectation_ok": true,
+      "known_divergence": false
+    },
+    {
+      "id": "str-newline",
+      "expect_accept": true,
+      "note": "backslash-n shorthand",
+      "py": {
+        "accept": true,
+        "err": null,
+        "hex": "7b2273223a22615c6e62227d"
+      },
+      "node": {
+        "accept": true,
+        "err": null,
+        "hex": "7b2273223a22615c6e62227d"
+      },
+      "verdict": "AGREE-BYTES",
+      "expectation_ok": true,
+      "known_divergence": false
+    },
+    {
+      "id": "str-tab",
+      "expect_accept": true,
+      "note": "backslash-t shorthand",
+      "py": {
+        "accept": true,
+        "err": null,
+        "hex": "7b2273223a22615c7462227d"
+      },
+      "node": {
+        "accept": true,
+        "err": null,
+        "hex": "7b2273223a22615c7462227d"
+      },
+      "verdict": "AGREE-BYTES",
+      "expectation_ok": true,
+      "known_divergence": false
+    },
+    {
+      "id": "str-cr",
+      "expect_accept": true,
+      "note": "backslash-r shorthand",
+      "py": {
+        "accept": true,
+        "err": null,
+        "hex": "7b2273223a22615c7262227d"
+      },
+      "node": {
+        "accept": true,
+        "err": null,
+        "hex": "7b2273223a22615c7262227d"
+      },
+      "verdict": "AGREE-BYTES",
+      "expectation_ok": true,
+      "known_divergence": false
+    },
+    {
+      "id": "str-backspace-u-esc",
+      "expect_accept": false,
+      "note": "backslash-u0008 is NOT the canonical form; both sides emit backslash-b",
+      "py": {
+        "accept": false,
+        "err": null,
+        "hex": "7b2273223a22615c6262227d"
+      },
+      "node": {
+        "accept": false,
+        "err": null,
+        "hex": "7b2273223a22615c6262227d"
+      },
+      "verdict": "AGREE-BYTES",
+      "expectation_ok": true,
+      "known_divergence": false
+    },
+    {
+      "id": "str-backspace-abbrev",
+      "expect_accept": true,
+      "note": "backslash-b shorthand IS the canonical form (both sides agree)",
+      "py": {
+        "accept": true,
+        "err": null,
+        "hex": "7b2273223a22615c6262227d"
+      },
+      "node": {
+        "accept": true,
+        "err": null,
+        "hex": "7b2273223a22615c6262227d"
+      },
+      "verdict": "AGREE-BYTES",
+      "expectation_ok": true,
+      "known_divergence": false
+    },
+    {
+      "id": "str-formfeed-u-esc",
+      "expect_accept": false,
+      "note": "backslash-u000c is NOT the canonical form; both sides emit backslash-f",
+      "py": {
+        "accept": false,
+        "err": null,
+        "hex": "7b2273223a22615c6662227d"
+      },
+      "node": {
+        "accept": false,
+        "err": null,
+        "hex": "7b2273223a22615c6662227d"
+      },
+      "verdict": "AGREE-BYTES",
+      "expectation_ok": true,
+      "known_divergence": false
+    },
+    {
+      "id": "str-formfeed-abbrev",
+      "expect_accept": true,
+      "note": "backslash-f shorthand IS the canonical form (both sides agree)",
+      "py": {
+        "accept": true,
+        "err": null,
+        "hex": "7b2273223a22615c6662227d"
+      },
+      "node": {
+        "accept": true,
+        "err": null,
+        "hex": "7b2273223a22615c6662227d"
+      },
+      "verdict": "AGREE-BYTES",
+      "expectation_ok": true,
+      "known_divergence": false
+    },
+    {
+      "id": "str-nul-esc",
+      "expect_accept": true,
+      "note": "NUL as backslash-u0000",
+      "py": {
+        "accept": true,
+        "err": null,
+        "hex": "7b2273223a22615c753030303062227d"
+      },
+      "node": {
+        "accept": true,
+        "err": null,
+        "hex": "7b2273223a22615c753030303062227d"
+      },
+      "verdict": "AGREE-BYTES",
+      "expectation_ok": true,
+      "known_divergence": false
+    },
+    {
+      "id": "str-us-esc",
+      "expect_accept": true,
+      "note": "US as backslash-u001f",
+      "py": {
+        "accept": true,
+        "err": null,
+        "hex": "7b2273223a22615c753030316662227d"
+      },
+      "node": {
+        "accept": true,
+        "err": null,
+        "hex": "7b2273223a22615c753030316662227d"
+      },
+      "verdict": "AGREE-BYTES",
+      "expectation_ok": true,
+      "known_divergence": false
+    },
+    {
+      "id": "str-del-raw",
+      "expect_accept": true,
+      "note": "DEL is printable-range, kept raw",
+      "py": {
+        "accept": true,
+        "err": null,
+        "hex": "7b2273223a227f227d"
+      },
+      "node": {
+        "accept": true,
+        "err": null,
+        "hex": "7b2273223a227f227d"
+      },
+      "verdict": "AGREE-BYTES",
+      "expectation_ok": true,
+      "known_divergence": false
+    },
+    {
+      "id": "str-u2028-raw",
+      "expect_accept": true,
+      "note": "U+2028 kept raw (ES2019+)",
+      "py": {
+        "accept": true,
+        "err": null,
+        "hex": "7b2273223a22e280a8227d"
+      },
+      "node": {
+        "accept": true,
+        "err": null,
+        "hex": "7b2273223a22e280a8227d"
+      },
+      "verdict": "AGREE-BYTES",
+      "expectation_ok": true,
+      "known_divergence": false
+    },
+    {
+      "id": "str-u2029-raw",
+      "expect_accept": true,
+      "note": "U+2029 kept raw (ES2019+)",
+      "py": {
+        "accept": true,
+        "err": null,
+        "hex": "7b2273223a22e280a9227d"
+      },
+      "node": {
+        "accept": true,
+        "err": null,
+        "hex": "7b2273223a22e280a9227d"
+      },
+      "verdict": "AGREE-BYTES",
+      "expectation_ok": true,
+      "known_divergence": false
+    },
+    {
+      "id": "str-solidus",
+      "expect_accept": false,
+      "note": "escaped solidus is NOT canonical",
+      "py": {
+        "accept": false,
+        "err": null,
+        "hex": "7b2273223a22612f62227d"
+      },
+      "node": {
+        "accept": false,
+        "err": null,
+        "hex": "7b2273223a22612f62227d"
+      },
+      "verdict": "AGREE-BYTES",
+      "expectation_ok": true,
+      "known_divergence": false
+    },
+    {
+      "id": "str-solidus-raw",
+      "expect_accept": true,
+      "note": "raw solidus is canonical",
+      "py": {
+        "accept": true,
+        "err": null,
+        "hex": "7b2273223a22612f62227d"
+      },
+      "node": {
+        "accept": true,
+        "err": null,
+        "hex": "7b2273223a22612f62227d"
+      },
+      "verdict": "AGREE-BYTES",
+      "expectation_ok": true,
+      "known_divergence": false
+    },
+    {
+      "id": "key-order-simple",
+      "expect_accept": false,
+      "note": "unsorted keys are not canonical",
+      "py": {
+        "accept": false,
+        "err": null,
+        "hex": "7b2261223a322c2262223a317d"
+      },
+      "node": {
+        "accept": false,
+        "err": null,
+        "hex": "7b2261223a322c2262223a317d"
+      },
+      "verdict": "AGREE-BYTES",
+      "expectation_ok": true,
+      "known_divergence": false
+    },
+    {
+      "id": "key-order-many",
+      "expect_accept": false,
+      "note": "multi-key ordering",
+      "py": {
+        "accept": false,
+        "err": null,
+        "hex": "7b2230223a352c2242223a342c2261223a322c226d223a332c227a223a317d"
+      },
+      "node": {
+        "accept": false,
+        "err": null,
+        "hex": "7b2230223a352c2242223a342c2261223a322c226d223a332c227a223a317d"
+      },
+      "verdict": "AGREE-BYTES",
+      "expectation_ok": true,
+      "known_divergence": false
+    },
+    {
+      "id": "key-sorted-ok",
+      "expect_accept": true,
+      "note": "already sorted",
+      "py": {
+        "accept": true,
+        "err": null,
+        "hex": "7b2261223a312c2262223a322c2263223a337d"
+      },
+      "node": {
+        "accept": true,
+        "err": null,
+        "hex": "7b2261223a312c2262223a322c2263223a337d"
+      },
+      "verdict": "AGREE-BYTES",
+      "expectation_ok": true,
+      "known_divergence": false
+    },
+    {
+      "id": "key-nonascii",
+      "expect_accept": false,
+      "note": "non-ASCII key rejected",
+      "py": {
+        "accept": false,
+        "err": "NONASCII_KEY",
+        "hex": null
+      },
+      "node": {
+        "accept": false,
+        "err": "NONASCII_KEY",
+        "hex": null
+      },
+      "verdict": "AGREE-REJECT",
+      "expectation_ok": true,
+      "known_divergence": false
+    },
+    {
+      "id": "key-control-char",
+      "expect_accept": true,
+      "note": "control char in ASCII key accepted; escaped form is canonical",
+      "py": {
+        "accept": true,
+        "err": null,
+        "hex": "7b22615c753030303162223a317d"
+      },
+      "node": {
+        "accept": true,
+        "err": null,
+        "hex": "7b22615c753030303162223a317d"
+      },
+      "verdict": "AGREE-BYTES",
+      "expectation_ok": true,
+      "known_divergence": false
+    },
+    {
+      "id": "key-with-escape",
+      "expect_accept": true,
+      "note": "escaped newline in ASCII key accepted; shorthand is canonical",
+      "py": {
+        "accept": true,
+        "err": null,
+        "hex": "7b22615c6e62223a317d"
+      },
+      "node": {
+        "accept": true,
+        "err": null,
+        "hex": "7b22615c6e62223a317d"
+      },
+      "verdict": "AGREE-BYTES",
+      "expectation_ok": true,
+      "known_divergence": false
+    },
+    {
+      "id": "key-empty",
+      "expect_accept": true,
+      "note": "empty key is legal and canonical",
+      "py": {
+        "accept": true,
+        "err": null,
+        "hex": "7b22223a317d"
+      },
+      "node": {
+        "accept": true,
+        "err": null,
+        "hex": "7b22223a317d"
+      },
+      "verdict": "AGREE-BYTES",
+      "expectation_ok": true,
+      "known_divergence": false
+    },
+    {
+      "id": "nested-mixed",
+      "expect_accept": false,
+      "note": "unsorted top-level",
+      "py": {
+        "accept": false,
+        "err": null,
+        "hex": "7b2262223a747275652c2269223a34322c226c223a5b22e58cbfe5908d222c312c7b226b223a2276227d5d2c226e223a6e756c6c2c226f223a7b7d2c2273223a2278227d"
+      },
+      "node": {
+        "accept": false,
+        "err": null,
+        "hex": "7b2262223a747275652c2269223a34322c226c223a5b22e58cbfe5908d222c312c7b226b223a2276227d5d2c226e223a6e756c6c2c226f223a7b7d2c2273223a2278227d"
+      },
+      "verdict": "AGREE-BYTES",
+      "expectation_ok": true,
+      "known_divergence": false
+    },
+    {
+      "id": "nested-sorted",
+      "expect_accept": false,
+      "note": "inner object unsorted",
+      "py": {
+        "accept": false,
+        "err": null,
+        "hex": "7b2261223a7b2262223a322c2263223a317d2c2264223a5b312c322c335d7d"
+      },
+      "node": {
+        "accept": false,
+        "err": null,
+        "hex": "7b2261223a7b2262223a322c2263223a317d2c2264223a5b312c322c335d7d"
+      },
+      "verdict": "AGREE-BYTES",
+      "expectation_ok": true,
+      "known_divergence": false
+    },
+    {
+      "id": "deep-nesting",
+      "expect_accept": true,
+      "note": "single-key chain is sorted",
+      "py": {
+        "accept": true,
+        "err": null,
+        "hex": "7b2261223a7b2262223a7b2263223a7b2264223a5b312c322c335d7d7d7d7d"
+      },
+      "node": {
+        "accept": true,
+        "err": null,
+        "hex": "7b2261223a7b2262223a7b2263223a7b2264223a5b312c322c335d7d7d7d7d"
+      },
+      "verdict": "AGREE-BYTES",
+      "expectation_ok": true,
+      "known_divergence": false
+    },
+    {
+      "id": "array-of-strings",
+      "expect_accept": true,
+      "note": "array with non-ASCII values",
+      "py": {
+        "accept": true,
+        "err": null,
+        "hex": "5b22e58cbfe5908d222c2274657374222c22c3a9225d"
+      },
+      "node": {
+        "accept": true,
+        "err": null,
+        "hex": "5b22e58cbfe5908d222c2274657374222c22c3a9225d"
+      },
+      "verdict": "AGREE-BYTES",
+      "expectation_ok": true,
+      "known_divergence": false
+    },
+    {
+      "id": "duplicate-key",
+      "expect_accept": false,
+      "note": "duplicate keys rejected at text layer",
+      "py": {
+        "accept": false,
+        "err": null,
+        "hex": "7b2261223a327d"
+      },
+      "node": {
+        "accept": false,
+        "err": null,
+        "hex": "7b2261223a327d"
+      },
+      "verdict": "AGREE-BYTES",
+      "expectation_ok": true,
+      "known_divergence": false
+    },
+    {
+      "id": "whitespace-padded",
+      "expect_accept": false,
+      "note": "insignificant whitespace is not canonical",
+      "py": {
+        "accept": false,
+        "err": null,
+        "hex": "7b2261223a317d"
+      },
+      "node": {
+        "accept": false,
+        "err": null,
+        "hex": "7b2261223a317d"
+      },
+      "verdict": "AGREE-BYTES",
+      "expectation_ok": true,
+      "known_divergence": false
+    },
+    {
+      "id": "whitespace-inside",
+      "expect_accept": false,
+      "note": "inner whitespace not canonical",
+      "py": {
+        "accept": false,
+        "err": null,
+        "hex": "7b2261223a317d"
+      },
+      "node": {
+        "accept": false,
+        "err": null,
+        "hex": "7b2261223a317d"
+      },
+      "verdict": "AGREE-BYTES",
+      "expectation_ok": true,
+      "known_divergence": false
+    },
+    {
+      "id": "trailing-comma-array",
+      "expect_accept": false,
+      "note": "trailing comma is not JSON",
+      "py": {
+        "accept": false,
+        "err": "Expecting value: line 1 column 11 (char 10)",
+        "hex": null
+      },
+      "node": {
+        "accept": false,
+        "err": "PARSE_ERROR",
+        "hex": null
+      },
+      "verdict": "AGREE-REJECT",
+      "expectation_ok": true,
+      "known_divergence": false
+    },
+    {
+      "id": "trailing-comma-object",
+      "expect_accept": false,
+      "note": "trailing comma is not JSON",
+      "py": {
+        "accept": false,
+        "err": "Expecting property name enclosed in double quotes: line 1 column 8 (char 7)",
+        "hex": null
+      },
+      "node": {
+        "accept": false,
+        "err": "PARSE_ERROR",
+        "hex": null
+      },
+      "verdict": "AGREE-REJECT",
+      "expectation_ok": true,
+      "known_divergence": false
+    },
+    {
+      "id": "single-quoted",
+      "expect_accept": false,
+      "note": "single quotes are not JSON",
+      "py": {
+        "accept": false,
+        "err": "Expecting property name enclosed in double quotes: line 1 column 2 (char 1)",
+        "hex": null
+      },
+      "node": {
+        "accept": false,
+        "err": "PARSE_ERROR",
+        "hex": null
+      },
+      "verdict": "AGREE-REJECT",
+      "expectation_ok": true,
+      "known_divergence": false
+    },
+    {
+      "id": "invalid-json",
+      "expect_accept": false,
+      "note": "truncated",
+      "py": {
+        "accept": false,
+        "err": "Expecting value: line 1 column 6 (char 5)",
+        "hex": null
+      },
+      "node": {
+        "accept": false,
+        "err": "PARSE_ERROR",
+        "hex": null
+      },
+      "verdict": "AGREE-REJECT",
+      "expectation_ok": true,
+      "known_divergence": false
+    },
+    {
+      "id": "comma-only",
+      "expect_accept": false,
+      "note": "garbage",
+      "py": {
+        "accept": false,
+        "err": "Expecting value: line 1 column 1 (char 0)",
+        "hex": null
+      },
+      "node": {
+        "accept": false,
+        "err": "PARSE_ERROR",
+        "hex": null
+      },
+      "verdict": "AGREE-REJECT",
+      "expectation_ok": true,
+      "known_divergence": false
+    }
+  ],
+  "summary": {
+    "total": 64,
+    "agree_bytes": 46,
+    "agree_reject": 13,
+    "diverge_type": 5,
+    "diverge_bytes": 0,
+    "unexpected_failures": 2
+  }
+}
