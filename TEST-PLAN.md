@@ -1,7 +1,12 @@
 # ACSD PEC v0.1: minimum discriminating corpus
 
-Implementation status: the reference corpus, attack cases, demo generator,
-and file-level verifier are implemented locally. The table remains the
+Implementation status: the reference corpus covers 15 of the 17 frozen cases
+below (see `fixtures.py`), spanning all four verifier paths
+(`validate_pec`, `verify_disclosure`, `verify_dialogue_window`,
+`verify_sidecar_subject`). The two series-layer cases
+(`exclusive-slot-double-sign` -> `EQUIVOCATION` and `missing-sidecar` ->
+`INDETERMINATE`) are v1 series-layer states, not v0.1 PEC acceptance
+predicates, and are documented out of scope here. The table remains the
 acceptance contract for any future independent implementation.
 
 This plan is frozen before implementation.  It distinguishes a valid

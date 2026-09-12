@@ -14,7 +14,8 @@
 - CLI (`acsd.py`): keygen/init/approve/finalize/verify/inspect with a state machine;
 - Ed25519 COSE Sign1 endorsements (`cose.py`);
 - RFC 3161 timestamp request construction and TSTInfo parsing (`tsa.py`, local test TSA);
-- inherited v1 fixture corpus (`v1-fixture/`) with a reproduction wrapper (`verify_v1_fixture.py`) for the paper's evaluation numbers.
+- inherited v1 fixture corpus (`v1-fixture/`) with a reproduction wrapper (`verify_v1_fixture.py`) for the paper's evaluation numbers;
+- frozen TEST-PLAN attack matrix: 15 of 17 cases exercised across `validate_pec` / `verify_disclosure` / `verify_dialogue_window` / `verify_sidecar_subject` (the two series-layer EQUIVOCATION / INDETERMINATE cases are documented out of v0.1 scope).
 
 ## Acceptance evidence
 
