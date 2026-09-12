@@ -8,3 +8,6 @@ rfc3161-adapter/.deps/
 rfc3161-adapter/**/__pycache__/
 formal-core/.lake/
 formal-core/out/
+v2.0.0/**/__pycache__/
+v2.0.0/formal/.lake/
+v2.0.0/formal/out/
