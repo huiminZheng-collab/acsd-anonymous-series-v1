@@ -13,7 +13,8 @@
 - demo manifest and command-line verification;
 - CLI (`acsd.py`): keygen/init/approve/finalize/verify/inspect with a state machine;
 - Ed25519 COSE Sign1 endorsements (`cose.py`);
-- RFC 3161 timestamp request construction and TSTInfo parsing (`tsa.py`, local test TSA).
+- RFC 3161 timestamp request construction and TSTInfo parsing (`tsa.py`, local test TSA);
+- inherited v1 fixture corpus (`v1-fixture/`) with a reproduction wrapper (`verify_v1_fixture.py`) for the paper's evaluation numbers.
 
 ## Acceptance evidence
 

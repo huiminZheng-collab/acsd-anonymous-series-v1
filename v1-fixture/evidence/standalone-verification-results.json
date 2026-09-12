@@ -1,0 +1,22 @@
+{
+  "schema": "acsd-v1.6.0-standalone-verification-results/v1",
+  "checked_at": "2026-09-09",
+  "verifier": "zero-dependency Node.js strict CBOR/COSE single-package verifier",
+  "package": "artifacts/standalone-packages/p-v1.json",
+  "release_key": "p-v1",
+  "release_id": "urn:sha256:399f6992ac0e7af13eaf5d3b3de153ef78439f1219b88eeaceab73faea7b02f8",
+  "release_valid": true,
+  "endorsements_expected": 2,
+  "parent_path_escape_rejected": true,
+  "forbidden_or_undeclared_reads": [],
+  "standalone_without_other_papers_or_series": true,
+  "read_footprint": [
+    "artifacts/contents/p-v1.txt",
+    "artifacts/endorsements/p-v1--p-slot-1.scitt",
+    "artifacts/endorsements/p-v1--p-slot-2.scitt",
+    "artifacts/public-keys/p-slot-1-public.pem",
+    "artifacts/public-keys/p-slot-2-public.pem",
+    "artifacts/releases/p-v1.json",
+    "artifacts/standalone-packages/p-v1.json"
+  ]
+}

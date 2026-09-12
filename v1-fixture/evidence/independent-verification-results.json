@@ -1,0 +1,285 @@
+{
+  "schema": "acsd-v1.6.0-independent-series-results/v1",
+  "checked_at": "2026-09-09",
+  "verifier": "zero-dependency Node.js strict CBOR/COSE, standalone-paper, series-DAG, rotation, observation, and closed-verdict verifier",
+  "checks": {
+    "expected": 30,
+    "passed": 30,
+    "failed": 0,
+    "failures": []
+  },
+  "profile_result": "VALID",
+  "cases": [
+    {
+      "name": "all eight paper releases are independently verifiable without any series bundle",
+      "passed": true,
+      "interpretation": "Each standalone package binds exact content, ordered anonymous author keys, roles, contribution/AI declarations, and every listed endorsement."
+    },
+    {
+      "name": "every release reference manifest and signed byte witnesses equal explicit WorkID tokens in exact content",
+      "passed": true,
+      "interpretation": "The fixture recognizes only explicit urn:uuid WorkID tokens and their UTF-8 byte ranges; it does not claim to parse natural-language citation semantics."
+    },
+    {
+      "name": "all eighteen endorsement objects are used exactly by their declared release",
+      "passed": true,
+      "interpretation": "No author signature is silently reused as approval of a different release payload."
+    },
+    {
+      "name": "a correctly signed release whose reference manifest disagrees with exact content is rejected",
+      "passed": true,
+      "interpretation": "Author and release signatures alone do not make a reference declaration a text witness; the explicit WorkID token binding is also required."
+    },
+    {
+      "name": "a correctly signed release whose citation-witness byte offset disagrees with exact content is rejected",
+      "passed": true,
+      "interpretation": "A signed citation witness is checked against the content bytes fixed by the release hash; a shifted offset cannot be accepted as textual support."
+    },
+    {
+      "name": "a correctly signed but noncanonical JSON release is rejected",
+      "passed": true,
+      "interpretation": "The signed release body must have one profile-defined JSON byte representation, so duplicate fields, whitespace variants, and non-integer number spellings cannot create parser-dependent meanings."
+    },
+    {
+      "name": "series epoch 0, authorized key rotation, epoch 1, and copy lineage signatures verify",
+      "passed": true,
+      "interpretation": "Series bundles contain exact standalone release IDs; the epoch-1 key is accepted only through the old-key rotation statement."
+    },
+    {
+      "name": "both local observation statements verify while explicitly disclaiming independent time",
+      "passed": true,
+      "interpretation": "The fixture can order two local observations but does not upgrade them to RFC3161 or external-time evidence."
+    },
+    {
+      "name": "mutual citations form a semantic cycle while cryptographic dependencies remain acyclic",
+      "passed": true,
+      "interpretation": "Stable WorkIDs break the content-hash cycle; a later bundle maps both logical works to exact independently signed releases."
+    },
+    {
+      "name": "P-v1 and Q-v1 mutually cite WorkIDs rather than each other's unresolved release hash",
+      "passed": true,
+      "interpretation": "Both paper payloads can be finalized before the series bundle without a circular hash equation."
+    },
+    {
+      "name": "standalone-p-v1-without-series returns ACCEPTED/STANDALONE_VALID",
+      "passed": true,
+      "interpretation": "The verifier distinguishes standalone validity, series continuity, later amendments, content reuse, legitimate branches, exact-slot conflicts, and missing identity links."
+    },
+    {
+      "name": "mutual-citation-bundle1 returns ACCEPTED/SERIES_VALID",
+      "passed": true,
+      "interpretation": "The verifier distinguishes standalone validity, series continuity, later amendments, content reuse, legitimate branches, exact-slot conflicts, and missing identity links."
+    },
+    {
+      "name": "semantic-cycle-crypto-dag returns ACCEPTED/SEMANTIC_CYCLE_DAG_VALID",
+      "passed": true,
+      "interpretation": "The verifier distinguishes standalone validity, series continuity, later amendments, content reuse, legitimate branches, exact-slot conflicts, and missing identity links."
+    },
+    {
+      "name": "signed-bundle-with-low-commitment-rank returns INVALID/COMMITMENT_RANK_INVALID",
+      "passed": true,
+      "interpretation": "The verifier distinguishes standalone validity, series continuity, later amendments, content reuse, legitimate branches, exact-slot conflicts, and missing identity links."
+    },
+    {
+      "name": "signed-bundle-with-unsupported-semantic-edge returns INVALID/SEMANTIC_EDGE_UNSUPPORTED",
+      "passed": true,
+      "interpretation": "The verifier distinguishes standalone validity, series continuity, later amendments, content reuse, legitimate branches, exact-slot conflicts, and missing identity links."
+    },
+    {
+      "name": "late-amendment-not-backdated returns ACCEPTED/LATE_AMENDMENT",
+      "passed": true,
+      "interpretation": "The verifier distinguishes standalone validity, series continuity, later amendments, content reuse, legitimate branches, exact-slot conflicts, and missing identity links."
+    },
+    {
+      "name": "substitute-amendment-into-old-bundle returns INVALID/BUNDLE_RELEASE_MISMATCH",
+      "passed": true,
+      "interpretation": "The verifier distinguishes standalone validity, series continuity, later amendments, content reuse, legitimate branches, exact-slot conflicts, and missing identity links."
+    },
+    {
+      "name": "copy-and-resign-later-lineage returns INDETERMINATE/CONTENT_REUSE_DIFFERENT_LINEAGE",
+      "passed": true,
+      "interpretation": "The verifier distinguishes standalone validity, series continuity, later amendments, content reuse, legitimate branches, exact-slot conflicts, and missing identity links."
+    },
+    {
+      "name": "legitimate-parallel-branches returns ACCEPTED/LEGITIMATE_BRANCH",
+      "passed": true,
+      "interpretation": "The verifier distinguishes standalone validity, series continuity, later amendments, content reuse, legitimate branches, exact-slot conflicts, and missing identity links."
+    },
+    {
+      "name": "same-slot-paper-double-release returns EQUIVOCATION/PAPER_SLOT_CONFLICT",
+      "passed": true,
+      "interpretation": "The verifier distinguishes standalone validity, series continuity, later amendments, content reuse, legitimate branches, exact-slot conflicts, and missing identity links."
+    },
+    {
+      "name": "same-sequence-series-double-bundle returns EQUIVOCATION/SERIES_SEQUENCE_CONFLICT",
+      "passed": true,
+      "interpretation": "The verifier distinguishes standalone validity, series continuity, later amendments, content reuse, legitimate branches, exact-slot conflicts, and missing identity links."
+    },
+    {
+      "name": "epoch1-without-rotation returns INVALID/UNAUTHORIZED_SERIES_KEY",
+      "passed": true,
+      "interpretation": "The verifier distinguishes standalone validity, series continuity, later amendments, content reuse, legitimate branches, exact-slot conflicts, and missing identity links."
+    },
+    {
+      "name": "cross-paper-author-link-not-proven returns INDETERMINATE/AUTHOR_LINK_UNPROVEN",
+      "passed": true,
+      "interpretation": "The verifier distinguishes standalone validity, series continuity, later amendments, content reuse, legitimate branches, exact-slot conflicts, and missing identity links."
+    },
+    {
+      "name": "canonical JSON corpus has the expected Node acceptance decisions",
+      "passed": true,
+      "interpretation": "The corpus exercises key order, duplicate fields, whitespace, decimal and unsafe integers, UTF-8 values, and non-ASCII keys against the signed-object profile."
+    },
+    {
+      "name": "artifact path resolver rejects parent-directory escapes",
+      "passed": true,
+      "interpretation": "All profile-referenced paths must be relative descendants of the artifact project; a signed declaration cannot make the verifier read a parent path."
+    },
+    {
+      "name": "Python and Node agree on every canonical JSON corpus decision",
+      "passed": true,
+      "interpretation": "Independent runtimes must make the same accept/reject decision before a signed body is interpreted as a release, series, rotation, or observation object."
+    },
+    {
+      "name": "independent Node verification agrees with the Python generation/reference path",
+      "passed": true,
+      "interpretation": "Separate implementations agree on all signatures and on the semantic-cycle/cryptographic-DAG separation."
+    },
+    {
+      "name": "pinned third-party archives match the audited source-provenance hashes",
+      "passed": true,
+      "interpretation": "The offline build consumes only the two named, hash-pinned archives recorded in the source ledger."
+    },
+    {
+      "name": "prior work is classified by source status instead of being presented as one undifferentiated novelty claim",
+      "passed": true,
+      "interpretation": "The novelty boundary is the anonymous-scholarly-series profile and its executable counterexamples, not provenance, intrinsic identifiers, or signed statements themselves."
+    },
+    {
+      "name": "scope boundaries remain explicit",
+      "passed": true,
+      "interpretation": "The series layer adds lineage evidence but does not create independent time, natural-person identity, cross-paper identity links, originality truth, or legal non-repudiation."
+    }
+  ],
+  "scenario_results": [
+    {
+      "id": "standalone-p-v1-without-series",
+      "expected": "ACCEPTED",
+      "actual": "ACCEPTED",
+      "expected_code": "STANDALONE_VALID",
+      "actual_code": "STANDALONE_VALID",
+      "passed": true
+    },
+    {
+      "id": "mutual-citation-bundle1",
+      "expected": "ACCEPTED",
+      "actual": "ACCEPTED",
+      "expected_code": "SERIES_VALID",
+      "actual_code": "SERIES_VALID",
+      "passed": true
+    },
+    {
+      "id": "semantic-cycle-crypto-dag",
+      "expected": "ACCEPTED",
+      "actual": "ACCEPTED",
+      "expected_code": "SEMANTIC_CYCLE_DAG_VALID",
+      "actual_code": "SEMANTIC_CYCLE_DAG_VALID",
+      "passed": true
+    },
+    {
+      "id": "signed-bundle-with-low-commitment-rank",
+      "expected": "INVALID",
+      "actual": "INVALID",
+      "expected_code": "COMMITMENT_RANK_INVALID",
+      "actual_code": "COMMITMENT_RANK_INVALID",
+      "passed": true
+    },
+    {
+      "id": "signed-bundle-with-unsupported-semantic-edge",
+      "expected": "INVALID",
+      "actual": "INVALID",
+      "expected_code": "SEMANTIC_EDGE_UNSUPPORTED",
+      "actual_code": "SEMANTIC_EDGE_UNSUPPORTED",
+      "passed": true
+    },
+    {
+      "id": "late-amendment-not-backdated",
+      "expected": "ACCEPTED",
+      "actual": "ACCEPTED",
+      "expected_code": "LATE_AMENDMENT",
+      "actual_code": "LATE_AMENDMENT",
+      "passed": true
+    },
+    {
+      "id": "substitute-amendment-into-old-bundle",
+      "expected": "INVALID",
+      "actual": "INVALID",
+      "expected_code": "BUNDLE_RELEASE_MISMATCH",
+      "actual_code": "BUNDLE_RELEASE_MISMATCH",
+      "passed": true
+    },
+    {
+      "id": "copy-and-resign-later-lineage",
+      "expected": "INDETERMINATE",
+      "actual": "INDETERMINATE",
+      "expected_code": "CONTENT_REUSE_DIFFERENT_LINEAGE",
+      "actual_code": "CONTENT_REUSE_DIFFERENT_LINEAGE",
+      "passed": true
+    },
+    {
+      "id": "legitimate-parallel-branches",
+      "expected": "ACCEPTED",
+      "actual": "ACCEPTED",
+      "expected_code": "LEGITIMATE_BRANCH",
+      "actual_code": "LEGITIMATE_BRANCH",
+      "passed": true
+    },
+    {
+      "id": "same-slot-paper-double-release",
+      "expected": "EQUIVOCATION",
+      "actual": "EQUIVOCATION",
+      "expected_code": "PAPER_SLOT_CONFLICT",
+      "actual_code": "PAPER_SLOT_CONFLICT",
+      "passed": true
+    },
+    {
+      "id": "same-sequence-series-double-bundle",
+      "expected": "EQUIVOCATION",
+      "actual": "EQUIVOCATION",
+      "expected_code": "SERIES_SEQUENCE_CONFLICT",
+      "actual_code": "SERIES_SEQUENCE_CONFLICT",
+      "passed": true
+    },
+    {
+      "id": "epoch1-without-rotation",
+      "expected": "INVALID",
+      "actual": "INVALID",
+      "expected_code": "UNAUTHORIZED_SERIES_KEY",
+      "actual_code": "UNAUTHORIZED_SERIES_KEY",
+      "passed": true
+    },
+    {
+      "id": "cross-paper-author-link-not-proven",
+      "expected": "INDETERMINATE",
+      "actual": "INDETERMINATE",
+      "expected_code": "AUTHOR_LINK_UNPROVEN",
+      "actual_code": "AUTHOR_LINK_UNPROVEN",
+      "passed": true
+    }
+  ],
+  "claims": {
+    "standalone_paper_requires_series": false,
+    "mutual_semantic_citation_requires_cyclic_hash_dependencies": false,
+    "stable_work_ids_plus_later_bundle_preserve_crypto_dag": true,
+    "signed_bundle_with_low_commitment_rank_accepted": false,
+    "signed_bundle_with_unsupported_semantic_edge_accepted": false,
+    "signed_reference_work_id_mismatch_accepted": false,
+    "signed_citation_witness_offset_mismatch_accepted": false,
+    "signed_noncanonical_json_accepted": false,
+    "legitimate_parallel_branch_is_equivocation": false,
+    "same_exclusive_slot_double_release_is_equivocation": true,
+    "copy_and_resign_proves_originality": false,
+    "local_observation_establishes_independent_time": false,
+    "cross_paper_author_identity_established": false
+  }
+}

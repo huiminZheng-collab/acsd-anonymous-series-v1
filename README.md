@@ -96,6 +96,23 @@ python -m unittest
 python .\design\canonical_diff_runner.py
 ```
 
+## Reproducing the paper's evaluation table
+
+The paper's evaluation numbers (Table 2, first seven rows) come from the
+inherited v1 fixture corpus, now shipped under `v1-fixture/`. Reproduce them
+with:
+
+```powershell
+python .\verify_v1_fixture.py
+```
+
+This runs the zero-dependency Node.js verifiers against the frozen fixture
+snapshot in a temporary copy and prints 8 releases, 18 endorsements, 7 signed
+series objects, 13 scenarios, 30/30 profile checks, and 113/113 manifest
+entries. `--regenerate` re-derives the fixtures from scratch (Windows + the
+vendored cbor2 wheel). The v1 corpus is a reference implementation, not part
+of the v2 PEC core.
+
 ## Combined gate and release
 
 The combined PowerShell gate is `./run_all.ps1`; it runs all local tests

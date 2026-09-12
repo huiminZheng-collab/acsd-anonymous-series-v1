@@ -38,6 +38,7 @@ FILES = (
     "verify_demo.py",
     "verify_pec.py",
     "verify_release.py",
+    "verify_v1_fixture.py",
     "demo/dialogue-disclosure.json",
     "demo/governance.json",
     "demo/MANIFEST.sha256",
@@ -53,6 +54,27 @@ FILES = (
     "paper/acsd-v2.tex",
     "paper/build/acsd-v2.pdf",
 )
+
+# Directories copied recursively (with exclusions). The v1 fixture corpus is
+# the inherited reference implementation whose evaluation numbers the paper
+# quotes; it is shipped as a frozen snapshot so those numbers are reproducible.
+DIRS = (
+    ("v1-fixture", (".deps", "node_modules", "__pycache__", ".npm-cache", "private-test-keys")),
+)
+
+
+def _copy_tree(source: Path, target: Path, exclude: tuple[str, ...]) -> None:
+    for entry in source.iterdir():
+        if entry.name in exclude:
+            continue
+        dest = target / entry.name
+        if entry.is_dir():
+            dest.mkdir(parents=True, exist_ok=True)
+            _copy_tree(entry, dest, exclude)
+        else:
+            # byte-exact: the v1 fixture snapshot's digests and manifest depend
+            # on exact bytes (including binary .whl/.zip/.scitt/.pem files).
+            dest.write_bytes(entry.read_bytes())
 
 
 def main() -> None:
@@ -70,6 +92,13 @@ def main() -> None:
             shutil.copy2(source, target)
         else:
             target.write_bytes(source.read_bytes().replace(b"\r\n", b"\n"))
+    for relative, exclude in DIRS:
+        source = ROOT / relative
+        if not source.is_dir():
+            raise FileNotFoundError(relative)
+        target = staging / relative
+        target.mkdir(parents=True, exist_ok=True)
+        _copy_tree(source, target, exclude)
     entries = []
     for path in sorted(staging.rglob("*")):
         if path.is_file():

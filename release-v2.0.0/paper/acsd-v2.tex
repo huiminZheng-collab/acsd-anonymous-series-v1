@@ -29,7 +29,7 @@
 \maketitle
 
 \begin{abstract}
-Anonymous scholarly disclosure needs a more precise answer than ``put a signed PDF in a repository.'' A signature identifies a signing key, not necessarily a person; a repository timestamp is not independent time; and a collection of mutually citing papers appears circular if every reference is a content hash. This paper presents \acsd, a narrow executable profile for anonymous scholarly releases. A release binds exact content bytes, ordered anonymous author slots, contribution and AI-use declarations, individual COSE endorsements, and signed byte-level citation witnesses. A separate optional series layer binds stable random \workid s to completed content-addressed releases. This separates a semantic citation graph, which may contain cycles, from a cryptographic commitment graph, which is acyclic. The profile also distinguishes legitimate branches, verifiable equivocation, and content reuse under a different lineage, rather than pretending that a valid signature proves originality. Our prototype has independent Python and Node.js verification paths, a canonical-JSON regression corpus, negative fixtures, and an axiom-free Lean model of its acceptance contracts. We report what these mechanisms establish and, equally importantly, what they do not establish: natural-person identity, contribution truth, originality, peer review, or legal nonrepudiation.
+Anonymous scholarly disclosure needs a more precise answer than ``put a signed PDF in a repository.'' A signature identifies a signing key, not necessarily a person; a repository timestamp is not independent time; and a collection of mutually citing papers appears circular if every reference is a content hash. This paper presents \acsd, a narrow executable profile for anonymous scholarly releases. A release binds exact content bytes, ordered anonymous author slots, contribution and AI-use declarations, individual COSE endorsements, and signed byte-level citation witnesses. A separate optional series layer binds stable random \workid s to completed content-addressed releases. This separates a semantic citation graph, which may contain cycles, from a cryptographic commitment graph, which is acyclic. The profile also distinguishes legitimate branches, verifiable equivocation, and content reuse under a different lineage, rather than pretending that a valid signature proves originality. Our prototype is an executable command-line tool with Ed25519 COSE endorsements and RFC~3161 timestamping, a 64-vector Python--Node canonical-JSON differential harness, negative fixtures, and an axiom-free Lean model of its acceptance contracts. We report what these mechanisms establish and, equally importantly, what they do not establish: natural-person identity, contribution truth, originality, peer review, or legal nonrepudiation.
 \end{abstract}
 
 \section{Introduction}
@@ -179,13 +179,13 @@ There is no circularity: the timestamp receipt is a sidecar over the already fro
 
 \section{Implementation and Evaluation}
 
-The released prototype uses Python for deterministic fixture generation and a zero-dependency Node.js verifier for strict CBOR/COSE and profile validation. The two paths are intentionally separate. The package is designed for offline replay: locked dependencies are included, and the verification driver regenerates fixtures, verifies a standalone release, independently verifies the series profile, builds a manifest, and verifies that manifest.
+The v1 prototype uses Python for deterministic fixture generation and a zero-dependency Node.js verifier for strict CBOR/COSE and profile validation; the two paths are intentionally separate. The package is designed for offline replay: locked dependencies are included, and the verification driver regenerates fixtures, verifies a standalone release, independently verifies the series profile, builds a manifest, and verifies that manifest.
 
 A command-line tool (\texttt{acsd.py}) now turns the profile into an executable workflow: \texttt{keygen} (Ed25519), \texttt{init} (a release directory from a manuscript and a team file), \texttt{approve} (per-author COSE Sign1 endorsement), \texttt{finalize} (signature-complete package assembly with optional RFC~3161 timestamping), and \texttt{verify} (offline re-verification with explicit outcomes and non-claims). The canonical JSON layer is exercised by a 64-vector Python--Node differential harness that enforces byte agreement across implementations; two divergences it surfaced (unpaired surrogate code points and tuples) are now rejected by both implementations.
 
 \begin{table}[t]
 \centering
-\caption{Current executable evaluation corpus.}
+\caption{Executable evaluation corpus. The first seven rows are inherited v1 fixture results; the last two are new v2 results reproducible from this release.}
 \begin{tabular}{lr}
 \toprule
 Object or check & Count / result \\
@@ -196,7 +196,8 @@ Signed series objects & 7 \\
 Closed normal, attack, and indeterminate scenarios & 13 / 13 expected outcomes \\
 Independent profile checks & 30 / 30 passed \\
 Canonical JSON regression cases & 11 / 11 Python--Node agreement \\
-Public-manifest entries & 111 / 111 verified \\
+Public-manifest entries & 113 / 113 verified \\
+v2 differential canonical-JSON vectors & 64 / 64 Python--Node agreement \\
 New PEC theorems in the abstract core & 10, no axiom dependency \\
 \bottomrule
 \end{tabular}
