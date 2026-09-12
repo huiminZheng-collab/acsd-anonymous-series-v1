@@ -181,6 +181,8 @@ There is no circularity: the timestamp receipt is a sidecar over the already fro
 
 The released prototype uses Python for deterministic fixture generation and a zero-dependency Node.js verifier for strict CBOR/COSE and profile validation. The two paths are intentionally separate. The package is designed for offline replay: locked dependencies are included, and the verification driver regenerates fixtures, verifies a standalone release, independently verifies the series profile, builds a manifest, and verifies that manifest.
 
+A command-line tool (\texttt{acsd.py}) now turns the profile into an executable workflow: \texttt{keygen} (Ed25519), \texttt{init} (a release directory from a manuscript and a team file), \texttt{approve} (per-author COSE Sign1 endorsement), \texttt{finalize} (signature-complete package assembly with optional RFC~3161 timestamping), and \texttt{verify} (offline re-verification with explicit outcomes and non-claims). The canonical JSON layer is exercised by a 64-vector Python--Node differential harness that enforces byte agreement across implementations; two divergences it surfaced (unpaired surrogate code points and tuples) are now rejected by both implementations.
+
 \begin{table}[t]
 \centering
 \caption{Current executable evaluation corpus.}

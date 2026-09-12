@@ -2,7 +2,7 @@
 
 ## Implemented and tested
 
-- canonical JSON and SHA-256 PEC bindings;
+- canonical JSON and SHA-256 PEC bindings (Python/Node differential, 64 vectors);
 - v1 PaperRelease and standalone-package adapters;
 - delegation to the audited v1 COSE/SCITT verifier;
 - unanimous author approval checks;
@@ -10,7 +10,10 @@
 - claim-policy non-amplification;
 - salted Merkle dialogue roots, paths, and contiguous-window openings;
 - generated attack corpus and end-to-end demo;
-- demo manifest and command-line verification.
+- demo manifest and command-line verification;
+- CLI (`acsd.py`): keygen/init/approve/finalize/verify/inspect with a state machine;
+- Ed25519 COSE Sign1 endorsements (`cose.py`);
+- RFC 3161 timestamp request construction and TSTInfo parsing (`tsa.py`, local test TSA).
 
 ## Acceptance evidence
 
