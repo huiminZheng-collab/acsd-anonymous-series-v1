@@ -1,0 +1,6 @@
+# cryptography==50.0.1 is supplied by the bundled Codex Python 3.12 runtime.
+cbor2==6.1.4 --hash=sha256:cc8cd300e236e9797b2e1ce306109dc481fcccf78bfa2682bf36d99e6eab1ec6
+
+# SCITT substrate source is loaded from vendor/scitt-cose-v0.1.1.
+# Retained release archive SHA-256:
+# 6da5fc7098bf9d47df9aa96d9800a8bf3ade695b0b21239315067cd40cfd47e6

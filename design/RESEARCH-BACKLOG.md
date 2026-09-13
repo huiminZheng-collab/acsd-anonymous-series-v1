@@ -50,7 +50,7 @@ transparency service.
 
 ### D-01 — Scoped identity disclosure
 
-- **Priority / route status:** P0 / `attempted`.
+- **Priority / route status:** P0 / `implemented`.
 - **Problem:** after an anonymous release, an author may want to reveal one
   paper, one author slot, or one identity assertion without authorizing a
   broader statement about other papers, coauthors, contributions, or committed
@@ -251,8 +251,12 @@ transparency service.
   byte-identical before and after both runs.
 - **Implemented evidence:** `check.py` runs Python without bytecode, builds Lean
   in a temporary copy, generates demos and evidence packages in temporary
-  directories, and compares every source-tree file hash before and after. The
-  installable wheel and immutable evidence directory are separate artifacts.
+  directories, and compares every source-tree file, directory, symlink, mode,
+  and content signature before and after. The evidence package contains an
+  artifact-mode gate that validates its strict manifest before and after its
+  common checks and reproduces itself. The installable wheel is installed into
+  a temporary environment and its console script runs a keygen/release/verify
+  flow outside the source checkout.
 - **Missing checks:** completion of the four-job GitHub matrix on the next push
   and an optional immutable archive transport profile.
 
@@ -260,7 +264,10 @@ transparency service.
 
 - **Priority / route status:** P1 / `attempted`.
 - **Existing evidence:** Lean proves typed composition and lineage properties;
-  Python and Node independently exercise canonicalization and signatures.
+  Python and Node independently exercise canonicalization and signatures. An
+  executable 4-by-4 evidence/claim confusion matrix now matches the closed
+  compatibility relation, and Lean proves that every derivation over a union
+  has a matching verified support atom in one component.
 - **Problem:** the proof assumes typed inputs and cryptographic predicates. It
   does not prove that the DER/CBOR/JSON parsers and executable verifier refine
   those predicates.

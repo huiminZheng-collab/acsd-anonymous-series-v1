@@ -6,6 +6,16 @@ release-v2.0.0/v1-fixture/** -text
 
 # Versioned release trees are content-addressed artifacts.  A checkout must
 # preserve every byte so MANIFEST.sha256 remains valid on all platforms.
-release-v2.0.0/** -text
-release-v2.1.0/** -text
-release-v2.1.1/** -text
+release-v*/** -text
+
+# The checked-in deterministic demo has its own strict manifest and COSE
+# signatures over exact canonical bytes; checkout conversion would corrupt it.
+demo/** -text
+
+# Signature and archive envelopes can be valid binary data without a NUL byte;
+# force binary diff semantics instead of relying on Git's content heuristic.
+*.cose binary
+*.scitt binary
+*.whl binary
+*.zip binary
+*.pdf binary
