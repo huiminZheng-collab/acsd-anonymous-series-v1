@@ -22,7 +22,7 @@ PROJECT = ROOT.parent
 sys.path.insert(0, str(PROJECT))
 
 import tsa  # noqa: E402
-from pec_core import canonical, digest  # noqa: E402
+from canonical_json import canonical, digest  # noqa: E402
 
 
 def read_canonical(path: pathlib.Path):

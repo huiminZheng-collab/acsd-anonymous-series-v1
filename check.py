@@ -18,8 +18,8 @@ import venv
 ROOT = pathlib.Path(__file__).resolve().parent
 WHEEL_INPUTS = (
     "pyproject.toml", "README.md", "LICENSE", "acsd.py", "acsd_version.py", "approval_set.py",
-    "bundle_validation.py", "canonical_json.py", "claim_derivation.py", "cose.py", "event_disclosure.py", "identity_disclosure.py", "key_identity.py",
-    "package_manifest.py", "pec_core.py", "tsa.py", "verification_transcript.py",
+    "bundle_validation.py", "canonical_json.py", "claim_derivation.py", "cli_output.py", "cose.py", "event_disclosure.py", "identity_disclosure.py", "key_identity.py",
+    "legacy_adapter.py", "package_manifest.py", "pec_core.py", "release_adapter.py", "tsa.py", "verification_transcript.py",
     "lineage_verification_transcript.py",
 )
 

@@ -4,8 +4,12 @@ import unittest
 
 import bundle_validation
 import canonical_json
+import cli_output
 import claim_derivation
+import legacy_adapter
 import lineage_verification_transcript
+import pec_core
+import release_adapter
 import verification_transcript
 
 
@@ -44,6 +48,57 @@ class TestTrustedKernelArchitecture(unittest.TestCase):
             self.imported_roots(bundle_validation),
             {"canonical_json"},
         )
+
+    def test_release_projection_is_a_pure_canonical_adapter(self):
+        self.assertEqual(
+            self.imported_roots(release_adapter),
+            {"canonical_json"},
+        )
+
+    def test_legacy_io_is_confined_to_the_named_adapter(self):
+        self.assertEqual(
+            self.imported_roots(legacy_adapter),
+            {
+                "canonical_json",
+                "hashlib",
+                "json",
+                "pathlib",
+                "release_adapter",
+                "subprocess",
+            },
+        )
+        roots = self.imported_roots(pec_core)
+        self.assertEqual(
+            roots,
+            {
+                "bundle_validation",
+                "canonical_json",
+                "hashlib",
+                "legacy_adapter",
+                "release_adapter",
+            },
+        )
+        self.assertTrue({"json", "pathlib", "subprocess"}.isdisjoint(roots))
+
+    def test_cli_output_contract_has_no_application_dependencies(self):
+        self.assertEqual(self.imported_roots(cli_output), {"json"})
+        source = (ROOT / "acsd.py").read_text(encoding="utf-8")
+        self.assertIn("from cli_output import (", source)
+        self.assertNotIn("def emit_json(", source)
+        self.assertNotIn("def emit_human(", source)
+
+    def test_live_application_uses_release_adapter_not_compatibility_name(self):
+        for name in (
+            "acsd.py",
+            "generate_demo.py",
+            "generate_lineage_demo.py",
+            "lineage_verification_certificate.py",
+            "verify_pec.py",
+        ):
+            with self.subTest(module=name):
+                source = (ROOT / name).read_text(encoding="utf-8")
+                self.assertIn("adapt_release", source)
+                self.assertNotIn("adapt_v1_release", source)
 
     def test_decision_core_has_no_io_crypto_or_application_imports(self):
         source = pathlib.Path(claim_derivation.__file__).read_text(encoding="utf-8")

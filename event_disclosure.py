@@ -13,8 +13,9 @@ from bundle_validation import (
     DEFAULT_DISCLOSURE_POLICY as DEFAULT_POLICY,
     new_disclosure_policy,
 )
+from canonical_json import HEX, canonical, digest, require
 from key_identity import key_id_of
-from pec_core import HEX, canonical, digest, require, verify_dialogue_window
+from pec_core import verify_dialogue_window
 
 
 DISCLOSURE_SCHEMA = "acsd-event-disclosure/v1"

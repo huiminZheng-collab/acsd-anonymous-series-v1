@@ -5,7 +5,9 @@ import unittest
 
 import acsd
 from bundle_validation import new_disclosure_policy
-from pec_core import adapt_v1_release, digest, validate_pec
+from canonical_json import digest
+from pec_core import validate_pec
+from release_adapter import adapt_release
 
 
 ROOT = pathlib.Path(__file__).resolve().parent
@@ -21,7 +23,7 @@ class TestUnifiedBundleValidation(unittest.TestCase):
         self.governance = load("demo-lineage/governance/statement.json")
         self.pec = load("demo-lineage/pec/pec.json")
         self.parent_pec = load("demo-lineage/lineage/parent-pec.json")
-        self.adapted = adapt_v1_release(self.release)
+        self.adapted = adapt_release(self.release)
         self.approvals = list(self.adapted["author_key_ids"])
 
     def cli_validation(self, pec, governance=None, release=None):

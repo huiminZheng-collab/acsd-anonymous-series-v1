@@ -6,7 +6,7 @@ import hashlib
 import pathlib
 from typing import Dict, Iterable, List, Mapping
 
-from pec_core import HEX, digest, require
+from canonical_json import HEX, digest, require
 
 
 SCHEMA = "acsd-approval-set/v1"

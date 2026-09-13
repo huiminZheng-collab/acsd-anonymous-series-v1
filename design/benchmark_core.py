@@ -11,7 +11,7 @@ from pathlib import Path
 
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from pec_core import canonical  # noqa: E402
+from canonical_json import canonical  # noqa: E402
 
 
 SIZES = (10, 100, 1000, 5000)

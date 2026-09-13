@@ -175,6 +175,11 @@ raw adapter output being evaluated.
     report the same first error for shared binding, event-chain, policy, and
     capability mutations; canonicalization and public-key identifiers each
     have one implementation.
+12. Live code must use the pure release projection; v1 filesystem access, the
+    optional Node subprocess, and metadata-only disclosure checks must remain
+    confined to the named legacy adapter. Exit codes and human/JSON formatting
+    must come from one application-independent output module and retain the
+    published process contract.
 
 ## Out-of-scope tests for the deterministic local suite
 

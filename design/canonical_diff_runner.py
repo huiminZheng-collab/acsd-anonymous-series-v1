@@ -1,7 +1,7 @@
-"""Differential canonical-JSON tests: Python (pec_core) vs Node (v1 reference).
+"""Differential canonical-JSON tests: Python vs Node (v1 reference).
 
-Design constraint (per task assignment): this file READS the project's
-pec_core but never modifies it. It emits a machine-readable report and the
+Design constraint (per task assignment): this file reads the canonical module
+but never modifies it. It emits a machine-readable report and the
 test-vector set. Each vector carries an expected verdict (ACCEPT/REJECT) at
 the TEXT layer: a text is ACCEPT iff canonical(parse(text)) == text bytes.
 
@@ -22,7 +22,7 @@ import tempfile
 ROOT = pathlib.Path(__file__).resolve().parent
 PROJECT = ROOT.parent
 sys.path.insert(0, str(PROJECT))
-from pec_core import _check_json, canonical as py_canonical  # noqa: E402
+from canonical_json import _check_json, canonical as py_canonical  # noqa: E402
 
 REF_JS = ROOT / "canonical_ref.cjs"
 

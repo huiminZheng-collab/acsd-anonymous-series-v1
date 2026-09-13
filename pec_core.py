@@ -1,10 +1,10 @@
-"""Small, dependency-free PEC reference core.
+"""Compatibility facade plus dependency-free dialogue/sidecar primitives.
 
-This module deliberately models authenticated approvals as an input set; the
-ACSD envelope verifier remains the cryptographic boundary.
+Current code should import canonical, bundle, release, and legacy adapters
+directly.  Published imports remain available here for one compatibility
+cycle; the ACSD envelope verifier remains the cryptographic boundary.
 """
-import hashlib, json, subprocess
-from pathlib import Path
+import hashlib
 
 from bundle_validation import (
     ALLOWED_OUTCOMES,
@@ -12,46 +12,23 @@ from bundle_validation import (
     validate_pec_bundle,
 )
 from canonical_json import HEX, _check_json, canonical, digest, require
+from release_adapter import adapt_release
 
 def adapt_v1_release(release):
-    """Project the published ACSD v1 release shape into PEC bindings."""
-    require(release.get("schema") in {
-        "acsd-v1.6.0-paper-release/v1", "acsd-v3-paper-release/v1"
-    }, "RELEASE_SCHEMA")
-    return {"digest": digest(release), "content_sha256": release["content"]["sha256"],
-            "author_key_ids": [a["key_id"] for a in release["authors"]],
-            "work_id": release["work_id"], "version": release["slot"]["version"],
-            "line": release["slot"]["line"]}
+    """Compatibility name for :func:`release_adapter.adapt_release`."""
+    return adapt_release(release)
 
 def validate_v1_standalone_package(package, root, envelope_verifier=None):
-    """Validate file/digest bindings before handing COSE envelopes to v1 code."""
-    require(package.get("schema") == "acsd-v1.6.0-standalone-paper-package/v1", "PACKAGE_SCHEMA")
-    base = Path(root)
-    release_path = base / package["release_path"]
-    release = json.loads(release_path.read_text(encoding="utf-8"))
-    adapted = adapt_v1_release(release)
-    require(package["release_id"] == "urn:sha256:" + adapted["digest"], "PACKAGE_RELEASE_MISMATCH")
-    seen = set()
-    for endorsement in package["endorsements"]:
-        require(endorsement["author_key_id"] in adapted["author_key_ids"], "ENDORSEMENT_AUTHOR_MISMATCH")
-        require(endorsement["author_key_id"] not in seen, "ENDORSEMENT_DUPLICATE")
-        seen.add(endorsement["author_key_id"])
-        raw = (base / endorsement["path"]).read_bytes()
-        require(hashlib.sha256(raw).hexdigest() == endorsement["sha256"], "ENDORSEMENT_DIGEST_MISMATCH")
-        if envelope_verifier is not None: require(envelope_verifier(raw, endorsement["author_key_id"], package["release_id"]), "ENDORSEMENT_SIGNATURE_INVALID")
-    require(seen == set(adapted["author_key_ids"]), "ENDORSEMENT_SET_INCOMPLETE")
-    return adapted
+    """Compatibility facade for the explicit v1 filesystem adapter."""
+    from legacy_adapter import validate_v1_standalone_package as implementation
+
+    return implementation(package, root, envelope_verifier)
 
 def verify_v1_package_with_node(package_path, verifier_script):
-    """Delegate COSE_Sign1 verification to the audited zero-dependency v1 verifier."""
-    verifier_script = Path(verifier_script).resolve(); package_path = Path(package_path).resolve()
-    result = subprocess.run(["node", str(verifier_script), str(package_path.relative_to(verifier_script.parent))],
-                            cwd=verifier_script.parent, capture_output=True, text=True, check=False)
-    require(result.returncode == 0, "ENDORSEMENT_SIGNATURE_INVALID")
-    report = json.loads(result.stdout)
-    require(report.get("release_valid") is True and report.get("forbidden_or_undeclared_reads") == 0,
-            "ENDORSEMENT_SIGNATURE_INVALID")
-    return report
+    """Compatibility facade for the optional v1 Node adapter."""
+    from legacy_adapter import verify_v1_package_with_node as implementation
+
+    return implementation(package_path, verifier_script)
 
 def validate_pec(pec, approvals, release, governance, predecessor_pec=None):
     require(HEX.fullmatch(pec["subject"]["release_digest"]), "RELEASE_DIGEST")
@@ -65,20 +42,10 @@ def validate_pec(pec, approvals, release, governance, predecessor_pec=None):
     )
 
 def verify_legacy_disclosure_metadata(disclosure, pec, event, required_approval_key_ids=None):
-    """Legacy metadata-only fixture check; never establishes a scoped claim.
+    """Compatibility facade for the non-granting legacy metadata check."""
+    from legacy_adapter import verify_legacy_disclosure_metadata as implementation
 
-    This function intentionally performs no signature or opening validation.
-    New code must use event_disclosure.verify_event_disclosure.
-    """
-    require(disclosure["pec_digest"] == digest(pec), "DISCLOSURE_BINDING_MISMATCH")
-    require(disclosure["event_id"] == event["event_id"], "DISCLOSURE_BINDING_MISMATCH")
-    require(disclosure["event_sequence"] == event["sequence"], "DISCLOSURE_BINDING_MISMATCH")
-    require(disclosure["kind"] == event["kind"], "DISCLOSURE_BINDING_MISMATCH")
-    approved = disclosure.get("approval_key_ids", [])
-    require(len(approved) > 0, "DISCLOSURE_APPROVAL_MISSING")
-    if required_approval_key_ids is not None:
-        require(sorted(approved) == sorted(required_approval_key_ids), "DISCLOSURE_APPROVAL_MISSING")
-    return True
+    return implementation(disclosure, pec, event, required_approval_key_ids)
 
 def _leaf(index, turn, salt):
     raw = b"ACSD-PEC-DIALOGUE-LEAF-v1\0" + index.to_bytes(8, "big") + salt + turn

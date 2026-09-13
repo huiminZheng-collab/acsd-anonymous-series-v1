@@ -19,8 +19,9 @@ from acsd import (
     load_lineage_structure,
     verify_lineage_authorization,
 )
+from canonical_json import canonical, digest, require
 from key_identity import key_id_of
-from pec_core import adapt_v1_release, canonical, digest, require
+from release_adapter import adapt_release
 
 
 SCHEMA = "acsd-lineage-verification-certificate/v1"
@@ -64,7 +65,7 @@ def build(root: pathlib.Path) -> dict:
         root, "lineage/transition.json"
     )
 
-    adapted = adapt_v1_release(release)
+    adapted = adapt_release(release)
     check_release_key_paths(release)
     check_bindings(pec, adapted, governance, release)
     lineage = load_lineage_structure(root, release, governance, pec)

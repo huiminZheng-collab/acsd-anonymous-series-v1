@@ -2,9 +2,9 @@
 
 | Requirement | Evidence | Status |
 |---|---|---|
-| Canonical JSON and safe integers | `pec_core.py`, `test_pec_core.py` | PASS |
-| v1 release/package binding | `adapt_v1_release`, `validate_v1_standalone_package`, adapter tests | PASS |
-| Real COSE/SCITT endorsement path | `verify_v1_package_with_node`, `test_node_integration.py`, bundled v1 fixture | PASS |
+| Canonical JSON and safe integers | `canonical_json.py`, canonical differential and core tests | PASS |
+| v1 release/package binding | `release_adapter.py`, `legacy_adapter.py`, compatibility-facade tests | PASS |
+| Real COSE/SCITT endorsement path | `legacy_adapter.verify_v1_package_with_node`, `test_node_integration.py`, bundled v1 fixture | PASS |
 | Unanimous author approval and target binding | CLI approval verifier, Node cross-check, substitution attacks | PASS |
 | Authorized n+1 lineage edge | `test_lineage_authorization.py`: exact parent, same-key continuation, old-threshold transition | PASS |
 | Unauthorized fresh-key successor rejection | valid child approvals without predecessor quorum | PASS; `VALID_OBJECT_BUT_UNAUTHORIZED_SUCCESSOR` |
@@ -16,6 +16,7 @@
 | Single production claim path | architecture gate plus release, time, event, identity, and demo adapters | PASS; no manual string grant append |
 | Single PEC/policy validation path | CLI and legacy facade delegate to `bundle_validation.py`; 13 common adverse mutations compare first error codes | PASS |
 | Single public-key identifier definition | CLI, event, identity, and certificate adapters import `key_identity.py` | PASS |
+| Confined legacy I/O and stable CLI output | architecture tests reject filesystem/subprocess imports in `pec_core.py`; `cli_output.py` owns exit codes and serialization | PASS |
 | Adapter transcript agreement | independent Python/Node adapters over exact approval, disclosure, key, and Merkle inputs | PASS; canonical certificate bytes identical |
 | Critical-evidence deletion | remove one author/event signature or substitute Merkle scope | PASS; only dependent claims disappear |
 | Transcript-to-appraisal formal bridge | Lean executable closure checks plus independent support/appraisal relations | PASS; composed soundness theorem and weak-rule counterexample |

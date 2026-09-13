@@ -45,6 +45,17 @@ from bundle_validation import (  # noqa: E402
     validate_pec_bundle,
 )
 from acsd_version import __version__  # noqa: E402
+from canonical_json import canonical, digest, require  # noqa: E402
+from cli_output import (  # noqa: E402
+    EXIT_EXTERNAL,
+    EXIT_INCOMPLETE,
+    EXIT_OK,
+    EXIT_STATE_CONFLICT,
+    EXIT_USAGE,
+    EXIT_VERIFY_FAIL,
+    emit_human,
+    emit_json,
+)
 from key_identity import KEY_ID_RE, key_id_of, validate_key_id  # noqa: E402
 from package_manifest import (  # noqa: E402
     build_manifest_text,
@@ -52,7 +63,7 @@ from package_manifest import (  # noqa: E402
     payload_path,
     verify_manifest,
 )
-from pec_core import adapt_v1_release, canonical, digest, require  # noqa: E402
+from release_adapter import adapt_release  # noqa: E402
 
 TEAM_SCHEMA = "acsd-team/v1"
 RELEASE_SCHEMA = "acsd-v3-paper-release/v1"
@@ -68,12 +79,6 @@ DEFAULT_AI_USE = {
     "human_review_key_ids": [],
 }
 
-EXIT_OK = 0
-EXIT_VERIFY_FAIL = 1
-EXIT_USAGE = 2
-EXIT_STATE_CONFLICT = 3
-EXIT_EXTERNAL = 4
-EXIT_INCOMPLETE = 5
 # --- key helpers -----------------------------------------------------------
 
 
@@ -342,8 +347,8 @@ def build_lineage_transition(parent_release, parent_pec, release, governance, pe
     Old-authority signatures cover this body.  New-author approvals cover an
     approval target which includes this body's digest, avoiding a hash cycle.
     """
-    parent = adapt_v1_release(parent_release)
-    child = adapt_v1_release(release)
+    parent = adapt_release(parent_release)
+    child = adapt_release(release)
     parent_authority = lineage_authority_of(parent_release)
     child_authority = lineage_authority_of(release)
     if parent["line"] != child["line"]:
@@ -427,7 +432,7 @@ def check_bindings(pec, adapted, governance, release=None):
 
 def load_lineage_structure(root, release, governance, pec):
     """Validate an optional parent-to-child edge, excluding signatures."""
-    adapted = adapt_v1_release(release)
+    adapted = adapt_release(release)
     parent_id = release.get("parent_release_id")
     predecessor_pec = pec["subject"].get("predecessor_pec_digest")
     if parent_id is None:
@@ -439,7 +444,7 @@ def load_lineage_structure(root, release, governance, pec):
     parent_release = read_canonical(lineage_root / "parent-release.json")
     parent_pec = read_canonical(lineage_root / "parent-pec.json")
     transition = read_canonical(lineage_root / "transition.json")
-    parent = adapt_v1_release(parent_release)
+    parent = adapt_release(parent_release)
     require(parent_id == "urn:sha256:" + parent["digest"], "PARENT_RELEASE_MISMATCH")
     require(parent["work_id"] == adapted["work_id"], "LINEAGE_WORK_ID_MISMATCH")
     if parent["line"] == adapted["line"]:
@@ -600,7 +605,7 @@ def cmd_init(args):
         line=line,
         lineage_threshold=getattr(args, "lineage_threshold", None),
     )
-    adapted = adapt_v1_release(release)
+    adapted = adapt_release(release)
     governance = build_governance(work_id, content_sha256, team)
     gov_digest = digest(governance)
     ai_digest = digest(governance["ai_use_declaration"])
@@ -712,7 +717,7 @@ def cmd_approve(args):
     governance = read_canonical(root / "governance/statement.json")
     pec = read_canonical(root / "pec/pec.json")
     target = read_canonical(root / "approval/target.json")
-    adapted = adapt_v1_release(release)
+    adapted = adapt_release(release)
     check_release_key_paths(release)
     check_bindings(pec, adapted, governance, release)
     lineage = load_lineage_structure(root, release, governance, pec)
@@ -746,7 +751,7 @@ def cmd_finalize(args):
     governance = read_canonical(root / "governance/statement.json")
     pec = read_canonical(root / "pec/pec.json")
     target = read_canonical(root / "approval/target.json")
-    adapted = adapt_v1_release(release)
+    adapted = adapt_release(release)
     check_release_key_paths(release)
     check_bindings(pec, adapted, governance, release)
     lineage = load_lineage_structure(root, release, governance, pec)
@@ -1011,7 +1016,7 @@ def verify_release_dir(root: pathlib.Path, trusted_tsa_cert_der: bytes = None,
     governance = read_canonical(root / "governance/statement.json")
     pec = read_canonical(root / "pec/pec.json")
     target = read_canonical(root / "approval/target.json")
-    adapted = adapt_v1_release(release)
+    adapted = adapt_release(release)
     check_release_key_paths(release)
     try:
         content_file = payload_path(root, release["content"]["path"])
@@ -1237,7 +1242,7 @@ def cmd_inspect(args):
     root = pathlib.Path(args.release_dir)
     state = read_canonical(root / "state.json")
     release = read_canonical(root / "release/release.json")
-    adapted = adapt_v1_release(release)
+    adapted = adapt_release(release)
     received = [
         kid for kid in sorted(adapted["author_key_ids"])
         if (root / f"approvals/{kid}.cose").is_file()
@@ -1340,8 +1345,8 @@ def cmd_compare_successors(args):
             }
     left = read_canonical(left_root / "release/release.json")
     right = read_canonical(right_root / "release/release.json")
-    left_adapted = adapt_v1_release(left)
-    right_adapted = adapt_v1_release(right)
+    left_adapted = adapt_release(left)
+    right_adapted = adapt_release(right)
     same_work = left_adapted["work_id"] == right_adapted["work_id"]
     same_parent = left.get("parent_release_id") == right.get("parent_release_id")
     same_slot = (
@@ -1365,25 +1370,6 @@ def cmd_compare_successors(args):
         "right_release_digest": right_adapted["digest"],
         "winner": None,
     }
-
-
-# --- output -----------------------------------------------------------------
-
-
-def emit_json(command, code, message, data):
-    print(json.dumps({
-        "command": command,
-        "status": "ok" if code == EXIT_OK else "error",
-        "exit_code": code,
-        "message": message,
-        "data": data,
-    }, ensure_ascii=False))
-
-
-def emit_human(command, code, message, data):
-    print(f"{command}: {message} (exit {code})")
-    for k, v in data.items():
-        print(f"  {k}: {v}")
 
 
 def main(argv=None):

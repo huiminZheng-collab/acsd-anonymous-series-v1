@@ -16,7 +16,7 @@ from cryptography.hazmat.primitives import hashes
 
 import approval_set
 import tsa
-from pec_core import HEX, canonical, digest, require
+from canonical_json import HEX, canonical, digest, require
 
 
 SCHEMA = "acsd-rfc3161-appraisal/v1"

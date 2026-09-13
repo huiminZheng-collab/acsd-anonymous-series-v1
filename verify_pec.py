@@ -8,8 +8,9 @@ from cryptography.hazmat.primitives import serialization
 import cose
 import claim_derivation as claim_core
 from acsd import check_approval_target, check_bindings
+from canonical_json import canonical, digest
 from event_disclosure import verify_event_disclosure
-from pec_core import adapt_v1_release, canonical, digest
+from release_adapter import adapt_release
 from verify_demo import verify_demo
 
 def verify_package(root='demo'):
@@ -30,7 +31,7 @@ def verify_package(root='demo'):
         key_id: (root / f'disclosure-approvals/{key_id}.cose').read_bytes()
         for key_id in required
     }
-    adapted = adapt_v1_release(release)
+    adapted = adapt_release(release)
     check_bindings(pec, adapted, governance, release)
     check_approval_target(target, release, governance, pec, adapted)
     for key_id in required:

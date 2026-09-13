@@ -10,16 +10,15 @@ import cose
 import approval_set
 import identity_disclosure
 from acsd import build_approval_target
+from canonical_json import canonical, digest
 from event_disclosure import DEFAULT_POLICY, key_id_of
 from package_manifest import write_manifest
 from pec_core import (
-    adapt_v1_release,
-    canonical,
-    digest,
     dialogue_proof,
     dialogue_root,
     validate_pec,
 )
+from release_adapter import adapt_release
 
 # Deterministic demo identity: a stable WorkID keeps the generated fixture
 # reproducible byte-for-byte (the real CLI will randomize per invocation).
@@ -108,7 +107,7 @@ def generate(out="demo"):
 
     content_sha256 = hashlib.sha256(MANUSCRIPT).hexdigest()
     release = build_release(content_sha256)
-    adapted = adapt_v1_release(release)  # the projection the PEC binds
+    adapted = adapt_release(release)  # the projection the PEC binds
     governance = build_governance(content_sha256)
     gov_digest = digest(governance)
     ai_digest = digest(governance["ai_use_declaration"])

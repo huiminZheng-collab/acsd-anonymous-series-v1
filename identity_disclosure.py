@@ -9,8 +9,8 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
 import cose
 import claim_derivation as claim_core
+from canonical_json import canonical, digest, require
 from key_identity import key_id_of
-from pec_core import canonical, digest, require
 
 
 SCHEMA = "acsd-identity-disclosure/v1"

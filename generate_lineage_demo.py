@@ -26,7 +26,8 @@ from acsd import (
 )
 from event_disclosure import key_id_of
 from package_manifest import write_manifest
-from pec_core import adapt_v1_release, canonical, digest
+from canonical_json import canonical, digest
+from release_adapter import adapt_release
 
 
 WORK_ID = "urn:uuid:2a7f9af8-2148-4f92-92f0-1f3df4af8e4b"
@@ -81,7 +82,7 @@ def generate(destination: pathlib.Path) -> dict:
     )
     parent_pec = build_pec(
         WORK_ID,
-        adapt_v1_release(parent_release),
+        adapt_release(parent_release),
         digest(parent_governance),
         hashlib.sha256(PARENT_MANUSCRIPT).hexdigest(),
         digest(parent_governance["ai_use_declaration"]),
@@ -99,7 +100,7 @@ def generate(destination: pathlib.Path) -> dict:
     )
     child_pec = build_pec(
         WORK_ID,
-        adapt_v1_release(child_release),
+        adapt_release(child_release),
         digest(child_governance),
         hashlib.sha256(CHILD_MANUSCRIPT).hexdigest(),
         digest(child_governance["ai_use_declaration"]),
@@ -114,7 +115,7 @@ def generate(destination: pathlib.Path) -> dict:
         child_release, child_governance, child_pec, transition
     )
 
-    adapted = adapt_v1_release(child_release)
+    adapted = adapt_release(child_release)
     check_bindings(child_pec, adapted, child_governance, child_release)
     check_approval_target(
         target, child_release, child_governance, child_pec, adapted, transition
