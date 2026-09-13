@@ -2,6 +2,8 @@ import ast
 import pathlib
 import unittest
 
+import bundle_validation
+import canonical_json
 import claim_derivation
 import lineage_verification_transcript
 import verification_transcript
@@ -19,6 +21,30 @@ PRODUCTION_GRANTERS = (
 
 
 class TestTrustedKernelArchitecture(unittest.TestCase):
+    @staticmethod
+    def imported_roots(module):
+        source = pathlib.Path(module.__file__).read_text(encoding="utf-8")
+        tree = ast.parse(source)
+        roots = set()
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                roots.update(alias.name.split(".")[0] for alias in node.names)
+            elif isinstance(node, ast.ImportFrom) and node.module:
+                roots.add(node.module.split(".")[0])
+        return roots
+
+    def test_canonical_json_layer_has_only_standard_library_dependencies(self):
+        self.assertEqual(
+            self.imported_roots(canonical_json),
+            {"hashlib", "json", "re"},
+        )
+
+    def test_bundle_validation_depends_only_on_canonical_json(self):
+        self.assertEqual(
+            self.imported_roots(bundle_validation),
+            {"canonical_json"},
+        )
+
     def test_decision_core_has_no_io_crypto_or_application_imports(self):
         source = pathlib.Path(claim_derivation.__file__).read_text(encoding="utf-8")
         tree = ast.parse(source)
@@ -68,6 +94,13 @@ class TestTrustedKernelArchitecture(unittest.TestCase):
             with self.subTest(module=name):
                 source = (ROOT / name).read_text(encoding="utf-8")
                 self.assertIn("claim_derivation", source)
+
+    def test_pec_facades_delegate_to_one_bundle_validator(self):
+        for name in ("acsd.py", "pec_core.py"):
+            with self.subTest(module=name):
+                source = (ROOT / name).read_text(encoding="utf-8")
+                self.assertIn("validate_pec_bundle(", source)
+                self.assertNotIn("CLAIM_POLICY_DUPLICATE", source)
 
     def test_production_code_does_not_append_grants_by_string(self):
         wire_claims = set(claim_derivation.WIRE_TO_CLAIM)

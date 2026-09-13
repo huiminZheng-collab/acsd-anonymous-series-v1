@@ -45,12 +45,16 @@ work toward a later candidate, not a public deployment or venue submission.
   by Python and Node, whose pure Python and Lean checkers require structural
   succession, exact transition binding, child approval, predecessor quorum,
   input closure, approval-set closure, and policy permission.
+- one dependency-light `bundle_validation.py` implementation for PEC,
+  governance, event-chain, and claim-policy rules, reached through both the CLI
+  and legacy `pec_core.validate_pec` facade; canonical JSON and public-key
+  identifiers likewise each have one implementation.
 
 ## Acceptance evidence
 
 - Authoritative read-only gate: 23/23 source, package, installed-wheel,
   differential, formal, and workspace-byte-identity checks pass.
-- Python: 127 tests pass locally; the live TSA test and two unavailable Windows
+- Python: 134 tests pass locally; the live TSA test and two unavailable Windows
   capability cases are skipped.
 - Canonical JSON: 64 fixed vectors have no unexpected divergence; 1,000/1,000
   seeded generated cases agree between Python and Node on bytes and text-layer

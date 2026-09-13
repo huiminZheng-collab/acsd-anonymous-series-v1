@@ -3,6 +3,21 @@
 > 任务 B 交付物。给 GPT/作者"实际编码"阶段的参考。判断基于 2026-09-12
 > 对 v2 release 与 v1 代码库的实际核验。
 
+## 0. 2026-09-13 已落地的简化
+
+早期建议的完整 `acsd/` 包拆分没有机械照搬；当前体量不需要十几个包内
+模块。实际落地的是三个安全边界清楚的平面模块：
+
+- `canonical_json.py`：唯一的受限 JSON 字节规范；
+- `bundle_validation.py`：唯一的 PEC、governance、事件链和 policy 验证；
+- `key_identity.py`：唯一的公钥标识定义。
+
+`acsd.check_bindings` 与 `pec_core.validate_pec` 保留为兼容入口，但不再各自
+实现安全规则。`acsd.py` 因此减少约 97 行，`pec_core.py` 减少约 77 行；
+新增模块的目的不是追求仓库总行数下降，而是让每条安全规则只有一个权威
+实现。审批集合的文件收集和纯集合验证也已经分开。尚未进行的是 v1 adapter
+独立迁移、CLI 命令编排拆分和统一错误序列化。
+
 ## 1. 建议的 Python 包结构
 
 ```
@@ -10,7 +25,7 @@ acsd/
 ├── cli.py           # argparse 入口、子命令分发、--json/--quiet、退出码
 ├── canonical.py     # canonical()/_check_json()，从 pec_core 提取 + 补丁 P1/P3
 ├── keys.py          # Ed25519 生成/加载（PKCS#8 PEM, 0600）、签名、公钥指纹
-├── cose.py          # COSE Sign1 构造与解析（Ed25519; -35 曲线标签）
+├── cose.py          # COSE Sign1 构造与解析（Ed25519/EdDSA; alg -8）
 ├── release.py       # PaperRelease 构建/验证（真实 PDF 内容摘要，替换 demo 占位符）
 ├── governance.py    # AuthorshipGovernanceStatement + team.json 解析
 ├── pec.py           # PEC body 构建/验证（复用 validate_pec 绑定逻辑）
@@ -31,8 +46,8 @@ tests/               # 与模块一一对应；M-* 矩阵全部落位
 
 | 资产 | 位置 | 复用方式 |
 |---|---|---|
-| `canonical()` / `_check_json()` | `pec_core.py` | 平移至 `canonical.py`，落地补丁 P1（lone surrogate）+ P3（tuple） |
-| `validate_pec` 绑定检查 | `pec_core.py` | `pec.py` 复用其逻辑，错误码保留 |
+| `canonical()` / `_check_json()` | `canonical_json.py`（由 `pec_core.py` 兼容导出） | 已完成单一定义及 Python/Node 差分 |
+| `validate_pec` 绑定检查 | `bundle_validation.py` | 已由 CLI 与旧 facade 共同调用，错误码回归覆盖 |
 | `verify_legacy_disclosure_metadata` / dialogue Merkle | `pec_core.py` | 旧元数据入口仅用于兼容；授权性事件揭示走 `event_disclosure.py` |
 | `verify_sidecar_subject` | `pec_core.py` | 平移，作为 `tsa.py` 的 scope 前置检查 |
 | `adapt_v1_release` / `validate_v1_standalone_package` | `pec_core.py` | v1 互操作层保留，按需启用 |

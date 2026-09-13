@@ -14,6 +14,8 @@
 | Claim-policy non-amplification | forbidden outcome gate, attack corpus | PASS |
 | Typed evidence/claim non-confusion | `claim_derivation.py`, complete 7-by-11 unit matrix, selected 4-by-4 checked-in challenge | PASS; no undeclared conversion |
 | Single production claim path | architecture gate plus release, time, event, identity, and demo adapters | PASS; no manual string grant append |
+| Single PEC/policy validation path | CLI and legacy facade delegate to `bundle_validation.py`; 13 common adverse mutations compare first error codes | PASS |
+| Single public-key identifier definition | CLI, event, identity, and certificate adapters import `key_identity.py` | PASS |
 | Adapter transcript agreement | independent Python/Node adapters over exact approval, disclosure, key, and Merkle inputs | PASS; canonical certificate bytes identical |
 | Critical-evidence deletion | remove one author/event signature or substitute Merkle scope | PASS; only dependent claims disappear |
 | Transcript-to-appraisal formal bridge | Lean executable closure checks plus independent support/appraisal relations | PASS; composed soundness theorem and weak-rule counterexample |

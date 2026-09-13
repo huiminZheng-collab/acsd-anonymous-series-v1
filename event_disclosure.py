@@ -5,37 +5,24 @@ from __future__ import annotations
 import hashlib
 from typing import Mapping
 
-from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
 import cose
 import claim_derivation as claim_core
+from bundle_validation import (
+    DEFAULT_DISCLOSURE_POLICY as DEFAULT_POLICY,
+    new_disclosure_policy,
+)
+from key_identity import key_id_of
 from pec_core import HEX, canonical, digest, require, verify_dialogue_window
 
 
 DISCLOSURE_SCHEMA = "acsd-event-disclosure/v1"
 POLICY_SCHEMA = "acsd-disclosure-policy/v1"
-DEFAULT_POLICY = {
-    "schema": POLICY_SCHEMA,
-    "event_kinds": {
-        "dialogue_snapshot": {
-            "modes": ["dialogue_window"],
-            "authorization": "all-release-authors",
-        }
-    },
-}
-
-
-def key_id_of(public_key: Ed25519PublicKey) -> str:
-    der = public_key.public_bytes(
-        encoding=serialization.Encoding.DER,
-        format=serialization.PublicFormat.SubjectPublicKeyInfo,
-    )
-    return hashlib.sha256(der).hexdigest()
 
 
 def validate_policy(policy) -> None:
-    require(policy == DEFAULT_POLICY, "DISCLOSURE_POLICY_INVALID")
+    require(policy == new_disclosure_policy(), "DISCLOSURE_POLICY_INVALID")
 
 
 def _event_for(disclosure, pec):

@@ -19,7 +19,7 @@ from acsd import (
     load_lineage_structure,
     verify_lineage_authorization,
 )
-from event_disclosure import key_id_of
+from key_identity import key_id_of
 from pec_core import adapt_v1_release, canonical, digest, require
 
 

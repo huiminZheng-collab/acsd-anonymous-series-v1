@@ -24,7 +24,7 @@ import cose  # noqa: E402
 import approval_set  # noqa: E402
 import identity_disclosure  # noqa: E402
 import time_evidence  # noqa: E402
-from event_disclosure import key_id_of  # noqa: E402
+from key_identity import key_id_of  # noqa: E402
 from pec_core import canonical, digest, require, verify_dialogue_window  # noqa: E402
 
 

@@ -96,6 +96,15 @@ second-domain instance remains open.
    the behavior corpus proves equivalence.
 5. Centralize public-key identifiers and stable error serialization.
 
+Current status: items 1, 2, and the public-key-identifier half of item 5 are
+implemented. `bundle_validation.py` is the only implementation of PEC,
+governance, event-chain, disclosure-policy, and capability-policy acceptance;
+`acsd.check_bindings` and `pec_core.validate_pec` are compatibility facades.
+`canonical_json.py` owns the byte format and `key_identity.py` owns key IDs.
+Thirteen shared adverse mutations compare the facades' first error codes.
+Moving the v1 adapters and splitting the remaining CLI orchestration are still
+open, as is central serialization of all CLI errors.
+
 No dependency-injection framework, plugin framework, event bus, database, or
 general policy language is planned. Those additions would enlarge the decision
 surface without helping verification.

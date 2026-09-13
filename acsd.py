@@ -37,8 +37,15 @@ import tsa  # noqa: E402
 import approval_set  # noqa: E402
 import claim_derivation as claim_core  # noqa: E402
 import identity_disclosure  # noqa: E402
+from bundle_validation import (  # noqa: E402
+    CURRENT_PEC_SCHEMA as PEC_SCHEMA,
+    GLOBAL_NON_CLAIMS,
+    GOVERNANCE_SCHEMA,
+    new_disclosure_policy,
+    validate_pec_bundle,
+)
 from acsd_version import __version__  # noqa: E402
-from event_disclosure import DEFAULT_POLICY as DEFAULT_DISCLOSURE_POLICY  # noqa: E402
+from key_identity import KEY_ID_RE, key_id_of, validate_key_id  # noqa: E402
 from package_manifest import (  # noqa: E402
     build_manifest_text,
     iter_payload_files,
@@ -50,29 +57,10 @@ from pec_core import adapt_v1_release, canonical, digest, require  # noqa: E402
 TEAM_SCHEMA = "acsd-team/v1"
 RELEASE_SCHEMA = "acsd-v3-paper-release/v1"
 LEGACY_RELEASE_SCHEMA = "acsd-v1.6.0-paper-release/v1"
-GOVERNANCE_SCHEMA = "acsd-v1.6.0-authorship-governance/v1"
 APPROVAL_TARGET_SCHEMA = "acsd-approval-target/v2"
 LEGACY_APPROVAL_TARGET_SCHEMA = "acsd-approval-target/v1"
-PEC_SCHEMA = "acsd-pec/v0.3"
-LEGACY_PEC_SCHEMAS = {"acsd-pec/v0.1", "acsd-pec/v0.2"}
 LINEAGE_AUTHORITY_SCHEMA = "acsd-lineage-authority/v1"
 LINEAGE_TRANSITION_SCHEMA = "acsd-lineage-transition/v1"
-NON_CLAIMS = [
-    "natural_person_authorship",
-    "contribution_truth",
-    "originality_truth",
-    "legal_nonrepudiation",
-    "peer_review",
-]
-ALLOWED_OUTCOMES = {
-    "KEY_ASSENT",
-    "GOVERNANCE_ASSENT",
-    "COMMITTED_EVIDENCE_MATCH",
-    "EXTERNALLY_NOT_AFTER",
-    "APPROVAL_SET_EXISTED_NOT_AFTER",
-    "SLOT_KEY_ASSENT_TO_IDENTITY_ASSERTION",
-    "AUTHORIZED_SUCCESSOR",
-}
 DEFAULT_AI_USE = {
     "used": False,
     "purposes": [],
@@ -86,23 +74,7 @@ EXIT_USAGE = 2
 EXIT_STATE_CONFLICT = 3
 EXIT_EXTERNAL = 4
 EXIT_INCOMPLETE = 5
-KEY_ID_RE = re.compile(r"^[0-9a-f]{64}$")
-
-
 # --- key helpers -----------------------------------------------------------
-
-
-def key_id_of(pub: Ed25519PublicKey) -> str:
-    der = pub.public_bytes(
-        encoding=serialization.Encoding.DER,
-        format=serialization.PublicFormat.SubjectPublicKeyInfo,
-    )
-    return hashlib.sha256(der).hexdigest()
-
-
-def validate_key_id(value) -> str:
-    require(isinstance(value, str) and KEY_ID_RE.fullmatch(value), "KEY_ID_INVALID")
-    return value
 
 
 def load_private_key(path) -> Ed25519PrivateKey:
@@ -342,7 +314,7 @@ def build_pec(work_id, adapted, gov_digest, content_sha256, ai_digest, key_ids,
             "ai_use_declaration_digest": ai_digest,
         },
         "events": [],
-        "disclosure_policy": DEFAULT_DISCLOSURE_POLICY,
+        "disclosure_policy": new_disclosure_policy(),
         "claim_policy": {
             "permitted_outcomes": [
                 "KEY_ASSENT",
@@ -350,7 +322,7 @@ def build_pec(work_id, adapted, gov_digest, content_sha256, ai_digest, key_ids,
                 "APPROVAL_SET_EXISTED_NOT_AFTER",
                 "AUTHORIZED_SUCCESSOR",
             ],
-            "global_non_claims": list(NON_CLAIMS),
+            "global_non_claims": list(GLOBAL_NON_CLAIMS),
             "required_capabilities": {
                 "APPROVAL_SET_EXISTED_NOT_AFTER": [
                     "rfc3161-exact-approval-set-imprint"
@@ -443,89 +415,14 @@ def check_approval_target(target, release, governance, pec, adapted, lineage_tra
 
 
 def check_bindings(pec, adapted, governance, release=None):
-    require(pec.get("schema") == PEC_SCHEMA or pec.get("schema") in LEGACY_PEC_SCHEMAS, "PEC_SCHEMA")
-    subject, gov = pec["subject"], pec["governance"]
-    require(subject["release_digest"] == adapted["digest"], "SUBJECT_RELEASE_MISMATCH")
-    require(subject["work_id"] == adapted["work_id"], "SUBJECT_WORK_ID_MISMATCH")
-    require(subject.get("version") == f"v{adapted['version']}", "SUBJECT_VERSION_MISMATCH")
-    require(subject.get("line") == adapted["line"], "SUBJECT_LINE_MISMATCH")
-    require(gov["statement_digest"] == digest(governance), "GOVERNANCE_BINDING_MISMATCH")
-    require(gov["manuscript_sha256"] == adapted["content_sha256"], "GOVERNANCE_BINDING_MISMATCH")
-    require(gov["ai_use_declaration_digest"] == digest(governance["ai_use_declaration"]), "AI_USE_BINDING_MISMATCH")
-    require(
-        gov["required_pec_approval_key_ids"] == sorted(adapted["author_key_ids"]),
-        "GOVERNANCE_BINDING_MISMATCH",
+    return validate_pec_bundle(
+        pec,
+        adapted,
+        digest(governance),
+        governance=governance,
+        release=release,
+        require_slot_bindings=True,
     )
-    require(pec.get("issuer_key_id") in adapted["author_key_ids"], "PEC_ISSUER_UNAUTHORIZED")
-    require(
-        len(adapted["author_key_ids"]) == len(set(adapted["author_key_ids"])),
-        "RELEASE_DUPLICATE_AUTHOR_KEY",
-    )
-    if release is not None:
-        require(governance.get("schema") == GOVERNANCE_SCHEMA, "GOVERNANCE_SCHEMA")
-        require(governance.get("work_id") == adapted["work_id"], "GOVERNANCE_WORK_ID_MISMATCH")
-        expected_byline = [
-            {
-                "key_id": author.get("key_id"),
-                "slot": author.get("slot"),
-                "role": author.get("role"),
-            }
-            for author in release.get("authors", [])
-        ]
-        require(governance.get("byline") == expected_byline, "GOVERNANCE_BYLINE_MISMATCH")
-        corresponding = [
-            author.get("key_id")
-            for author in release.get("authors", [])
-            if author.get("corresponding") is True
-        ]
-        require(len(corresponding) == 1, "RELEASE_CORRESPONDING_AUTHOR_INVALID")
-        require(
-            governance.get("corresponding_author") == {"key_id": corresponding[0]},
-            "GOVERNANCE_CORRESPONDING_AUTHOR_MISMATCH",
-        )
-        if pec.get("schema") == PEC_SCHEMA:
-            require(
-                governance.get("ai_use_declaration") == release.get("ai_use"),
-                "AI_USE_BINDING_MISMATCH",
-            )
-    events = pec.get("events", [])
-    previous = None
-    event_ids = set()
-    for i, event in enumerate(events):
-        require(event["sequence"] == i, "EVENT_CHAIN_BROKEN")
-        require(event["event_id"] not in event_ids, "EVENT_CHAIN_BROKEN")
-        event_ids.add(event["event_id"])
-        require(event["previous_event_digest"] == previous, "EVENT_CHAIN_BROKEN")
-        previous = digest(event)
-    policy = pec["claim_policy"]
-    required = {"natural_person_authorship", "contribution_truth", "originality_truth", "legal_nonrepudiation", "peer_review"}
-    require(required.issubset(set(policy["global_non_claims"])), "CLAIM_POLICY_INCOMPLETE")
-    outcomes = policy.get("permitted_outcomes", [])
-    require(len(outcomes) == len(set(outcomes)), "CLAIM_POLICY_DUPLICATE")
-    require(set(outcomes).issubset(ALLOWED_OUTCOMES), "CLAIM_POLICY_UNKNOWN_OUTCOME")
-    required_caps = policy.get("required_capabilities", {})
-    if pec.get("schema") == PEC_SCHEMA:
-        require(
-            pec.get("disclosure_policy") == DEFAULT_DISCLOSURE_POLICY,
-            "DISCLOSURE_POLICY_INVALID",
-        )
-        require(
-            required_caps.get("APPROVAL_SET_EXISTED_NOT_AFTER")
-            == ["rfc3161-exact-approval-set-imprint"],
-            "CLAIM_POLICY_CAPABILITY_MISMATCH",
-        )
-        if "AUTHORIZED_SUCCESSOR" in outcomes:
-            require(
-                required_caps.get("AUTHORIZED_SUCCESSOR")
-                == ["predecessor-authority-exact-transition"],
-                "CLAIM_POLICY_CAPABILITY_MISMATCH",
-            )
-    else:
-        require(
-            required_caps.get("EXTERNALLY_NOT_AFTER")
-            == ["rfc3161-exact-approval-target-imprint"],
-            "CLAIM_POLICY_CAPABILITY_MISMATCH",
-        )
 
 
 def load_lineage_structure(root, release, governance, pec):

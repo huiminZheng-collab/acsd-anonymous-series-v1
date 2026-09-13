@@ -5,24 +5,16 @@ from __future__ import annotations
 import hashlib
 from typing import Iterable, Mapping, Tuple
 
-from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
 import cose
 import claim_derivation as claim_core
+from key_identity import key_id_of
 from pec_core import canonical, digest, require
 
 
 SCHEMA = "acsd-identity-disclosure/v1"
 PURPOSE = "publication-unblinding"
-
-
-def key_id_of(public_key: Ed25519PublicKey) -> str:
-    der = public_key.public_bytes(
-        encoding=serialization.Encoding.DER,
-        format=serialization.PublicFormat.SubjectPublicKeyInfo,
-    )
-    return hashlib.sha256(der).hexdigest()
 
 
 def _author_for_slot(release, slot: int):

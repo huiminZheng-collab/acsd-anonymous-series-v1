@@ -171,6 +171,10 @@ raw adapter output being evaluated.
     transition and target, complete child approval, predecessor-threshold
     authorization when authority changes, exact input roles, exact approval-set
     projection, and explicit child-policy permission.
+11. The CLI and legacy PEC facade must reach one pure bundle validator and
+    report the same first error for shared binding, event-chain, policy, and
+    capability mutations; canonicalization and public-key identifiers each
+    have one implementation.
 
 ## Out-of-scope tests for the deterministic local suite
 

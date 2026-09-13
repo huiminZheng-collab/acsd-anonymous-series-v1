@@ -3,56 +3,15 @@
 This module deliberately models authenticated approvals as an input set; the
 ACSD envelope verifier remains the cryptographic boundary.
 """
-import hashlib, json, re, subprocess
+import hashlib, json, subprocess
 from pathlib import Path
 
-HEX = re.compile(r"^[0-9a-f]{64}$")
-ALLOWED_OUTCOMES = {
-    "KEY_ASSENT", "GOVERNANCE_ASSENT", "COMMITTED_EVIDENCE_MATCH",
-    "EXTERNALLY_NOT_AFTER",
-    "APPROVAL_SET_EXISTED_NOT_AFTER",
-    "SLOT_KEY_ASSENT_TO_IDENTITY_ASSERTION",
-    "AUTHORIZED_SUCCESSOR",
-}
-REQUIRED_NON_CLAIMS = {
-    "natural_person_authorship", "contribution_truth", "originality_truth",
-    "legal_nonrepudiation", "peer_review",
-}
-
-def _check_json(value, depth=0):
-    if depth > 200: raise ValueError("JSON_TOO_DEEP")
-    if isinstance(value, bool) or value is None: return
-    if isinstance(value, str):
-        if any(0xD800 <= ord(c) <= 0xDFFF for c in value):
-            raise ValueError("LONE_SURROGATE")
-        return
-    if isinstance(value, int):
-        if abs(value) > 9007199254740991: raise ValueError("UNSAFE_INTEGER")
-        return
-    if isinstance(value, float): raise ValueError("FLOAT_FORBIDDEN")
-    if isinstance(value, list):
-        for item in value: _check_json(item, depth + 1)
-        return
-    if isinstance(value, dict):
-        for key, item in value.items():
-            if not isinstance(key, str): raise ValueError("JSON_KEY_TYPE_FORBIDDEN")
-            if any(ord(c) > 127 for c in key): raise ValueError("NONASCII_KEY")
-            _check_json(item, depth + 1)
-        return
-    raise ValueError("JSON_TYPE_FORBIDDEN")
-
-def canonical(obj):
-    _check_json(obj)
-    # ensure_ascii=False matches the v1 reference (generate.py) and the Node
-    # verifier (JSON.stringify), which both keep non-ASCII string values as raw
-    # UTF-8 bytes. Escaping them here would split the canonical byte image.
-    return json.dumps(obj, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
-
-def digest(obj):
-    return hashlib.sha256(canonical(obj)).hexdigest()
-
-def require(cond, code):
-    if not cond: raise ValueError(code)
+from bundle_validation import (
+    ALLOWED_OUTCOMES,
+    REQUIRED_NON_CLAIMS,
+    validate_pec_bundle,
+)
+from canonical_json import HEX, _check_json, canonical, digest, require
 
 def adapt_v1_release(release):
     """Project the published ACSD v1 release shape into PEC bindings."""
@@ -95,55 +54,15 @@ def verify_v1_package_with_node(package_path, verifier_script):
     return report
 
 def validate_pec(pec, approvals, release, governance, predecessor_pec=None):
-    require(pec.get("schema") in {"acsd-pec/v0.1", "acsd-pec/v0.2", "acsd-pec/v0.3"}, "PEC_SCHEMA")
-    body_digest = digest(pec)
-    subject, gov = pec["subject"], pec["governance"]
-    require(HEX.fullmatch(subject["release_digest"]), "RELEASE_DIGEST")
-    require(subject["release_digest"] == release["digest"], "SUBJECT_RELEASE_MISMATCH")
-    require(subject["work_id"] == release["work_id"], "SUBJECT_WORK_ID_MISMATCH")
-    require(gov["statement_digest"] == governance["digest"], "GOVERNANCE_BINDING_MISMATCH")
-    require(gov["manuscript_sha256"] == release["content_sha256"], "GOVERNANCE_BINDING_MISMATCH")
-    keys = sorted(release["author_key_ids"])
-    require(gov["required_pec_approval_key_ids"] == keys, "GOVERNANCE_BINDING_MISMATCH")
-    require(sorted(approvals) == keys, "PEC_APPROVAL_MISSING")
-    require(pec.get("issuer_key_id") in keys, "PEC_ISSUER_UNAUTHORIZED")
-    predecessor = subject.get("predecessor_pec_digest")
-    if predecessor is not None:
-        require(predecessor_pec is not None and predecessor == digest(predecessor_pec), "PREDECESSOR_MISMATCH")
-    events = pec.get("events", [])
-    previous = None
-    event_ids = set()
-    for i, event in enumerate(events):
-        require(event["sequence"] == i, "EVENT_CHAIN_BROKEN")
-        require(event["event_id"] not in event_ids, "EVENT_CHAIN_BROKEN")
-        event_ids.add(event["event_id"])
-        require(event["previous_event_digest"] == previous, "EVENT_CHAIN_BROKEN")
-        previous = digest(event)
-    policy = pec["claim_policy"]
-    require(REQUIRED_NON_CLAIMS.issubset(set(policy["global_non_claims"])), "CLAIM_POLICY_INCOMPLETE")
-    outcomes = policy.get("permitted_outcomes", [])
-    require(len(outcomes) == len(set(outcomes)), "CLAIM_POLICY_DUPLICATE")
-    require(set(outcomes).issubset(ALLOWED_OUTCOMES), "CLAIM_POLICY_UNKNOWN_OUTCOME")
-    if pec.get("schema") == "acsd-pec/v0.3":
-        from event_disclosure import validate_policy
-        validate_policy(pec.get("disclosure_policy"))
-        capabilities = policy.get("required_capabilities", {}).get(
-            "APPROVAL_SET_EXISTED_NOT_AFTER"
-        )
-        require(
-            capabilities == ["rfc3161-exact-approval-set-imprint"],
-            "CLAIM_POLICY_CAPABILITY_MISMATCH",
-        )
-        if "AUTHORIZED_SUCCESSOR" in outcomes:
-            require(
-                policy.get("required_capabilities", {}).get("AUTHORIZED_SUCCESSOR")
-                == ["predecessor-authority-exact-transition"],
-                "CLAIM_POLICY_CAPABILITY_MISMATCH",
-            )
-    elif "EXTERNALLY_NOT_AFTER" in outcomes:
-        capabilities = policy.get("required_capabilities", {}).get("EXTERNALLY_NOT_AFTER")
-        require(capabilities == ["rfc3161-exact-approval-target-imprint"], "CLAIM_POLICY_CAPABILITY_MISMATCH")
-    return {"pec_digest": body_digest, "permitted_outcomes": tuple(outcomes)}
+    require(HEX.fullmatch(pec["subject"]["release_digest"]), "RELEASE_DIGEST")
+    return validate_pec_bundle(
+        pec,
+        release,
+        governance["digest"],
+        approvals=approvals,
+        predecessor_pec=predecessor_pec,
+        check_predecessor=True,
+    )
 
 def verify_legacy_disclosure_metadata(disclosure, pec, event, required_approval_key_ids=None):
     """Legacy metadata-only fixture check; never establishes a scoped claim.
