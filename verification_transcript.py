@@ -16,16 +16,19 @@ import claim_derivation as claims
 
 HEX64 = re.compile(r"[0-9a-f]{64}")
 MAX_SAFE_INTEGER = 9_007_199_254_740_991
-SCHEMA = "acsd-verification-certificate/v1"
+SCHEMA_V1 = "acsd-verification-certificate/v1"
+SCHEMA_V2 = "acsd-verification-certificate/v2"
 INPUT_ROLES = {
     "approval-target", "pec", "event-disclosure", "public-key",
     "author-approval-cose", "event-disclosure-cose",
+    "release", "identity-disclosure", "identity-disclosure-cose",
 }
-TOP_FIELDS = {
+TOP_FIELDS_V1 = {
     "schema", "inputs", "approval_target", "policy", "event_disclosure",
     "signature_facts", "merkle_facts", "identity_assertions",
     "timestamp_facts", "trusted_inputs",
 }
+TOP_FIELDS_V2 = TOP_FIELDS_V1 | {"release_context"}
 
 
 def _require(condition, code):
@@ -96,9 +99,11 @@ def _closed_signatures(facts, purpose, required, payload, input_digests):
 def appraised_evidence(certificate: dict, certificate_digest: str) -> Tuple[claims.AppraisedEvidence, ...]:
     """Return evidence atoms only for transcript groups with exact closure."""
     _digest(certificate_digest, "TRANSCRIPT_CERTIFICATE_DIGEST")
-    _require(isinstance(certificate, dict) and set(certificate) == TOP_FIELDS,
-             "TRANSCRIPT_FIELDS")
-    _require(certificate["schema"] == SCHEMA, "TRANSCRIPT_SCHEMA")
+    _require(isinstance(certificate, dict), "TRANSCRIPT_FIELDS")
+    schema = certificate.get("schema")
+    _require(schema in {SCHEMA_V1, SCHEMA_V2}, "TRANSCRIPT_SCHEMA")
+    expected_fields = TOP_FIELDS_V2 if schema == SCHEMA_V2 else TOP_FIELDS_V1
+    _require(set(certificate) == expected_fields, "TRANSCRIPT_FIELDS")
     input_digests = _input_digests(certificate)
 
     approval = certificate["approval_target"]
@@ -122,7 +127,9 @@ def appraised_evidence(certificate: dict, certificate_digest: str) -> Tuple[clai
         _require(isinstance(item, dict) and set(item) == {
             "purpose", "key_id", "payload_digest", "cose_digest"
         }, "TRANSCRIPT_SIGNATURE_FACT")
-        _require(item["purpose"] in {"author-approval", "event-disclosure"},
+        _require(item["purpose"] in {
+            "author-approval", "event-disclosure", "identity-disclosure"
+        },
                  "TRANSCRIPT_SIGNATURE_PURPOSE")
         _digest(item["key_id"], "TRANSCRIPT_SIGNATURE_KEY")
         _digest(item["payload_digest"], "TRANSCRIPT_SIGNATURE_PAYLOAD")
@@ -187,8 +194,103 @@ def appraised_evidence(certificate: dict, certificate_digest: str) -> Tuple[clai
             certificate_digest,
         ))
 
-    for name in ("identity_assertions", "timestamp_facts", "trusted_inputs"):
-        _require(certificate[name] == [], "TRANSCRIPT_UNSUPPORTED_EXTENSION")
+    _require(certificate["timestamp_facts"] == [], "TRANSCRIPT_UNSUPPORTED_EXTENSION")
+    _require(certificate["trusted_inputs"] == [], "TRANSCRIPT_UNSUPPORTED_EXTENSION")
+    if schema == SCHEMA_V1:
+        _require(certificate["identity_assertions"] == [],
+                 "TRANSCRIPT_UNSUPPORTED_EXTENSION")
+    else:
+        release = certificate["release_context"]
+        _require(isinstance(release, dict) and set(release) == {
+            "release_digest", "author_slots"
+        }, "TRANSCRIPT_RELEASE_CONTEXT")
+        release_digest = _digest(
+            release["release_digest"], "TRANSCRIPT_RELEASE_DIGEST"
+        )
+        slots = release["author_slots"]
+        _require(isinstance(slots, list) and bool(slots), "TRANSCRIPT_AUTHOR_SLOTS")
+        parsed_slots = []
+        for item in slots:
+            _require(isinstance(item, dict) and set(item) == {"slot", "key_id"},
+                     "TRANSCRIPT_AUTHOR_SLOT")
+            slot = _nat(item["slot"], "TRANSCRIPT_AUTHOR_SLOT")
+            _require(slot > 0, "TRANSCRIPT_AUTHOR_SLOT")
+            parsed_slots.append((
+                slot,
+                _digest(item["key_id"], "TRANSCRIPT_AUTHOR_SLOT_KEY"),
+            ))
+        _require(
+            parsed_slots == sorted(set(parsed_slots))
+            and len({slot for slot, _ in parsed_slots}) == len(parsed_slots)
+            and len({key for _, key in parsed_slots}) == len(parsed_slots),
+            "TRANSCRIPT_AUTHOR_SLOTS",
+        )
+
+        identities = certificate["identity_assertions"]
+        _require(isinstance(identities, list) and bool(identities),
+                 "TRANSCRIPT_IDENTITY_ASSERTIONS")
+        parsed_identities = []
+        for item in identities:
+            _require(isinstance(item, dict) and set(item) == {
+                "body_digest", "release_digest", "author_slot", "author_key_id",
+                "assertion_digest", "cose_digest",
+            }, "TRANSCRIPT_IDENTITY_ASSERTION")
+            author_slot = _nat(item["author_slot"], "TRANSCRIPT_IDENTITY_SLOT")
+            _require(author_slot > 0, "TRANSCRIPT_IDENTITY_SLOT")
+            parsed_identities.append({
+                "body_digest": _digest(item["body_digest"], "TRANSCRIPT_IDENTITY_BODY"),
+                "release_digest": _digest(
+                    item["release_digest"], "TRANSCRIPT_IDENTITY_RELEASE"
+                ),
+                "author_slot": author_slot,
+                "author_key_id": _digest(
+                    item["author_key_id"], "TRANSCRIPT_IDENTITY_KEY"
+                ),
+                "assertion_digest": _digest(
+                    item["assertion_digest"], "TRANSCRIPT_IDENTITY_ASSERTION_DIGEST"
+                ),
+                "cose_digest": _digest(item["cose_digest"], "TRANSCRIPT_IDENTITY_COSE"),
+            })
+        _require(
+            parsed_identities == sorted(parsed_identities, key=lambda item: item["author_slot"])
+            and len({item["author_slot"] for item in parsed_identities})
+                == len(parsed_identities),
+            "TRANSCRIPT_IDENTITY_ORDER",
+        )
+        selected = [item for item in facts if item["purpose"] == "identity-disclosure"]
+        expected_signatures = [
+            {
+                "purpose": "identity-disclosure",
+                "key_id": item["author_key_id"],
+                "payload_digest": item["body_digest"],
+                "cose_digest": item["cose_digest"],
+            }
+            for item in parsed_identities
+        ]
+        closed = (
+            selected == expected_signatures
+            and input_digests.get("identity-disclosure-cose", [])
+                == [item["cose_digest"] for item in parsed_identities]
+            and len({item["cose_digest"] for item in parsed_identities})
+                == len(parsed_identities)
+            and all(
+                item["release_digest"] == release_digest
+                and (item["author_slot"], item["author_key_id"]) in parsed_slots
+                for item in parsed_identities
+            )
+        )
+        if closed:
+            for item in parsed_identities:
+                evidence.append(claims.AppraisedEvidence(
+                    claims.EvidenceKind.SLOT_IDENTITY_ASSENT,
+                    claims.IdentitySubject(
+                        release_digest,
+                        item["author_slot"],
+                        item["author_key_id"],
+                        item["assertion_digest"],
+                    ),
+                    certificate_digest,
+                ))
     return tuple(evidence)
 
 

@@ -1,8 +1,13 @@
-# Verification certificate v1 boundary
+# Verification certificate v1/v2 boundary
 
 `acsd-verification-certificate/v1` is a claim-free transcript of facts checked
 by the Python and Node byte-level adapters. It is not an authorship credential,
 a timestamp, or an acceptance verdict.
+
+`acsd-verification-certificate/v2` is the smallest strict extension of v1. It
+adds one release context and one or more selectively disclosed author-slot
+identity assertions. V1 remains closed and unchanged, so an old certificate
+cannot acquire identity meaning through a permissive parser upgrade.
 
 ## Canonical input
 
@@ -16,12 +21,16 @@ a timestamp, or an acceptance verdict.
 - Required key arrays are nonempty and duplicate-free. Adapter output orders
   required keys and signature facts canonically.
 - `identity_assertions`, `timestamp_facts`, and `trusted_inputs` must be empty
-  in v1. A future implementation must use a new or explicitly extended schema
-  rather than silently ignoring those facts.
+  in v1. In v2, `timestamp_facts` and `trusted_inputs` remain empty, while each
+  identity assertion is bound to an exact release digest, positive author slot,
+  slot key, assertion digest, signed body, and COSE input.
+- V2 release slots are nonempty and unique by both slot number and author key;
+  disclosed identity slots and their COSE inputs are also duplicate-free.
 
 ## Lean projection
 
-`ACSD.TranscriptJson.decodeCertificateText` parses the canonical JSON directly.
+`ACSD.TranscriptJson.decodeCertificateText` parses both canonical schemas
+directly.
 It maps 256-bit hexadecimal strings injectively to arbitrary-precision Lean
 natural numbers, preserves the event identifier as a string, and retains
 separate approval, event, and policy PEC digests. The typed transcript also
@@ -39,6 +48,12 @@ The Lean executable then checks:
   count; and
 - an explicit policy rule for every emitted exact-subject claim.
 
+For v2 it additionally checks the exact identity-signature projection, exact
+identity-COSE input projection, release/slot/key membership, and uniqueness.
+Only then can it emit the narrow claim that a particular release slot key
+assented to a particular identity assertion. It does not turn that statement
+into a claim about undisclosed coauthors or natural-person truth.
+
 Its output is `acsd-lean-transcript-result/v1`. Each result contains the full
 claim subject and the digest supplied for the exact certificate bytes. The
 caller computes that SHA-256 digest; Lean validates its representation but does
@@ -46,10 +61,12 @@ not recompute SHA-256 in this version.
 
 ## Assurance boundary
 
-The Python and Node adapters independently reproduce identical canonical
-certificate bytes from the demo bundle. Lean independently parses those bytes
-and performs the structural appraisal. A differential runner compares complete
-Python and Lean derivations under positive and adverse mutations.
+The Python and Node adapters independently reproduce identical canonical v1
+and v2 certificate bytes from the demo bundle. Lean independently parses those
+bytes and performs the structural appraisal. A differential runner compares
+complete Python and Lean derivations under positive and adverse mutations,
+including slot, key, release, payload, COSE-input, policy, and duplicate-slot
+changes.
 
 This establishes an executable refinement check from the current restricted
 JSON transcript to the proved typed appraisal model. It does not prove the

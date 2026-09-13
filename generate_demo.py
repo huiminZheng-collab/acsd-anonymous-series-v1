@@ -7,6 +7,7 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 import cose
+import identity_disclosure
 from acsd import build_approval_target
 from event_disclosure import DEFAULT_POLICY, key_id_of
 from package_manifest import write_manifest
@@ -151,7 +152,10 @@ def generate(out="demo"):
         ],
         "disclosure_policy": DEFAULT_POLICY,
         "claim_policy": {
-            "permitted_outcomes": ["KEY_ASSENT", "GOVERNANCE_ASSENT", "COMMITTED_EVIDENCE_MATCH"],
+            "permitted_outcomes": [
+                "KEY_ASSENT", "GOVERNANCE_ASSENT", "COMMITTED_EVIDENCE_MATCH",
+                "SLOT_KEY_ASSENT_TO_IDENTITY_ASSERTION",
+            ],
             "required_capabilities": {
                 "APPROVAL_SET_EXISTED_NOT_AFTER": [
                     "rfc3161-exact-approval-set-imprint"
@@ -187,6 +191,11 @@ def generate(out="demo"):
             for i in (1, 2)
         ],
     }
+    identity = identity_disclosure.build(
+        release, 1, "Demo Author One",
+        persistent_identifier="https://example.invalid/acsd/demo-author-one",
+        publication_ref=None,
+    )
 
     (out / "manuscript.txt").write_bytes(MANUSCRIPT)
     (out / "release.json").write_bytes(canonical(release) + b"\n")
@@ -196,6 +205,7 @@ def generate(out="demo"):
     (out / "public-keys").mkdir(exist_ok=True)
     (out / "release-approvals").mkdir(exist_ok=True)
     (out / "disclosure-approvals").mkdir(exist_ok=True)
+    (out / "identity").mkdir(exist_ok=True)
     (out / "approval-target.json").write_bytes(canonical(approval_target) + b"\n")
     for key in DEMO_KEYS:
         key_id = key_id_of(key.public_key())
@@ -211,6 +221,10 @@ def generate(out="demo"):
         (out / "release-approvals" / f"{key_id}.cose").write_bytes(
             cose.cose_sign1(canonical(approval_target), key)
         )
+    (out / "identity" / "slot-1.json").write_bytes(canonical(identity) + b"\n")
+    (out / "identity" / "slot-1.cose").write_bytes(
+        cose.cose_sign1(canonical(identity), DEMO_KEYS[0])
+    )
     write_manifest(out)
     return root, digest(pec)
 

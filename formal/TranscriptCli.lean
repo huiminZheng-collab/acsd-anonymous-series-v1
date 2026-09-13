@@ -61,10 +61,10 @@ def main (args : List String) : IO UInt32 := do
       let text ← IO.FS.readFile path
       match decodeCertificateText text, decodeDigestText certificateText with
       | .ok raw, .ok certificate =>
-          let transcript := refineCertificateV1 raw
+          let transcript := refineCertificate raw
           if transcriptPolicyBoundB transcript then
             IO.println <| (resultJson certificate
-              (deriveCertificateV1 raw certificate)).compress
+              (deriveCertificate raw certificate)).compress
             pure 0
           else
             IO.eprintln <| (errorJson "TRANSCRIPT_POLICY_SCOPE").compress

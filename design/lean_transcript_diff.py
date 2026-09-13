@@ -52,6 +52,14 @@ def subject_json(subject: claims.Subject) -> dict:
             "first_index": subject.first_index,
             "last_index": subject.last_index,
         }
+    if isinstance(subject, claims.IdentitySubject):
+        return {
+            "kind": "identity-assertion",
+            "release_digest_nat": digest_nat(subject.release_digest),
+            "author_slot": subject.author_slot,
+            "key_id_nat": digest_nat(subject.author_key_id),
+            "assertion_digest_nat": digest_nat(subject.assertion_digest),
+        }
     raise AssertionError("unexpected claim subject in v1 transcript")
 
 
@@ -148,16 +156,69 @@ def mutations(base: dict):
     yield "unexpected-field", value
 
 
+def identity_mutations(base: dict):
+    yield "identity-v2-valid", copy.deepcopy(base)
+
+    value = copy.deepcopy(base)
+    value["identity_assertions"][0]["author_slot"] = 2
+    yield "identity-slot-substitution", value
+
+    value = copy.deepcopy(base)
+    value["identity_assertions"][0]["author_key_id"] = (
+        value["release_context"]["author_slots"][1]["key_id"]
+    )
+    yield "identity-key-substitution", value
+
+    value = copy.deepcopy(base)
+    item = next(entry for entry in value["inputs"]
+                if entry["role"] == "identity-disclosure-cose")
+    item["sha256"] = "0" * 64
+    yield "identity-cose-input-substitution", value
+
+    value = copy.deepcopy(base)
+    signature = next(entry for entry in value["signature_facts"]
+                     if entry["purpose"] == "identity-disclosure")
+    signature["payload_digest"] = "0" * 64
+    yield "identity-payload-substitution", value
+
+    value = copy.deepcopy(base)
+    value["identity_assertions"][0]["release_digest"] = "0" * 64
+    yield "identity-release-substitution", value
+
+    value = copy.deepcopy(base)
+    value["policy"]["permitted_outcomes"].remove(
+        "SLOT_KEY_ASSENT_TO_IDENTITY_ASSERTION"
+    )
+    yield "identity-policy-absence", value
+
+    value = copy.deepcopy(base)
+    value["identity_assertions"].append(copy.deepcopy(value["identity_assertions"][0]))
+    yield "identity-slot-conflict", value
+
+    value = copy.deepcopy(base)
+    value["identity_assertions"][0]["author_slot"] = 0
+    yield "identity-zero-slot", value
+
+    value = copy.deepcopy(base)
+    value["release_context"]["author_slots"][1]["key_id"] = (
+        value["release_context"]["author_slots"][0]["key_id"]
+    )
+    yield "release-duplicate-author-key", value
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--checker", required=True, type=pathlib.Path)
     args = parser.parse_args()
     checker = args.checker.resolve()
     base = json.loads((ROOT / "verification_certificate_demo.json").read_bytes())
+    identity_base = json.loads(
+        (ROOT / "verification_certificate_demo_v2.json").read_bytes()
+    )
     compared = 0
     with tempfile.TemporaryDirectory() as temporary:
         directory = pathlib.Path(temporary)
-        for name, certificate in mutations(base):
+        for name, certificate in list(mutations(base)) + list(identity_mutations(identity_base)):
             raw = canonical(certificate)
             certificate_digest = hashlib.sha256(raw).hexdigest()
             try:
@@ -190,11 +251,12 @@ def main() -> int:
                     )
             compared += 1
 
-        noncanonical = json.dumps(base, indent=2).encode("utf-8")
-        lean = run_lean(checker, noncanonical, directory)
-        if lean.returncode == 0:
-            raise AssertionError("noncanonical JSON was accepted by Lean")
-        compared += 1
+        for label, value in (("v1", base), ("v2", identity_base)):
+            noncanonical = json.dumps(value, indent=2).encode("utf-8")
+            lean = run_lean(checker, noncanonical, directory)
+            if lean.returncode == 0:
+                raise AssertionError(f"noncanonical {label} JSON was accepted by Lean")
+            compared += 1
 
     print(f"lean-transcript-differential: {compared}/{compared} cases PASS")
     return 0

@@ -219,17 +219,17 @@ Linux/macOS:
 The authoritative `check.py` gate is read-only and finishes by comparing all
 source-tree file hashes with its starting snapshot. It contains:
 
-- 113 Python tests passing, with the live-network and two unavailable Windows
+- 116 Python tests passing, with the live-network and two unavailable Windows
   capability cases skipped locally;
 - 64 fixed Python-Node canonical-JSON vectors with no unexpected divergence;
 - 1,000 seeded generated differential cases with 1,000 byte and verdict
   agreements;
 - independent Node verification of Python-produced approval COSE;
-- byte-identical Python/Node `acsd-verification-certificate/v1` output for the
-  two-author approval and event-disclosure fixture, with no embedded verdict;
+- byte-identical Python/Node `acsd-verification-certificate/v1` approval/event
+  output and v2 release-slot identity output, with no embedded verdict;
 - a pure structural transcript checker with critical-evidence deletion tests;
-- a strict Lean decoder and executable checker over the same canonical
-  transcript, with 16/16 complete scoped-derivation differential cases;
+- a strict Lean decoder and executable checker over both canonical schemas,
+  with 27/27 complete scoped-derivation differential cases;
 - a complete 6-by-10 typed unary compatibility test plus a checked-in selected
   4-by-4 semantic-confusion challenge with all 12 off-diagonal substitutions
   denied and a key-compromise timeline;
@@ -237,7 +237,7 @@ source-tree file hashes with its starting snapshot. It contains:
   scenarios, 30/30 profile checks, and 113/113 manifest entries;
 - a scaling sample from 10 to 5,000 in-memory objects, recorded in
   `design/performance_report.json`;
-- a Lean 4.33.1 build with 61 theorems covering PEC, lineage, scoped claims,
+- a Lean 4.33.1 build with 64 theorems covering PEC, lineage, scoped claims,
   parameterized appraisal/checker correspondence, transcript-group closure,
   selective identity, atomic event disclosure, and typed time subjects with no
   `sorry`/`admit`; the separately published v1 formal core's 53

@@ -11,6 +11,7 @@ ALLOWED_OUTCOMES = {
     "KEY_ASSENT", "GOVERNANCE_ASSENT", "COMMITTED_EVIDENCE_MATCH",
     "EXTERNALLY_NOT_AFTER",
     "APPROVAL_SET_EXISTED_NOT_AFTER",
+    "SLOT_KEY_ASSENT_TO_IDENTITY_ASSERTION",
 }
 REQUIRED_NON_CLAIMS = {
     "natural_person_authorship", "contribution_truth", "originality_truth",

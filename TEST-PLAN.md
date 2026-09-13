@@ -88,6 +88,12 @@ verdict. Python and Node independently read canonical JSON, bind public-key
 identifiers, verify every author/event COSE, verify the dialogue Merkle window,
 and emit the same canonical transcript.
 
+`acsd-verification-certificate/v2` preserves that closed v1 profile and adds
+release-scoped, author-slot identity facts. Both adapters must emit the same v2
+bytes, and Lean must independently require the exact release/slot/key,
+identity-payload/signature, and COSE-input closure before deriving the narrow
+slot-assent claim.
+
 | Mutation | Adapter result | Pure checker result |
 |---|---|---|
 | unchanged two-author demo | byte-identical Python/Node certificate | approval and exact event evidence atoms |
@@ -103,8 +109,13 @@ and emit the same canonical transcript.
 | exceed the JavaScript safe-integer bound | both structural decoders reject | Python/Node/Lean numeric semantics remain aligned |
 | populate an unimplemented extension array | both structural decoders reject | unsupported facts are never silently ignored |
 | add whitespace to canonical JSON | Lean decoder rejects | checked bytes have one representation |
+| substitute the disclosed author slot or author key in v2 | transcript remains parseable | only the identity claim disappears |
+| substitute the identity COSE input, signed payload, or release digest | transcript remains parseable | only the identity claim disappears |
+| remove the identity policy outcome | transcript remains parseable | verified identity evidence grants no claim |
+| duplicate a disclosed identity slot | both structural decoders reject | ambiguous slot identity is never appraised |
+| use slot zero or reuse one release author key in two slots | both structural decoders reject | malformed author-slot context is never appraised |
 
-The final three cases test dependency precision, not adapter authenticity: a
+The dependency-substitution cases test precision, not adapter authenticity: a
 standalone transcript is meaningful only when its exact digest is bound to the
 raw adapter output being evaluated.
 
@@ -126,6 +137,9 @@ raw adapter output being evaluated.
 7. The executable Lean decoder must consume the canonical certificate itself;
    Python and Lean must agree on complete scoped derivations, including support
    digests, across the maintained mutation set.
+8. V2 identity claims must depend on one exact release/slot/key/assertion tuple
+   and one exact signature/input tuple; mutations may not disturb independent
+   approval or event claims.
 
 ## Out-of-scope tests for the deterministic local suite
 

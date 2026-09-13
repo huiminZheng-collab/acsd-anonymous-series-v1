@@ -83,11 +83,13 @@ private def decodeClaim (json : Json) : Except String ScopedClaim := do
   | "KEY_ASSENT" => pure .keyAssent
   | "GOVERNANCE_ASSENT" => pure .governanceAssent
   | "COMMITTED_EVIDENCE_MATCH" => pure .committedEvidenceMatch
+  | "SLOT_KEY_ASSENT_TO_IDENTITY_ASSERTION" => pure .slotKeyIdentityAssent
   | _ => throw "TRANSCRIPT_POLICY_CLAIM"
 
 private def allowedInputRole (role : String) : Bool :=
   ["approval-target", "pec", "event-disclosure", "public-key",
-    "author-approval-cose", "event-disclosure-cose"].contains role
+    "author-approval-cose", "event-disclosure-cose", "release",
+    "identity-disclosure", "identity-disclosure-cose"].contains role
 
 structure RawTranscriptInput where
   role : String
@@ -111,6 +113,7 @@ private def decodePurpose (json : Json) : Except String SignaturePurpose := do
   match ← remap "TRANSCRIPT_SIGNATURE_PURPOSE" json.getStr? with
   | "author-approval" => pure .authorApproval
   | "event-disclosure" => pure .eventDisclosure
+  | "identity-disclosure" => pure .identityDisclosure
   | _ => throw "TRANSCRIPT_SIGNATURE_PURPOSE"
 
 private def decodeSignature (json : Json) : Except String TranscriptSignature := do
@@ -137,7 +140,31 @@ private def decodeMerkle (json : Json) : Except String TranscriptMerkle := do
       "TRANSCRIPT_MERKLE_LEAF_COUNT"
   }
 
-structure RawCertificateV1 where
+private def decodeAuthorSlot (json : Json) : Except String (Nat × KeyId) := do
+  expectFields json ["slot", "key_id"] "TRANSCRIPT_AUTHOR_SLOT"
+  let slot ← natField json "slot" "TRANSCRIPT_AUTHOR_SLOT"
+  requireB (decide (0 < slot)) "TRANSCRIPT_AUTHOR_SLOT"
+  pure (slot, ← keyValue (← field json "key_id" "TRANSCRIPT_AUTHOR_SLOT_KEY")
+    "TRANSCRIPT_AUTHOR_SLOT_KEY")
+
+private def decodeIdentity (json : Json) : Except String TranscriptIdentity := do
+  expectFields json ["body_digest", "release_digest", "author_slot",
+    "author_key_id", "assertion_digest", "cose_digest"]
+    "TRANSCRIPT_IDENTITY_ASSERTION"
+  let slot ← natField json "author_slot" "TRANSCRIPT_IDENTITY_SLOT"
+  requireB (decide (0 < slot)) "TRANSCRIPT_IDENTITY_SLOT"
+  pure {
+    bodyDigest := ← digestField json "body_digest" "TRANSCRIPT_IDENTITY_BODY"
+    releaseDigest := ← digestField json "release_digest" "TRANSCRIPT_IDENTITY_RELEASE"
+    authorSlot := slot
+    authorKey := ← keyValue (← field json "author_key_id" "TRANSCRIPT_IDENTITY_KEY")
+      "TRANSCRIPT_IDENTITY_KEY"
+    assertionDigest := ← digestField json "assertion_digest"
+      "TRANSCRIPT_IDENTITY_ASSERTION_DIGEST"
+    coseDigest := ← digestField json "cose_digest" "TRANSCRIPT_IDENTITY_COSE"
+  }
+
+structure RawCertificate where
   inputs : List RawTranscriptInput
   targetDigest : Digest
   approvalPecDigest : Digest
@@ -152,6 +179,9 @@ structure RawCertificateV1 where
   eventFirstIndex : Nat
   eventLastIndex : Nat
   eventKeys : List KeyId
+  releaseDigest : Option Digest
+  releaseSlots : List (Nat × KeyId)
+  identityFacts : List TranscriptIdentity
   signatures : List TranscriptSignature
   merkleFacts : List TranscriptMerkle
   deriving DecidableEq, Repr
@@ -160,7 +190,7 @@ private def inputDigests
     (role : String) (inputs : List RawTranscriptInput) : List Digest :=
   (inputs.filter fun item => item.role == role).map (·.digest)
 
-def refineCertificateV1 (raw : RawCertificateV1) : VerificationTranscript := {
+def refineCertificate (raw : RawCertificate) : VerificationTranscript := {
   targetDigest := raw.targetDigest
   approvalPecDigest := raw.approvalPecDigest
   eventPecDigest := raw.eventPecDigest
@@ -176,18 +206,18 @@ def refineCertificateV1 (raw : RawCertificateV1) : VerificationTranscript := {
   eventLastIndex := raw.eventLastIndex
   eventKeys := raw.eventKeys
   eventCoseDigests := inputDigests "event-disclosure-cose" raw.inputs
+  releaseDigest := raw.releaseDigest
+  releaseSlots := raw.releaseSlots
+  identityFacts := raw.identityFacts
+  identityCoseDigests := inputDigests "identity-disclosure-cose" raw.inputs
   signatures := raw.signatures
   merkleFacts := raw.merkleFacts
 }
 
-def decodeCertificateV1 (json : Json) : Except String RawCertificateV1 := do
-  expectFields json ["schema", "inputs", "approval_target", "policy",
-    "event_disclosure", "signature_facts", "merkle_facts",
-    "identity_assertions", "timestamp_facts", "trusted_inputs"]
-    "TRANSCRIPT_FIELDS"
-  requireB ((← stringField json "schema" "TRANSCRIPT_SCHEMA") ==
-    "acsd-verification-certificate/v1") "TRANSCRIPT_SCHEMA"
-
+private def decodeCertificateCore
+    (json : Json) (releaseDigest : Option Digest)
+    (releaseSlots : List (Nat × KeyId))
+    (identityFacts : List TranscriptIdentity) : Except String RawCertificate := do
   let inputs ← (← arrayField json "inputs" "TRANSCRIPT_INPUTS").toList.mapM decodeInput
   requireB (decide ((inputs.map (·.path)).Nodup)) "TRANSCRIPT_DUPLICATE_INPUT"
 
@@ -216,10 +246,6 @@ def decodeCertificateV1 (json : Json) : Except String RawCertificateV1 := do
   let merkleFacts ← (← arrayField json "merkle_facts"
     "TRANSCRIPT_MERKLE_FACTS").toList.mapM decodeMerkle
 
-  for extension in ["identity_assertions", "timestamp_facts", "trusted_inputs"] do
-    requireB ((← arrayField json extension "TRANSCRIPT_UNSUPPORTED_EXTENSION").isEmpty)
-      "TRANSCRIPT_UNSUPPORTED_EXTENSION"
-
   pure {
     inputs := inputs
     targetDigest := ← digestField approval "target_digest" "TRANSCRIPT_TARGET_DIGEST"
@@ -236,33 +262,94 @@ def decodeCertificateV1 (json : Json) : Except String RawCertificateV1 := do
     eventFirstIndex := eventFirstIndex
     eventLastIndex := eventLastIndex
     eventKeys := ← keyArrayField event "required_key_ids" "TRANSCRIPT_EVENT_KEYS"
+    releaseDigest := releaseDigest
+    releaseSlots := releaseSlots
+    identityFacts := identityFacts
     signatures := signatures
     merkleFacts := merkleFacts
   }
 
-def decodeCertificateText (text : String) : Except String RawCertificateV1 := do
+def decodeCertificateV1 (json : Json) : Except String RawCertificate := do
+  expectFields json ["schema", "inputs", "approval_target", "policy",
+    "event_disclosure", "signature_facts", "merkle_facts",
+    "identity_assertions", "timestamp_facts", "trusted_inputs"]
+    "TRANSCRIPT_FIELDS"
+  requireB ((← stringField json "schema" "TRANSCRIPT_SCHEMA") ==
+    "acsd-verification-certificate/v1") "TRANSCRIPT_SCHEMA"
+  for extension in ["identity_assertions", "timestamp_facts", "trusted_inputs"] do
+    requireB ((← arrayField json extension "TRANSCRIPT_UNSUPPORTED_EXTENSION").isEmpty)
+      "TRANSCRIPT_UNSUPPORTED_EXTENSION"
+  decodeCertificateCore json none [] []
+
+def decodeCertificateV2 (json : Json) : Except String RawCertificate := do
+  expectFields json ["schema", "inputs", "approval_target", "policy",
+    "event_disclosure", "signature_facts", "merkle_facts",
+    "identity_assertions", "timestamp_facts", "trusted_inputs",
+    "release_context"] "TRANSCRIPT_FIELDS"
+  requireB ((← stringField json "schema" "TRANSCRIPT_SCHEMA") ==
+    "acsd-verification-certificate/v2") "TRANSCRIPT_SCHEMA"
+
+  let release ← field json "release_context" "TRANSCRIPT_RELEASE_CONTEXT"
+  expectFields release ["release_digest", "author_slots"] "TRANSCRIPT_RELEASE_CONTEXT"
+  let releaseDigest ← digestField release "release_digest" "TRANSCRIPT_RELEASE_DIGEST"
+  let releaseSlots ← (← arrayField release "author_slots"
+    "TRANSCRIPT_AUTHOR_SLOTS").toList.mapM decodeAuthorSlot
+  requireB (!releaseSlots.isEmpty &&
+    decide ((releaseSlots.map Prod.fst).Nodup) &&
+    decide ((releaseSlots.map Prod.snd).Nodup))
+    "TRANSCRIPT_AUTHOR_SLOTS"
+
+  let identityFacts ← (← arrayField json "identity_assertions"
+    "TRANSCRIPT_IDENTITY_ASSERTIONS").toList.mapM decodeIdentity
+  requireB (!identityFacts.isEmpty &&
+    decide ((identityFacts.map (·.authorSlot)).Nodup))
+    "TRANSCRIPT_IDENTITY_ASSERTIONS"
+
+  for extension in ["timestamp_facts", "trusted_inputs"] do
+    requireB ((← arrayField json extension "TRANSCRIPT_UNSUPPORTED_EXTENSION").isEmpty)
+      "TRANSCRIPT_UNSUPPORTED_EXTENSION"
+  decodeCertificateCore json (some releaseDigest) releaseSlots identityFacts
+
+def decodeCertificateText (text : String) : Except String RawCertificate := do
   let json ← remap "TRANSCRIPT_JSON_INVALID" (Json.parse text)
   let compressed := json.compress
   requireB (text == compressed || text == compressed ++ "\n")
     "TRANSCRIPT_JSON_NONCANONICAL"
-  decodeCertificateV1 json
+  match ← stringField json "schema" "TRANSCRIPT_SCHEMA" with
+  | "acsd-verification-certificate/v1" => decodeCertificateV1 json
+  | "acsd-verification-certificate/v2" => decodeCertificateV2 json
+  | _ => throw "TRANSCRIPT_SCHEMA"
 
-def deriveCertificateV1
-    (raw : RawCertificateV1) (certificate : Digest) : List AppraisalRequest :=
-  transcriptClaims (refineCertificateV1 raw) certificate
+def deriveCertificate
+    (raw : RawCertificate) (certificate : Digest) : List AppraisalRequest :=
+  transcriptClaims (refineCertificate raw) certificate
 
-theorem decodedCertificateClaims_sound
-    {json : Json} {raw : RawCertificateV1} {certificate : Digest}
+theorem decodedCertificateV1Claims_sound
+    {json : Json} {raw : RawCertificate} {certificate : Digest}
     {request : AppraisalRequest}
     (decoded : decodeCertificateV1 json = .ok raw)
-    (member : request ∈ deriveCertificateV1 raw certificate) :
+    (member : request ∈ deriveCertificate raw certificate) :
     ∃ transcript,
       decodeCertificateV1 json = .ok raw ∧
-      refineCertificateV1 raw = transcript ∧
+      refineCertificate raw = transcript ∧
       TranscriptPolicyBound transcript ∧
       ∃ atom,
         TranscriptSupports transcript certificate atom ∧
         atom.subject = request.subject ∧ AppraisalRule atom.kind request.kind := by
-  exact ⟨refineCertificateV1 raw, decoded, rfl, transcriptClaims_sound member⟩
+  exact ⟨refineCertificate raw, decoded, rfl, transcriptClaims_sound member⟩
+
+theorem decodedCertificateV2Claims_sound
+    {json : Json} {raw : RawCertificate} {certificate : Digest}
+    {request : AppraisalRequest}
+    (decoded : decodeCertificateV2 json = .ok raw)
+    (member : request ∈ deriveCertificate raw certificate) :
+    ∃ transcript,
+      decodeCertificateV2 json = .ok raw ∧
+      refineCertificate raw = transcript ∧
+      TranscriptPolicyBound transcript ∧
+      ∃ atom,
+        TranscriptSupports transcript certificate atom ∧
+        atom.subject = request.subject ∧ AppraisalRule atom.kind request.kind := by
+  exact ⟨refineCertificate raw, decoded, rfl, transcriptClaims_sound member⟩
 
 end ACSD

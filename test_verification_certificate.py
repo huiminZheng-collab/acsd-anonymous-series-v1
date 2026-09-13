@@ -16,6 +16,7 @@ ROOT = pathlib.Path(__file__).resolve().parent
 PYTHON_ADAPTER = ROOT / "design/verification_certificate.py"
 NODE_ADAPTER = ROOT / "design/verification_certificate.cjs"
 CHECKED_CERTIFICATE = ROOT / "design/verification_certificate_demo.json"
+CHECKED_CERTIFICATE_V2 = ROOT / "design/verification_certificate_demo_v2.json"
 
 
 def run_python(bundle):
@@ -32,9 +33,27 @@ def run_node(bundle):
     )
 
 
+def run_python_v2(bundle):
+    return subprocess.run(
+        [sys.executable, str(PYTHON_ADAPTER), str(bundle), "--include-identity"],
+        cwd=ROOT, capture_output=True,
+    )
+
+
+def run_node_v2(bundle):
+    return subprocess.run(
+        ["node", str(NODE_ADAPTER), str(bundle), "--include-identity"],
+        cwd=ROOT, capture_output=True,
+    )
+
+
 class TestVerificationCertificate(unittest.TestCase):
     def checked(self):
         raw = CHECKED_CERTIFICATE.read_bytes()
+        return json.loads(raw), hashlib.sha256(raw).hexdigest()
+
+    def checked_v2(self):
+        raw = CHECKED_CERTIFICATE_V2.read_bytes()
         return json.loads(raw), hashlib.sha256(raw).hexdigest()
 
     def test_python_and_node_emit_identical_fact_certificate(self):
@@ -61,6 +80,46 @@ class TestVerificationCertificate(unittest.TestCase):
                     yield from keys(child)
 
         self.assertTrue(forbidden.isdisjoint(keys(certificate)))
+
+    def test_identity_v2_adapters_and_scoped_derivation_agree(self):
+        python = run_python_v2(ROOT / "demo")
+        node = run_node_v2(ROOT / "demo")
+        self.assertEqual(python.returncode, 0, python.stderr.decode(errors="replace"))
+        self.assertEqual(node.returncode, 0, node.stderr.decode(errors="replace"))
+        self.assertEqual(python.stdout, node.stdout)
+        self.assertEqual(python.stdout, CHECKED_CERTIFICATE_V2.read_bytes())
+        certificate, certificate_digest = self.checked_v2()
+        self.assertEqual(
+            claim_derivation.wire_outcomes(
+                verification_transcript.derive(certificate, certificate_digest)
+            ),
+            (
+                "KEY_ASSENT", "GOVERNANCE_ASSENT", "COMMITTED_EVIDENCE_MATCH",
+                "SLOT_KEY_ASSENT_TO_IDENTITY_ASSERTION",
+            ),
+        )
+
+    def test_identity_slot_substitution_removes_only_identity_claim(self):
+        certificate, certificate_digest = self.checked_v2()
+        certificate["identity_assertions"][0]["author_slot"] = 2
+        self.assertEqual(
+            claim_derivation.wire_outcomes(
+                verification_transcript.derive(certificate, certificate_digest)
+            ),
+            ("KEY_ASSENT", "GOVERNANCE_ASSENT", "COMMITTED_EVIDENCE_MATCH"),
+        )
+
+    def test_identity_cose_input_substitution_removes_only_identity_claim(self):
+        certificate, certificate_digest = self.checked_v2()
+        item = next(entry for entry in certificate["inputs"]
+                    if entry["role"] == "identity-disclosure-cose")
+        item["sha256"] = "0" * 64
+        self.assertEqual(
+            claim_derivation.wire_outcomes(
+                verification_transcript.derive(certificate, certificate_digest)
+            ),
+            ("KEY_ASSENT", "GOVERNANCE_ASSENT", "COMMITTED_EVIDENCE_MATCH"),
+        )
 
     def test_corrupt_signature_produces_no_certificate_in_either_adapter(self):
         with tempfile.TemporaryDirectory() as directory:

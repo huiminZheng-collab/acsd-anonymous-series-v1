@@ -97,6 +97,7 @@ FILES = (
     "design/verification_certificate_diff.py",
     "design/lean_transcript_diff.py",
     "design/verification_certificate_demo.json",
+    "design/verification_certificate_demo_v2.json",
     "demo/release.json",
     "formal/ACSD.lean",
     "formal/AxiomAudit.lean",

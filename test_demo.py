@@ -9,7 +9,7 @@ class TestDemo(unittest.TestCase):
     with tempfile.TemporaryDirectory() as d:
       _root, pd=generate(d); p=json.loads((pathlib.Path(d)/'pec.json').read_text())
       self.assertEqual(digest(p), pd)
-      self.assertEqual(verify_demo(d), 12)
+      self.assertEqual(verify_demo(d), 14)
       self.assertEqual(verify_package(d)['status'], 'VALID')
 
 if __name__ == '__main__': unittest.main()

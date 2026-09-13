@@ -1,4 +1,4 @@
-"""Experimental Python adapter for acsd-verification-certificate/v1.
+"""Experimental Python adapter for ACSD verification certificates v1/v2.
 
 The certificate records exact facts established from a demo bundle. It carries
 no final verdict or application claim; the typed appraisal kernel is the only
@@ -20,11 +20,13 @@ sys.path.insert(0, str(PROJECT))
 from cryptography.hazmat.primitives import serialization  # noqa: E402
 
 import cose  # noqa: E402
+import identity_disclosure  # noqa: E402
 from event_disclosure import key_id_of  # noqa: E402
 from pec_core import canonical, digest, require, verify_dialogue_window  # noqa: E402
 
 
-SCHEMA = "acsd-verification-certificate/v1"
+SCHEMA_V1 = "acsd-verification-certificate/v1"
+SCHEMA_V2 = "acsd-verification-certificate/v2"
 
 
 def _sha256(raw: bytes) -> str:
@@ -42,11 +44,17 @@ def _read_canonical(root: pathlib.Path, relative: str):
     return value, raw
 
 
-def build(root: pathlib.Path) -> dict:
+def build(root: pathlib.Path, *, include_identity: bool = False) -> dict:
     root = pathlib.Path(root)
     target, target_raw = _read_canonical(root, "approval-target.json")
     pec, pec_raw = _read_canonical(root, "pec.json")
     disclosure, disclosure_raw = _read_canonical(root, "dialogue-disclosure.json")
+    release = None
+    identity = None
+    identity_raw = None
+    if include_identity:
+        release, release_raw = _read_canonical(root, "release.json")
+        identity, identity_raw = _read_canonical(root, "identity/slot-1.json")
 
     required = pec.get("governance", {}).get("required_pec_approval_key_ids")
     require(isinstance(required, list) and required == sorted(set(required)),
@@ -119,6 +127,37 @@ def build(root: pathlib.Path) -> dict:
                 "cose_digest": _sha256(cose_raw),
             })
 
+    identity_assertions = []
+    if include_identity:
+        key_id = identity["author_key_id"]
+        public_relative = f"public-keys/{key_id}.pub"
+        cose_relative = "identity/slot-1.cose"
+        public_raw = (root / public_relative).read_bytes()
+        cose_raw = (root / cose_relative).read_bytes()
+        public_key = serialization.load_pem_public_key(public_raw)
+        identity_disclosure.verify(identity, cose_raw, release, public_key)
+        inputs.extend([
+            {"role": "release", "path": "release.json", "sha256": _sha256(release_raw)},
+            {"role": "identity-disclosure", "path": "identity/slot-1.json",
+             "sha256": _sha256(identity_raw)},
+            {"role": "identity-disclosure-cose", "path": cose_relative,
+             "sha256": _sha256(cose_raw)},
+        ])
+        signature_facts.append({
+            "purpose": "identity-disclosure",
+            "key_id": key_id,
+            "payload_digest": digest(identity),
+            "cose_digest": _sha256(cose_raw),
+        })
+        identity_assertions.append({
+            "body_digest": digest(identity),
+            "release_digest": digest(release),
+            "author_slot": identity["author_slot"],
+            "author_key_id": key_id,
+            "assertion_digest": digest(identity["identity_assertion"]),
+            "cose_digest": _sha256(cose_raw),
+        })
+
     # Public keys appear for both signature purposes. Inputs are a set of exact
     # byte objects, while signature_facts retain both uses.
     inputs = sorted(
@@ -126,8 +165,8 @@ def build(root: pathlib.Path) -> dict:
         key=lambda item: (item["path"], item["role"]),
     )
     signature_facts.sort(key=lambda item: (item["purpose"], item["key_id"]))
-    return {
-        "schema": SCHEMA,
+    result = {
+        "schema": SCHEMA_V2 if include_identity else SCHEMA_V1,
         "inputs": inputs,
         "approval_target": {
             "target_digest": digest(target),
@@ -156,22 +195,34 @@ def build(root: pathlib.Path) -> dict:
             "last_index": window[-1]["index"],
             "opened_leaf_count": len(window),
         }],
-        "identity_assertions": [],
+        "identity_assertions": identity_assertions,
         "timestamp_facts": [],
         "trusted_inputs": [],
     }
+    if include_identity:
+        result["release_context"] = {
+            "release_digest": digest(release),
+            "author_slots": [
+                {"slot": author["slot"], "key_id": author["key_id"]}
+                for author in release["authors"]
+            ],
+        }
+    return result
 
 
-def encoded(root: pathlib.Path) -> bytes:
-    return canonical(build(root))
+def encoded(root: pathlib.Path, *, include_identity: bool = False) -> bytes:
+    return canonical(build(root, include_identity=include_identity))
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("bundle")
     parser.add_argument("--output")
+    parser.add_argument("--include-identity", action="store_true")
     args = parser.parse_args()
-    output = encoded(pathlib.Path(args.bundle)) + b"\n"
+    output = encoded(
+        pathlib.Path(args.bundle), include_identity=args.include_identity
+    ) + b"\n"
     if args.output:
         pathlib.Path(args.output).write_bytes(output)
     else:
