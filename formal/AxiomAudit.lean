@@ -7,3 +7,8 @@ import ACSD
 #print axioms ACSD.authorized_successor_has_parent_quorum
 #print axioms ACSD.fresh_authority_without_transition_is_not_successor
 #print axioms ACSD.transition_authorization_not_reusable_for_other_child
+#print axioms ACSD.scoped_grant_cannot_amplify_policy
+#print axioms ACSD.identity_evidence_cannot_grant_event_match
+#print axioms ACSD.event_acceptance_requires_all_signatures
+#print axioms ACSD.missing_slot_prevents_full_byline
+#print axioms ACSD.target_timestamp_cannot_be_approval_set_time

@@ -20,7 +20,7 @@ def _network_ok():
 
 
 def _should_skip():
-    return (not _network_ok()) or os.environ.get("ACSD_SKIP_NETWORK") == "1"
+    return os.environ.get("ACSD_SKIP_NETWORK") == "1" or (not _network_ok())
 
 
 @unittest.skipUnless(not _should_skip(), "freetsa.org unreachable or ACSD_SKIP_NETWORK set")

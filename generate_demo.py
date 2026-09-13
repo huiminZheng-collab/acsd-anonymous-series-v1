@@ -1,7 +1,14 @@
 import hashlib
+import argparse
 import json
 import pathlib
 
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+
+import cose
+from event_disclosure import DEFAULT_POLICY, key_id_of
+from package_manifest import build_manifest_text
 from pec_core import (
     adapt_v1_release,
     canonical,
@@ -14,8 +21,13 @@ from pec_core import (
 # Deterministic demo identity: a stable WorkID keeps the generated fixture
 # reproducible byte-for-byte (the real CLI will randomize per invocation).
 WORK_ID = "urn:uuid:1f6f0a1e-2b3c-4d5e-8f90-0a1b2c3d4e5f"
-AUTHOR_1 = "demo-author-1"
-AUTHOR_2 = "demo-author-2"
+# Public test vectors only: deterministic demo keys make the fixture exactly
+# reproducible.  They are intentionally not suitable for real releases.
+DEMO_KEYS = [
+    Ed25519PrivateKey.from_private_bytes(bytes([0x11]) * 32),
+    Ed25519PrivateKey.from_private_bytes(bytes([0x22]) * 32),
+]
+AUTHOR_1, AUTHOR_2 = [key_id_of(key.public_key()) for key in DEMO_KEYS]
 
 # Exact manuscript bytes. Its SHA-256 is real and is bound into the release,
 # the governance statement, and the PEC. No authorship / originality / time
@@ -41,9 +53,9 @@ def build_release(content_sha256: str) -> dict:
                 "role": "co-first",
                 "corresponding": False,
                 "contributions": ["conceptualization", "writing-original-draft"],
-                "issuer": "urn:acsd:pseudonym:demo-author-1",
-                "kid_hex": hashlib.sha256(b"demo-author-1").hexdigest()[:16],
-                "public_key_path": "public-keys/demo-author-1.pem",
+                "issuer": f"urn:acsd:pseudonym:{AUTHOR_1[:12]}",
+                "kid_hex": AUTHOR_1[:16],
+                "public_key_path": f"public-keys/{AUTHOR_1}.pub",
             },
             {
                 "slot": 2,
@@ -51,9 +63,9 @@ def build_release(content_sha256: str) -> dict:
                 "role": "co-first",
                 "corresponding": True,
                 "contributions": ["methodology", "writing-review-editing"],
-                "issuer": "urn:acsd:pseudonym:demo-author-2",
-                "kid_hex": hashlib.sha256(b"demo-author-2").hexdigest()[:16],
-                "public_key_path": "public-keys/demo-author-2.pem",
+                "issuer": f"urn:acsd:pseudonym:{AUTHOR_2[:12]}",
+                "kid_hex": AUTHOR_2[:16],
+                "public_key_path": f"public-keys/{AUTHOR_2}.pub",
             },
         ],
         "citation_witnesses": [],
@@ -131,6 +143,7 @@ def generate(out="demo"):
                 },
             }
         ],
+        "disclosure_policy": DEFAULT_POLICY,
         "claim_policy": {
             "permitted_outcomes": ["KEY_ASSENT", "GOVERNANCE_ASSENT", "COMMITTED_EVIDENCE_MATCH"],
             "global_non_claims": [
@@ -146,7 +159,7 @@ def generate(out="demo"):
     validate_pec(pec, [AUTHOR_1, AUTHOR_2], adapted, {"digest": gov_digest})
 
     disclosure = {
-        "schema": "acsd-pec-disclosure/v0.1",
+        "schema": "acsd-event-disclosure/v1",
         "pec_digest": digest(pec),
         "event_id": "dialogue-01",
         "event_sequence": 0,
@@ -161,7 +174,6 @@ def generate(out="demo"):
             }
             for i in (1, 2)
         ],
-        "approval_key_ids": [AUTHOR_1, AUTHOR_2],
     }
 
     (out / "manuscript.txt").write_bytes(MANUSCRIPT)
@@ -169,20 +181,26 @@ def generate(out="demo"):
     (out / "governance.json").write_bytes(canonical(governance) + b"\n")
     (out / "pec.json").write_bytes(canonical(pec) + b"\n")
     (out / "dialogue-disclosure.json").write_bytes(canonical(disclosure) + b"\n")
-
-    entries = []
-    for name in (
-        "manuscript.txt",
-        "release.json",
-        "governance.json",
-        "pec.json",
-        "dialogue-disclosure.json",
-    ):
-        entries.append(f"{hashlib.sha256((out / name).read_bytes()).hexdigest()}  {name}")
-    (out / "MANIFEST.sha256").write_bytes(("\n".join(entries) + "\n").encode("ascii"))
+    (out / "public-keys").mkdir(exist_ok=True)
+    (out / "disclosure-approvals").mkdir(exist_ok=True)
+    for key in DEMO_KEYS:
+        key_id = key_id_of(key.public_key())
+        (out / "public-keys" / f"{key_id}.pub").write_bytes(
+            key.public_key().public_bytes(
+                encoding=serialization.Encoding.PEM,
+                format=serialization.PublicFormat.SubjectPublicKeyInfo,
+            )
+        )
+        (out / "disclosure-approvals" / f"{key_id}.cose").write_bytes(
+            cose.cose_sign1(canonical(disclosure), key)
+        )
+    (out / "MANIFEST.sha256").write_text(build_manifest_text(out), encoding="ascii")
     return root, digest(pec)
 
 
 if __name__ == "__main__":
-    root, pd = generate()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("out", nargs="?", default="demo")
+    args = parser.parse_args()
+    root, pd = generate(args.out)
     print(json.dumps({"pec_digest": pd, "dialogue_root": root, "status": "VALID"}, indent=2))

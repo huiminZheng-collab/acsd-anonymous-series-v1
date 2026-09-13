@@ -20,6 +20,10 @@ import tempfile
 import urllib.request
 import uuid
 
+# ACSD verification must not mutate the artifact it is inspecting merely by
+# importing local modules from inside that artifact.
+sys.dont_write_bytecode = True
+
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey, Ed25519PublicKey
@@ -29,6 +33,16 @@ sys.path.insert(0, str(ROOT))
 
 import cose  # noqa: E402
 import tsa  # noqa: E402
+import approval_set  # noqa: E402
+import identity_disclosure  # noqa: E402
+from acsd_version import __version__  # noqa: E402
+from event_disclosure import DEFAULT_POLICY as DEFAULT_DISCLOSURE_POLICY  # noqa: E402
+from package_manifest import (  # noqa: E402
+    build_manifest_text,
+    iter_payload_files,
+    payload_path,
+    verify_manifest,
+)
 from pec_core import adapt_v1_release, canonical, digest, require  # noqa: E402
 
 TEAM_SCHEMA = "acsd-team/v1"
@@ -37,8 +51,8 @@ LEGACY_RELEASE_SCHEMA = "acsd-v1.6.0-paper-release/v1"
 GOVERNANCE_SCHEMA = "acsd-v1.6.0-authorship-governance/v1"
 APPROVAL_TARGET_SCHEMA = "acsd-approval-target/v2"
 LEGACY_APPROVAL_TARGET_SCHEMA = "acsd-approval-target/v1"
-PEC_SCHEMA = "acsd-pec/v0.2"
-LEGACY_PEC_SCHEMA = "acsd-pec/v0.1"
+PEC_SCHEMA = "acsd-pec/v0.3"
+LEGACY_PEC_SCHEMAS = {"acsd-pec/v0.1", "acsd-pec/v0.2"}
 LINEAGE_AUTHORITY_SCHEMA = "acsd-lineage-authority/v1"
 LINEAGE_TRANSITION_SCHEMA = "acsd-lineage-transition/v1"
 NON_CLAIMS = [
@@ -53,6 +67,7 @@ ALLOWED_OUTCOMES = {
     "GOVERNANCE_ASSENT",
     "COMMITTED_EVIDENCE_MATCH",
     "EXTERNALLY_NOT_AFTER",
+    "APPROVAL_SET_EXISTED_NOT_AFTER",
 }
 
 EXIT_OK = 0
@@ -283,11 +298,18 @@ def build_pec(work_id, adapted, gov_digest, content_sha256, ai_digest, key_ids,
             "ai_use_declaration_digest": ai_digest,
         },
         "events": [],
+        "disclosure_policy": DEFAULT_DISCLOSURE_POLICY,
         "claim_policy": {
-            "permitted_outcomes": ["KEY_ASSENT", "GOVERNANCE_ASSENT", "EXTERNALLY_NOT_AFTER"],
+            "permitted_outcomes": [
+                "KEY_ASSENT",
+                "GOVERNANCE_ASSENT",
+                "APPROVAL_SET_EXISTED_NOT_AFTER",
+            ],
             "global_non_claims": list(NON_CLAIMS),
             "required_capabilities": {
-                "EXTERNALLY_NOT_AFTER": ["rfc3161-exact-approval-target-imprint"],
+                "APPROVAL_SET_EXISTED_NOT_AFTER": [
+                    "rfc3161-exact-approval-set-imprint"
+                ],
             },
         },
         "issuer_key_id": key_ids[0],
@@ -373,7 +395,7 @@ def check_approval_target(target, release, governance, pec, adapted, lineage_tra
 
 
 def check_bindings(pec, adapted, governance):
-    require(pec.get("schema") in {PEC_SCHEMA, LEGACY_PEC_SCHEMA}, "PEC_SCHEMA")
+    require(pec.get("schema") == PEC_SCHEMA or pec.get("schema") in LEGACY_PEC_SCHEMAS, "PEC_SCHEMA")
     subject, gov = pec["subject"], pec["governance"]
     require(subject["release_digest"] == adapted["digest"], "SUBJECT_RELEASE_MISMATCH")
     require(subject["work_id"] == adapted["work_id"], "SUBJECT_WORK_ID_MISMATCH")
@@ -407,10 +429,22 @@ def check_bindings(pec, adapted, governance):
     require(len(outcomes) == len(set(outcomes)), "CLAIM_POLICY_DUPLICATE")
     require(set(outcomes).issubset(ALLOWED_OUTCOMES), "CLAIM_POLICY_UNKNOWN_OUTCOME")
     required_caps = policy.get("required_capabilities", {})
-    require(
-        required_caps.get("EXTERNALLY_NOT_AFTER") == ["rfc3161-exact-approval-target-imprint"],
-        "CLAIM_POLICY_CAPABILITY_MISMATCH",
-    )
+    if pec.get("schema") == PEC_SCHEMA:
+        require(
+            pec.get("disclosure_policy") == DEFAULT_DISCLOSURE_POLICY,
+            "DISCLOSURE_POLICY_INVALID",
+        )
+        require(
+            required_caps.get("APPROVAL_SET_EXISTED_NOT_AFTER")
+            == ["rfc3161-exact-approval-set-imprint"],
+            "CLAIM_POLICY_CAPABILITY_MISMATCH",
+        )
+    else:
+        require(
+            required_caps.get("EXTERNALLY_NOT_AFTER")
+            == ["rfc3161-exact-approval-target-imprint"],
+            "CLAIM_POLICY_CAPABILITY_MISMATCH",
+        )
 
 
 def load_lineage_structure(root, release, governance, pec):
@@ -485,12 +519,8 @@ def verify_lineage_authorization(root, lineage, valid_child_approvals):
 
 
 def manifest_entries(root: pathlib.Path) -> str:
-    entries = []
-    for p in sorted(root.rglob("*")):
-        if p.is_file() and p.name != "MANIFEST.sha256":
-            rel = p.relative_to(root).as_posix()
-            entries.append(f"{hashlib.sha256(p.read_bytes()).hexdigest()}  {rel}")
-    return "\n".join(entries) + "\n"
+    """Compatibility wrapper around the single strict manifest engine."""
+    return build_manifest_text(root)
 
 
 def _send_tsq(tsq: bytes, url: str) -> bytes:
@@ -751,20 +781,39 @@ def cmd_finalize(args):
             }
         return EXIT_VERIFY_FAIL, "LINEAGE_AUTHORIZATION_INVALID", {"error_code": str(exc)}
 
+    # Reject links and other non-portable filesystem objects before copying.
+    # copytree follows directory links by default, which is unsafe here.
+    list(iter_payload_files(root))
+
     # atomic finalize: stage a complete package, then swap it in
     staging = root.with_name(root.name + ".staging")
     if staging.exists():
         shutil.rmtree(staging)
     shutil.copytree(root, staging)
 
-    # optional RFC 3161 timestamp over the exact author-approved target digest
+    # Close the acceptance evidence over the exact COSE byte strings.  A
+    # timestamp over the target alone would prove only that the unsigned
+    # target existed; it would not prove that its approvals existed then.
+    separate_lineage_keys = (
+        lineage_result["valid"]
+        if lineage is not None
+        and lineage["parent_authority"] != lineage["child_authority"]
+        else []
+    )
+    approval_set_obj = approval_set.build(
+        staging, target, required, separate_lineage_keys
+    )
+    write_canonical(staging / "approval/approval-set.json", approval_set_obj)
+    approval_set_digest = digest(approval_set_obj)
+
+    # Optional RFC 3161 timestamp over the closed approval set, after every
+    # required signature exists.
     timestamped = False
     tsa_url = getattr(args, "tsa", None)
     if tsa_url:
-        target_digest = digest(target)
-        target_digest_bytes = bytes.fromhex(target_digest)
+        timestamp_digest_bytes = bytes.fromhex(approval_set_digest)
         nonce = secrets.token_bytes(16)
-        tsq = tsa.build_tsq(target_digest_bytes, nonce)
+        tsq = tsa.build_tsq(timestamp_digest_bytes, nonce)
         try:
             if tsa_url == "local":
                 local_tsa = tsa.LocalTSA()
@@ -786,7 +835,7 @@ def cmd_finalize(args):
             # packaged certificate into a verifier trust anchor.
             tsa.verify_tsr(
                 tsr,
-                target_digest_bytes,
+                timestamp_digest_bytes,
                 trusted_cert_der=tsa_cert_der,
                 trusted_fingerprint=tsa_cert_fp,
                 expected_nonce=int.from_bytes(nonce, "big"),
@@ -804,12 +853,12 @@ def cmd_finalize(args):
             (staging / "receipts/tsa-cert.der").write_bytes(tsa_cert_der)
             write_canonical(staging / "receipts/report.json", {
                 "schema": "acsd-receipt-report/v1",
-                "subject": "approval/target.json",
-                "subject_digest": target_digest,
+                "subject": "approval/approval-set.json",
+                "subject_digest": approval_set_digest,
                 "nonce": nonce.hex(),
                 "tsa_url": tsa_url,
                 "tsa_cert_fingerprint": tsa_cert_fp,
-                "capability": "rfc3161-exact-approval-target-imprint",
+                "capability": "rfc3161-exact-approval-set-imprint",
             })
             timestamped = True
 
@@ -831,6 +880,7 @@ def cmd_finalize(args):
         "release_digest": adapted["digest"],
         "pec_digest": digest(pec),
         "approval_target_digest": digest(target),
+        "approval_set_digest": approval_set_digest,
         "lineage_status": lineage_result["status"],
     }
 
@@ -948,6 +998,16 @@ def verify_release_dir(root: pathlib.Path, trusted_tsa_cert_der: bytes = None,
                        allow_local_test_tsa: bool = False,
                        require_external_time: bool = False,
                        expected_parent_release_id: str = None):
+    # Validate the closed package boundary before interpreting any attacker-
+    # controlled path or signed object.  A present manifest can never be
+    # downgraded by editing state.json.
+    manifest_path = root / "MANIFEST.sha256"
+    if manifest_path.exists() or manifest_path.is_symlink():
+        try:
+            verify_manifest(root)
+        except (OSError, UnicodeError, ValueError) as exc:
+            return EXIT_VERIFY_FAIL, "TAMPERED", {"error_code": str(exc)}
+
     state = read_canonical(root / "state.json")
     release = read_canonical(root / "release/release.json")
     governance = read_canonical(root / "governance/statement.json")
@@ -955,7 +1015,11 @@ def verify_release_dir(root: pathlib.Path, trusted_tsa_cert_der: bytes = None,
     target = read_canonical(root / "approval/target.json")
     adapted = adapt_v1_release(release)
     check_release_key_paths(release)
-    content_bytes = (root / release["content"]["path"]).read_bytes()
+    try:
+        content_file = payload_path(root, release["content"]["path"])
+        content_bytes = content_file.read_bytes()
+    except (OSError, ValueError) as exc:
+        return EXIT_VERIFY_FAIL, "TAMPERED", {"error_code": str(exc)}
     if hashlib.sha256(content_bytes).hexdigest() != release["content"]["sha256"]:
         return EXIT_VERIFY_FAIL, "TAMPERED", {"error_code": "CONTENT_DIGEST_MISMATCH"}
     try:
@@ -1017,17 +1081,53 @@ def verify_release_dir(root: pathlib.Path, trusted_tsa_cert_der: bytes = None,
         "PIN_MATCHED" if expected_parent_release_id is not None else
         "UNPINNED_EXACT_PARENT"
     )
-    # optional timestamp verification (imprint binding + genTime)
+    separate_lineage_keys = (
+        lineage_result["valid"]
+        if lineage is not None
+        and lineage["parent_authority"] != lineage["child_authority"]
+        else []
+    )
+    approval_set_path = root / "approval/approval-set.json"
+    approval_set_obj = None
+    if approval_set_path.exists():
+        try:
+            approval_set_obj = read_canonical(approval_set_path)
+            approval_set.verify(
+                approval_set_obj, root, target, key_ids, separate_lineage_keys
+            )
+        except (OSError, ValueError) as exc:
+            return EXIT_VERIFY_FAIL, "TAMPERED", {**data, "error_code": str(exc)}
+        data["approval_set_digest"] = digest(approval_set_obj)
+    elif pec.get("schema") == PEC_SCHEMA and state.get("state") in (
+        "finalized", "finalized-untimestamped"
+    ):
+        return EXIT_VERIFY_FAIL, "TAMPERED", {
+            **data, "error_code": "APPROVAL_SET_MISSING"
+        }
+
+    # Optional timestamp verification (imprint binding + genTime).  v0.3
+    # timestamps the complete approval set; legacy PECs retain target-only
+    # semantics and can never be upgraded to approval-set existence.
     tsr_path = root / "receipts/response.tsr"
     if tsr_path.exists():
-        target_digest_bytes = bytes.fromhex(digest(target))
         report = read_canonical(root / "receipts/report.json")
-        if (report.get("subject") != "approval/target.json"
-                or report.get("subject_digest") != digest(target)
-                or report.get("capability") != "rfc3161-exact-approval-target-imprint"):
+        if pec.get("schema") == PEC_SCHEMA:
+            if approval_set_obj is None:
+                return EXIT_VERIFY_FAIL, "TAMPERED", {"error_code": "APPROVAL_SET_MISSING"}
+            subject_path = "approval/approval-set.json"
+            subject_digest = digest(approval_set_obj)
+            capability = "rfc3161-exact-approval-set-imprint"
+        else:
+            subject_path = "approval/target.json"
+            subject_digest = digest(target)
+            capability = "rfc3161-exact-approval-target-imprint"
+        subject_digest_bytes = bytes.fromhex(subject_digest)
+        if (report.get("subject") != subject_path
+                or report.get("subject_digest") != subject_digest
+                or report.get("capability") != capability):
             return EXIT_VERIFY_FAIL, "TAMPERED", {"error_code": "RECEIPT_REPORT_BINDING_MISMATCH"}
         tsq_info = tsa.parse_tsq((root / "receipts/request.tsq").read_bytes())
-        if tsq_info["imprint"] != target_digest_bytes:
+        if tsq_info["imprint"] != subject_digest_bytes:
             return EXIT_VERIFY_FAIL, "TAMPERED", {"error_code": "TSQ_IMPRINT_MISMATCH"}
         if int(report.get("nonce", ""), 16) != tsq_info["nonce"]:
             return EXIT_VERIFY_FAIL, "TAMPERED", {"error_code": "TSQ_NONCE_MISMATCH"}
@@ -1046,7 +1146,7 @@ def verify_release_dir(root: pathlib.Path, trusted_tsa_cert_der: bytes = None,
         else:
             try:
                 info = tsa.verify_tsr(
-                    tsr_path.read_bytes(), target_digest_bytes,
+                    tsr_path.read_bytes(), subject_digest_bytes,
                     trusted_cert_der=verify_cert,
                     trusted_fingerprint=verify_fingerprint,
                     expected_nonce=tsq_info["nonce"],
@@ -1057,19 +1157,17 @@ def verify_release_dir(root: pathlib.Path, trusted_tsa_cert_der: bytes = None,
             data["timestamp_status"] = "LOCAL_TEST_VERIFIED" if is_local_test else "EXTERNAL_PIN_VERIFIED"
             data["timestamp_gen_time"] = info["genTime"].isoformat()
             data["timestamp_signer_fingerprint"] = info["signer_fingerprint"]
-            if not is_local_test and "EXTERNALLY_NOT_AFTER" in permitted:
-                data["granted_outcomes"].append("EXTERNALLY_NOT_AFTER")
+            if not is_local_test:
+                outcome = (
+                    "APPROVAL_SET_EXISTED_NOT_AFTER"
+                    if pec.get("schema") == PEC_SCHEMA
+                    else "EXTERNALLY_NOT_AFTER"
+                )
+                if outcome in permitted:
+                    data["granted_outcomes"].append(outcome)
     elif require_external_time:
         return EXIT_INCOMPLETE, "EXTERNAL_TIME_MISSING", data
-    # Verify a manifest whenever it is present; mutable state must not be able
-    # to downgrade verification by changing the package-state label.
-    manifest_path = root / "MANIFEST.sha256"
-    if manifest_path.exists():
-        expected = manifest_entries(root)
-        actual = manifest_path.read_text(encoding="ascii")
-        if expected != actual:
-            return EXIT_VERIFY_FAIL, "TAMPERED", {"error_code": "MANIFEST_MISMATCH"}
-    elif state.get("state") in ("finalized", "finalized-untimestamped"):
+    if not manifest_path.exists() and state.get("state") in ("finalized", "finalized-untimestamped"):
         return EXIT_VERIFY_FAIL, "TAMPERED", {"error_code": "MANIFEST_MISSING"}
     return EXIT_OK, "VALID", data
 
@@ -1113,6 +1211,76 @@ def cmd_inspect(args):
         "missing_approvals": missing,
         "received_lineage_authorizations": state.get("received_lineage_authorizations", []),
     }
+
+
+def cmd_disclose_identity(args):
+    """Create a signed sidecar without mutating the finalized release."""
+    root = pathlib.Path(args.release_dir)
+    code, message, verification = verify_release_dir(root)
+    if code != EXIT_OK:
+        return code, "RELEASE_NOT_ACCEPTED", {
+            "verifier_message": message, "verifier_data": verification
+        }
+    if verification.get("state") not in {"finalized", "finalized-untimestamped"}:
+        return EXIT_STATE_CONFLICT, "RELEASE_NOT_FINALIZED", {
+            "state": verification.get("state")
+        }
+    if path_is_within(args.key, root):
+        return EXIT_USAGE, "PRIVATE_KEY_INSIDE_RELEASE", {}
+    out = pathlib.Path(args.out)
+    if path_is_within(out, root):
+        return EXIT_USAGE, "DISCLOSURE_OUTPUT_INSIDE_RELEASE", {}
+    key = load_private_key(args.key)
+    key_id = key_id_of(key.public_key())
+    release = read_canonical(root / "release/release.json")
+    slots = [
+        author["slot"] for author in release["authors"]
+        if author["key_id"] == key_id
+    ]
+    if len(slots) != 1:
+        return EXIT_VERIFY_FAIL, "UNKNOWN_AUTHOR_KEY", {"key_id": key_id}
+    body = identity_disclosure.build(
+        release,
+        slots[0],
+        args.display_name,
+        persistent_identifier=args.persistent_identifier,
+        publication_ref=args.publication_ref,
+    )
+    body_path = out / f"identity-slot-{slots[0]}.json"
+    signature_path = out / f"identity-slot-{slots[0]}.cose"
+    if body_path.exists() or signature_path.exists():
+        return EXIT_STATE_CONFLICT, "IDENTITY_DISCLOSURE_EXISTS", {
+            "author_slot": slots[0]
+        }
+    out.mkdir(parents=True, exist_ok=True)
+    write_canonical(body_path, body)
+    signature_path.write_bytes(cose.cose_sign1(canonical(body), key))
+    return EXIT_OK, "identity disclosure created", {
+        "status": "SLOT_KEY_ASSENT_TO_IDENTITY_ASSERTION",
+        "author_slot": slots[0],
+        "author_key_id": key_id,
+        "disclosure": str(body_path),
+        "signature": str(signature_path),
+    }
+
+
+def cmd_verify_identity(args):
+    root = pathlib.Path(args.release_dir)
+    code, message, verification = verify_release_dir(root)
+    if code != EXIT_OK:
+        return code, "RELEASE_NOT_ACCEPTED", {
+            "verifier_message": message, "verifier_data": verification
+        }
+    body = read_canonical(pathlib.Path(args.disclosure))
+    key_id = body.get("author_key_id")
+    if not isinstance(key_id, str):
+        return EXIT_VERIFY_FAIL, "IDENTITY_SLOT_KEY_MISMATCH", {}
+    release = read_canonical(root / "release/release.json")
+    public_key = load_bound_public_key(root, key_id)
+    result = identity_disclosure.verify(
+        body, pathlib.Path(args.signature).read_bytes(), release, public_key
+    )
+    return EXIT_OK, "identity disclosure valid", result
 
 
 def cmd_compare_successors(args):
@@ -1178,6 +1346,7 @@ def main(argv=None):
     common.add_argument("--json", action="store_true", help="machine-readable output")
 
     p = argparse.ArgumentParser(prog="acsd", description="ACSD provenance evidence capsule CLI")
+    p.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     sub = p.add_subparsers(dest="command", required=True)
 
     pk = sub.add_parser("keygen", parents=[common], help="generate an Ed25519 keypair")
@@ -1246,6 +1415,27 @@ def main(argv=None):
     pn = sub.add_parser("inspect", parents=[common], help="show state and missing approvals")
     pn.add_argument("release_dir")
     pn.set_defaults(func=cmd_inspect)
+
+    pd = sub.add_parser(
+        "disclose-identity", parents=[common],
+        help="selectively unblind one author slot into an external signed sidecar",
+    )
+    pd.add_argument("release_dir")
+    pd.add_argument("--key", required=True, help="private key for the exact author slot")
+    pd.add_argument("--display-name", required=True)
+    pd.add_argument("--persistent-identifier", help="optional ORCID or other identifier assertion")
+    pd.add_argument("--publication-ref", help="optional DOI, proceedings URL, or submission reference")
+    pd.add_argument("--out", required=True, help="external sidecar directory (must be outside the release)")
+    pd.set_defaults(func=cmd_disclose_identity)
+
+    pdi = sub.add_parser(
+        "verify-identity", parents=[common],
+        help="verify one author-slot identity assertion against an exact release",
+    )
+    pdi.add_argument("release_dir")
+    pdi.add_argument("--disclosure", required=True, help="identity disclosure JSON")
+    pdi.add_argument("--signature", required=True, help="matching COSE signature")
+    pdi.set_defaults(func=cmd_verify_identity)
 
     pc = sub.add_parser("compare-successors", parents=[common], help="detect a same-parent, same-slot authorized fork")
     pc.add_argument("left", help="first finalized successor directory")

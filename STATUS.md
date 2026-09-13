@@ -1,4 +1,4 @@
-# ACSD v3 authorized-lineage status
+# ACSD v3.1-development status
 
 Checked 2026-09-13 in the local work tree. This is a release candidate, not a
 public deployment or venue submission.
@@ -6,7 +6,7 @@ public deployment or venue submission.
 ## Implemented
 
 - installable Python CLI: `keygen`, `init`, `approve`, `finalize`, `release`,
-  `verify`, and `inspect`;
+  `verify`, `inspect`, `disclose-identity`, and `verify-identity`;
 - one-command single- or local multi-author release, plus distributed staged
   approval;
 - restricted canonical JSON and SHA-256 bindings;
@@ -15,14 +15,19 @@ public deployment or venue submission.
 - key-id-to-public-key verification, preventing public-key substitution;
 - unanimous signatures over an approval target binding the release,
   governance statement, PEC, work id, and required key set;
+- a canonical approval set over every exact author and predecessor-authority
+  COSE byte string, with RFC 3161 applied only after that set is complete;
 - a closed outcome vocabulary in which permission is distinct from evidence;
-- event predecessor-digest and sequence checks, salted dialogue Merkle openings,
-  and the inherited v1 standalone/series/cyclic-citation corpus;
+- event predecessor-digest and sequence checks plus atomic disclosure-policy,
+  Merkle-opening, key-binding, and real COSE signature verification;
+- external per-author-slot identity sidecars, partial/full-byline separation,
+  cross-release replay rejection, and no mutation of the frozen release;
 - RFC 3161 request and CMS verification with nonce, imprint, TSTInfo content
   type, signer id, critical/exclusive timeStamping EKU, ESS certificate id,
   signature algorithm, and exact externally supplied signer pin;
-- deterministic release building, PowerShell and POSIX gates, and three-platform
-  CI plus the official Lean action.
+- separate wheel and immutable evidence-package builds, one read-only
+  authoritative gate, PowerShell/POSIX wrappers, Python 3.9 minimum-version CI,
+  and the official Lean action;
 - explicit lineage authority with a predecessor-selected threshold;
 - unchanged-authority continuation through child approvals, and old-threshold/new-team
   double control for key-set or threshold changes;
@@ -31,7 +36,8 @@ public deployment or venue submission.
 
 ## Acceptance evidence
 
-- Python: 59 offline tests pass; one live TSA test is skipped offline.
+- Python: 79 tests pass locally; the live TSA test and an unavailable Windows
+  symlink-capability case are skipped.
 - Canonical JSON: 64 fixed vectors have no unexpected divergence; 1,000/1,000
   seeded generated cases agree between Python and Node on bytes and text-layer
   verdicts.
@@ -41,7 +47,7 @@ public deployment or venue submission.
   response passed the complete pinned-signer profile on 2026-09-12.
 - Inherited v1: 8 releases, 18 endorsements, 7 signed series objects, 13
   scenarios, 30/30 profile checks, and 113/113 manifest entries.
-- Lean 4.33.1: 6-job build succeeds; 21 PEC/composition/lineage theorems; no
+- Lean 4.33.1: build succeeds; 34 PEC/lineage/scoped-claim theorems; no
   `sorry` or `admit` in the formal sources. The separately published v1 core's
   53 release/team/series theorems remain a distinct inherited model and are not
   included in this v3 count.
@@ -61,6 +67,11 @@ quorum evidence, fresh keys cannot use the continuity path, and a transition
 authorization bound to one child digest cannot be replayed for another child.
 The executable verifier classifies an otherwise self-consistent attacker n+1
 as `VALID_OBJECT_BUT_UNAUTHORIZED_SUCCESSOR`.
+
+The scoped-claim layer proves that a grant requires its exact scope, signer
+authorization, and declared policy; identity evidence cannot grant an event
+claim; a missing author slot prevents full-byline status; and a legacy target
+timestamp cannot be treated as time evidence for a completed approval set.
 
 ## Remaining product hardening
 

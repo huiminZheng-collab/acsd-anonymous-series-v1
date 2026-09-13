@@ -1,4 +1,4 @@
-"""Small, dependency-free PEC v0.2 reference core.
+"""Small, dependency-free PEC reference core.
 
 This module deliberately models authenticated approvals as an input set; the
 ACSD envelope verifier remains the cryptographic boundary.
@@ -10,6 +10,7 @@ HEX = re.compile(r"^[0-9a-f]{64}$")
 ALLOWED_OUTCOMES = {
     "KEY_ASSENT", "GOVERNANCE_ASSENT", "COMMITTED_EVIDENCE_MATCH",
     "EXTERNALLY_NOT_AFTER",
+    "APPROVAL_SET_EXISTED_NOT_AFTER",
 }
 REQUIRED_NON_CLAIMS = {
     "natural_person_authorship", "contribution_truth", "originality_truth",
@@ -92,7 +93,7 @@ def verify_v1_package_with_node(package_path, verifier_script):
     return report
 
 def validate_pec(pec, approvals, release, governance, predecessor_pec=None):
-    require(pec.get("schema") in {"acsd-pec/v0.1", "acsd-pec/v0.2"}, "PEC_SCHEMA")
+    require(pec.get("schema") in {"acsd-pec/v0.1", "acsd-pec/v0.2", "acsd-pec/v0.3"}, "PEC_SCHEMA")
     body_digest = digest(pec)
     subject, gov = pec["subject"], pec["governance"]
     require(HEX.fullmatch(subject["release_digest"]), "RELEASE_DIGEST")
@@ -121,7 +122,17 @@ def validate_pec(pec, approvals, release, governance, predecessor_pec=None):
     outcomes = policy.get("permitted_outcomes", [])
     require(len(outcomes) == len(set(outcomes)), "CLAIM_POLICY_DUPLICATE")
     require(set(outcomes).issubset(ALLOWED_OUTCOMES), "CLAIM_POLICY_UNKNOWN_OUTCOME")
-    if "EXTERNALLY_NOT_AFTER" in outcomes:
+    if pec.get("schema") == "acsd-pec/v0.3":
+        from event_disclosure import validate_policy
+        validate_policy(pec.get("disclosure_policy"))
+        capabilities = policy.get("required_capabilities", {}).get(
+            "APPROVAL_SET_EXISTED_NOT_AFTER"
+        )
+        require(
+            capabilities == ["rfc3161-exact-approval-set-imprint"],
+            "CLAIM_POLICY_CAPABILITY_MISMATCH",
+        )
+    elif "EXTERNALLY_NOT_AFTER" in outcomes:
         capabilities = policy.get("required_capabilities", {}).get("EXTERNALLY_NOT_AFTER")
         require(capabilities == ["rfc3161-exact-approval-target-imprint"], "CLAIM_POLICY_CAPABILITY_MISMATCH")
     return {"pec_digest": body_digest, "permitted_outcomes": tuple(outcomes)}
@@ -187,5 +198,6 @@ def verify_sidecar_subject(sidecar, pec, outcome, approval_target_digest):
     require(outcome in policy.get("permitted_outcomes", []), "CLAIM_NOT_AUTHORIZED")
     capability = sidecar.get("capability")
     required = policy.get("required_capabilities", {}).get(outcome, [])
-    require(capability in required, "TIME_CAPABILITY_MISSING" if outcome == "EXTERNALLY_NOT_AFTER" else "CLAIM_NOT_AUTHORIZED")
+    time_outcomes = {"EXTERNALLY_NOT_AFTER", "APPROVAL_SET_EXISTED_NOT_AFTER"}
+    require(capability in required, "TIME_CAPABILITY_MISSING" if outcome in time_outcomes else "CLAIM_NOT_AUTHORIZED")
     return True

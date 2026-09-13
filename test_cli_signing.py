@@ -53,7 +53,9 @@ class TestCLISigning(unittest.TestCase):
             p.write_bytes(p.read_bytes() + b"X")
             r = run("verify", str(rel), "--json")
             self.assertEqual(r.returncode, 1)
-            self.assertEqual(json.loads(r.stdout)["data"]["error_code"], "CONTENT_DIGEST_MISMATCH")
+            self.assertTrue(
+                json.loads(r.stdout)["data"]["error_code"].startswith("MANIFEST_HASH_MISMATCH:paper/")
+            )
 
     def test_unknown_key_rejected(self):
         with tempfile.TemporaryDirectory() as d:
@@ -187,6 +189,46 @@ class TestCLISigning(unittest.TestCase):
             r = run("finalize", str(rel), "--json")
             self.assertEqual(r.returncode, 3)
             self.assertEqual(json.loads(r.stdout)["message"], "STATE_CONFLICT")
+
+    def test_selective_identity_disclosure_is_external_and_verifiable(self):
+        with tempfile.TemporaryDirectory() as d:
+            alice, bob, rel = self._setup(d)
+            run("approve", str(rel), "--key", alice["private_key"])
+            run("approve", str(rel), "--key", bob["private_key"])
+            self.assertEqual(run("finalize", str(rel)).returncode, 0)
+            manifest_before = (rel / "MANIFEST.sha256").read_bytes()
+            sidecars = pathlib.Path(d) / "identity-sidecars"
+            r = run(
+                "disclose-identity", str(rel),
+                "--key", alice["private_key"],
+                "--display-name", "Alice Example",
+                "--persistent-identifier", "https://orcid.org/0000-0000-0000-0001",
+                "--publication-ref", "doi:10.0000/example",
+                "--out", str(sidecars), "--json",
+            )
+            self.assertEqual(r.returncode, 0, r.stderr)
+            created = json.loads(r.stdout)["data"]
+            self.assertEqual((rel / "MANIFEST.sha256").read_bytes(), manifest_before)
+            r = run(
+                "verify-identity", str(rel),
+                "--disclosure", created["disclosure"],
+                "--signature", created["signature"], "--json",
+            )
+            self.assertEqual(r.returncode, 0, r.stderr)
+            verified = json.loads(r.stdout)["data"]
+            self.assertEqual(
+                verified["status"], "SLOT_KEY_ASSENT_TO_IDENTITY_ASSERTION"
+            )
+            self.assertIn("natural_person_identity_verified", verified["non_claims"])
+
+            inside = rel / "identity-sidecars"
+            r = run(
+                "disclose-identity", str(rel),
+                "--key", alice["private_key"],
+                "--display-name", "Alice Example", "--out", str(inside), "--json",
+            )
+            self.assertEqual(r.returncode, 2)
+            self.assertEqual(json.loads(r.stdout)["message"], "DISCLOSURE_OUTPUT_INSIDE_RELEASE")
 
     def test_timestamp_flow(self):
         with tempfile.TemporaryDirectory() as d:

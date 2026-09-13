@@ -30,6 +30,11 @@ def make_team(tmp, names):
 
 
 class TestCLI(unittest.TestCase):
+    def test_version_comes_from_package_version_source(self):
+        result = run("--version")
+        self.assertEqual(result.returncode, 0)
+        self.assertEqual(result.stdout.strip(), "acsd 3.1.0.dev0")
+
     def test_init_verify_inspect(self):
         with tempfile.TemporaryDirectory() as d:
             d = pathlib.Path(d)

@@ -1,21 +1,32 @@
-"""Build the deterministic, cache-free ACSD v3 release directory."""
+"""Build or reproduce an immutable ACSD evidence package.
+
+The installable wheel is a separate artifact (`python -m build`).  This script
+builds the paper/source/evidence snapshot and never overwrites a destination.
+"""
 
 from __future__ import annotations
 
-import hashlib
 import argparse
 import shutil
+import tempfile
 from pathlib import Path
+
+from package_manifest import build_manifest_text
 
 
 ROOT = Path(__file__).resolve().parent
-DEST = ROOT / "release-v3.0.0"
 FILES = (
     "ACCEPTANCE-MATRIX.md",
     "ANONYMITY.md",
     "CITATION.cff",
     "LICENSE",
     "acsd.py",
+    "acsd_version.py",
+    "approval_set.py",
+    "event_disclosure.py",
+    "identity_disclosure.py",
+    "package_manifest.py",
+    "check.py",
     "cose.py",
     "fixtures.py",
     "generate_demo.py",
@@ -30,14 +41,18 @@ FILES = (
     "TEST-PLAN.md",
     "test_cli.py",
     "test_cli_signing.py",
+    "test_approval_set.py",
     "test_cose.py",
     "test_corpus.py",
     "test_demo.py",
     "test_dialogue_merkle.py",
+    "test_event_disclosure.py",
+    "test_identity_disclosure.py",
     "test_lineage_authorization.py",
     "test_node_integration.py",
     "test_node_approval.py",
     "test_package_adapter.py",
+    "test_package_manifest.py",
     "test_pec_core.py",
     "test_sidecar.py",
     "test_tsa_interop.py",
@@ -64,17 +79,13 @@ FILES = (
     "design/benchmark_core.py",
     "design/performance_report.json",
     "design/verify_approval.cjs",
-    "demo/dialogue-disclosure.json",
-    "demo/governance.json",
-    "demo/MANIFEST.sha256",
-    "demo/manuscript.txt",
-    "demo/pec.json",
     "demo/release.json",
     "formal/ACSD.lean",
     "formal/AxiomAudit.lean",
     "formal/ACSD/Core.lean",
     "formal/ACSD/PEC.lean",
     "formal/ACSD/Lineage.lean",
+    "formal/ACSD/ScopedClaims.lean",
     "formal/lake-manifest.json",
     "formal/lakefile.toml",
     "formal/lean-toolchain",
@@ -87,6 +98,7 @@ FILES = (
 # quotes; it is shipped as a frozen snapshot so those numbers are reproducible.
 DIRS = (
     ("v1-fixture", (".deps", "node_modules", "__pycache__", ".npm-cache", "private-test-keys")),
+    ("demo", ("__pycache__",)),
 )
 
 
@@ -94,14 +106,18 @@ def _copy_tree(source: Path, target: Path, exclude: tuple[str, ...]) -> None:
     for entry in source.iterdir():
         if entry.name in exclude:
             continue
+        if entry.is_symlink():
+            raise ValueError(f"SOURCE_SYMLINK_REJECTED:{entry}")
         dest = target / entry.name
         if entry.is_dir():
             dest.mkdir(parents=True, exist_ok=True)
             _copy_tree(entry, dest, exclude)
-        else:
+        elif entry.is_file():
             # byte-exact: the v1 fixture snapshot's digests and manifest depend
             # on exact bytes (including binary .whl/.zip/.scitt/.pem files).
             dest.write_bytes(entry.read_bytes())
+        else:
+            raise ValueError(f"SOURCE_NONREGULAR_FILE:{entry}")
 
 
 def _build(staging: Path) -> int:
@@ -124,13 +140,9 @@ def _build(staging: Path) -> int:
         target = staging / relative
         target.mkdir(parents=True, exist_ok=True)
         _copy_tree(source, target, exclude)
-    entries = []
-    for path in sorted(staging.rglob("*")):
-        if path.is_file():
-            relative = path.relative_to(staging).as_posix()
-            entries.append(f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {relative}")
-    (staging / "MANIFEST.sha256").write_bytes(("\n".join(entries) + "\n").encode("ascii"))
-    return len(entries)
+    manifest = build_manifest_text(staging)
+    (staging / "MANIFEST.sha256").write_text(manifest, encoding="ascii")
+    return len(manifest.splitlines())
 
 
 def _same_tree(left: Path, right: Path) -> bool:
@@ -143,26 +155,34 @@ def _same_tree(left: Path, right: Path) -> bool:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--check", action="store_true", help="rebuild separately and compare with the candidate")
+    mode = parser.add_mutually_exclusive_group(required=True)
+    mode.add_argument("--out", help="new evidence-package directory")
+    mode.add_argument("--check", metavar="DIRECTORY", help="rebuild in a temporary directory and compare byte-for-byte")
     args = parser.parse_args()
-    staging = ROOT / "release-v3.0.0.staging"
     if args.check:
-        if not DEST.is_dir():
-            raise FileNotFoundError(DEST.name)
-        count = _build(staging)
-        try:
-            if not _same_tree(staging, DEST):
+        destination = Path(args.check)
+        if not destination.is_absolute():
+            destination = ROOT / destination
+        if not destination.is_dir():
+            raise FileNotFoundError(destination)
+        with tempfile.TemporaryDirectory() as temporary:
+            staging = Path(temporary) / "evidence-package"
+            count = _build(staging)
+            if not _same_tree(staging, destination):
                 raise ValueError("RELEASE_TREE_NOT_REPRODUCIBLE")
-        finally:
-            if staging.exists():
-                shutil.rmtree(staging)
-        print(f"verified {DEST.name}: {count} payload files plus MANIFEST.sha256")
+        print(f"verified {destination.name}: {count} payload files plus MANIFEST.sha256")
         return
-    if DEST.exists():
-        raise FileExistsError(f"refusing to overwrite {DEST}; choose a new release version")
+    destination = Path(args.out)
+    if not destination.is_absolute():
+        destination = ROOT / destination
+    staging = destination.with_name(destination.name + ".staging")
+    if destination.exists():
+        raise FileExistsError(f"refusing to overwrite {destination}")
+    if staging.exists():
+        raise FileExistsError(f"refusing to overwrite stale staging directory {staging}")
     count = _build(staging)
-    staging.replace(DEST)
-    print(f"built {DEST.name}: {count} payload files plus MANIFEST.sha256")
+    staging.replace(destination)
+    print(f"built {destination.name}: {count} payload files plus MANIFEST.sha256")
 
 
 if __name__ == "__main__":

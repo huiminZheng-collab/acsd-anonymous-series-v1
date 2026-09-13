@@ -40,16 +40,17 @@ ACSD should make a narrow, checkable distinction between:
    release without silently widening its scope.
 
 It does not infer natural-person authorship, originality, contribution truth,
-plagiarism, peer review, acceptance, or legal non-repudiation. The most
-promising next research step is item D-01: scoped disclosure. It connects the
-existing lineage and evidence-commitment mechanisms to the real conference
-submission and unblinding lifecycle without changing historical releases.
+plagiarism, peer review, acceptance, or legal non-repudiation. The direct
+per-slot form of D-01 is now implemented and formally modeled. The next step
+is to evaluate that narrow mechanism against replay, linkability, and real
+submission/unblinding workflows before considering credential machinery or a
+transparency service.
 
 ## Research backlog
 
 ### D-01 — Scoped identity disclosure
 
-- **Priority / route status:** P0 / `unexplored`.
+- **Priority / route status:** P0 / `attempted`.
 - **Problem:** after an anonymous release, an author may want to reveal one
   paper, one author slot, or one identity assertion without authorizing a
   broader statement about other papers, coauthors, contributions, or committed
@@ -74,8 +75,10 @@ submission and unblinding lifecycle without changing historical releases.
 - **Smallest experiment:** two works and two author slots. Reveal slot 1 of work
   A, then verify that forged slot 2, work B replay, changed DOI, and a synthesized
   full-team claim are all rejected.
-- **Missing checks:** object schema, command UX, adversarial fixtures, Lean
-  model, and primary-literature comparison with verifiable credentials,
+- **Implemented evidence:** `identity_disclosure.py`, the
+  `disclose-identity`/`verify-identity` commands, adversarial fixtures, and
+  Lean scope/partial-byline theorems.
+- **Missing checks:** usability evaluation and primary-literature comparison with verifiable credentials,
   selective-disclosure signatures, provenance disclosure, and preprint
   unblinding practices.
 - **Paper value if validated:** potentially a substantive contribution rather
@@ -129,7 +132,7 @@ submission and unblinding lifecycle without changing historical releases.
 
 ### D-04 — Multi-author partial and full unblinding
 
-- **Priority / route status:** P1 / `unexplored`.
+- **Priority / route status:** P1 / `attempted`.
 - **Problem:** first author, corresponding author, author order, contribution
   claims, and consent to reveal are separate assertions. One collaborator must
   not be able to create an ACSD-certified identity disclosure for another.
@@ -141,6 +144,8 @@ submission and unblinding lifecycle without changing historical releases.
   unauthorized or over-broad disclosure.
 - **Smallest experiment:** a three-slot paper with one, two, and all three slot
   disclosures, plus a forged disclosure and an unauthorized contribution claim.
+- **Implemented evidence:** exact per-slot signatures, full-byline universal
+  quantification, duplicate-slot conflict rejection, and two-slot fixtures.
 - **Missing checks:** withdrawal semantics, threshold versus unanimity for team
   statements, corresponding-author metadata, and real collaborative usability.
 
@@ -180,8 +185,12 @@ submission and unblinding lifecycle without changing historical releases.
 - **Smallest experiment:** express one dialogue-window opening and one single-
   slot identity opening in a tiny typed model; test whether shared rules reduce
   proof duplication without weakening either authorization boundary.
-- **Missing checks:** minimal common abstraction, negative examples, executable-
-  to-Lean refinement, and a reason not to keep the mechanisms separate.
+- **Implemented evidence:** `ACSD.ScopedClaims` shares only signature, exact-
+  scope, authorization, policy, and type-compatibility rules; event and identity
+  predicates remain distinct. Negative type-confusion theorems and executable
+  tests pass.
+- **Missing checks:** executable-to-Lean refinement and evidence that a richer
+  policy language would improve real workflows.
 
 ### D-07 — Transparency and gossip for forks and revocation notices
 
@@ -240,9 +249,12 @@ submission and unblinding lifecycle without changing historical releases.
 - **Smallest experiment:** verify the same fresh candidate twice on Windows,
   macOS, and Linux, then assert that its tree hash and manifest membership are
   byte-identical before and after both runs.
-- **Missing checks:** cache-free Lean invocation, Python bytecode suppression,
-  CI fixture, and a decision on whether strict directories or immutable archives
-  are the primary distribution object.
+- **Implemented evidence:** `check.py` runs Python without bytecode, builds Lean
+  in a temporary copy, generates demos and evidence packages in temporary
+  directories, and compares every source-tree file hash before and after. The
+  installable wheel and immutable evidence directory are separate artifacts.
+- **Missing checks:** completion of the four-job GitHub matrix on the next push
+  and an optional immutable archive transport profile.
 
 ### D-11 — Executable-to-Lean refinement boundary
 
@@ -328,4 +340,3 @@ promotion, require:
 5. a source audit before any novelty claim;
 6. documentation of key loss, replay, concurrency, and privacy consequences;
 7. a release-version decision so frozen artifacts are never overwritten.
-

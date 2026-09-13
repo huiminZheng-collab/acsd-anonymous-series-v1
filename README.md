@@ -1,4 +1,4 @@
-# ACSD v3 Authorized Scholarly Lineage and Provenance Evidence Capsule
+# ACSD v3.1-development Authorized Scholarly Lineage and Provenance Evidence Capsule
 
 ACSD expands to **Anonymous Scholarly Claim and Disclosure**.  This repository
 contains a content-anonymous paper, an executable command-line prototype, an
@@ -25,14 +25,17 @@ series package to verify.
 - the manuscript bytes match the signed release digest;
 - every required pseudonymous key signed one compact approval target binding
   the release, governance statement, and PEC policy;
+- the finalized approval set binds the exact bytes of every author signature
+  and every required predecessor-authority signature;
 - ordered author roles, corresponding-author choice, and AI-use declaration
   have not changed since that assent;
 - a claimed successor is on the same exact WorkID lineage only when the
   predecessor authority approved the parent-to-child edge;
-- a disclosed research-note or dialogue fragment matches its earlier
-  commitment, when such evidence is present;
-- `EXTERNALLY_NOT_AFTER` only when a nonce-bearing RFC 3161 response verifies
-  against a verifier-supplied TSA signer certificate or fingerprint pin.
+- a disclosed dialogue fragment matches its earlier commitment and its
+  disclosure was separately signed by every policy-required author;
+- `APPROVAL_SET_EXISTED_NOT_AFTER` only when a nonce-bearing RFC 3161 response
+  over the complete approval set verifies against a verifier-supplied TSA
+  signer certificate or fingerprint pin.
 
 It does not establish natural-person identity, historical authorship,
 contribution truth, originality, plagiarism, legal nonrepudiation, peer review,
@@ -59,6 +62,7 @@ not a new cryptographic primitive or a claim that declarations are true.
 
 ```text
 python -m pip install .
+acsd --version
 acsd --help
 ```
 
@@ -155,8 +159,10 @@ acsd finalize release-dir --tsa local
 acsd verify release-dir --allow-local-test-tsa
 ```
 
-For an external TSA, finalize preserves the request, response, and signer
-certificate.  A later verifier must supply trust independently:
+For an external TSA, finalize first constructs `approval/approval-set.json`
+over the exact COSE signature byte strings, then timestamps that closed object.
+It preserves the request, response, and signer certificate. A later verifier
+must supply trust independently:
 
 ```text
 acsd finalize release-dir --tsa https://tsa.example/tsr
@@ -165,12 +171,36 @@ acsd verify release-dir --tsa-trust-cert independently-obtained-tsa.crt
 
 Without `--tsa-trust-cert` or `--tsa-trust-fingerprint`, verification reports
 `PRESENT_UNVERIFIED_NO_EXTERNAL_TRUST` and does not emit
-`EXTERNALLY_NOT_AFTER`.  `--require-external-time` turns missing trust or a
+`APPROVAL_SET_EXISTED_NOT_AFTER`. `--require-external-time` turns missing trust or a
 missing receipt into a nonzero result.  The current adapter implements exact
 signer-certificate pinning, nonce/imprint binding, critical and exclusive
 timeStamping EKU, id-ct-TSTInfo, ESS certificate identifiers, signer identity,
 and CMS signature checks.  It does not implement general PKIX path building or
 revocation checking.
+
+Older v0.1/v0.2 packages timestamped the unsigned approval target. They remain
+verifiable as legacy evidence, but that timestamp is never upgraded into a
+claim that the completed signature set existed then.
+
+## Selective author unblinding
+
+A finalized anonymous release remains immutable. One author can publish a
+separate, slot-scoped identity sidecar without revealing coauthors or altering
+the release:
+
+```text
+acsd disclose-identity release-dir --key private-keys/author.key \
+  --display-name "Alice Example" --publication-ref "doi:10.x/example" \
+  --out identity-sidecars
+acsd verify-identity release-dir \
+  --disclosure identity-sidecars/identity-slot-1.json \
+  --signature identity-sidecars/identity-slot-1.cose
+```
+
+The result means that the exact key assigned to that release slot assented to
+the displayed mapping. It does not verify a natural person or venue status.
+Partial slot disclosure is never reported as a complete byline; conflicting
+same-slot assertions have no automatically selected winner.
 
 ## Reproduce the evidence
 
@@ -186,9 +216,11 @@ Linux/macOS:
 ./run_all.sh
 ```
 
-The current local gate contains:
+The authoritative `check.py` gate is read-only and finishes by comparing all
+source-tree file hashes with its starting snapshot. It contains:
 
-- 59 offline Python tests passing, with one real-network test skipped;
+- 79 Python tests passing, with the live-network and an unavailable Windows
+  symlink-capability case skipped locally;
 - 64 fixed Python-Node canonical-JSON vectors with no unexpected divergence;
 - 1,000 seeded generated differential cases with 1,000 byte and verdict
   agreements;
@@ -197,18 +229,22 @@ The current local gate contains:
   scenarios, 30/30 profile checks, and 113/113 manifest entries;
 - a scaling sample from 10 to 5,000 in-memory objects, recorded in
   `design/performance_report.json`;
-- a Lean 4.33.1 build with 21 PEC/composition/lineage theorems and no
+- a Lean 4.33.1 build with 34 theorems covering PEC, lineage, scoped claims, selective identity,
+  atomic event disclosure, and typed time subjects with no
   `sorry`/`admit`; the separately published v1 formal core's 53
   release/series/team theorems are a distinct inherited proof surface.
 
 The GitHub workflow runs the Python/Node gate on Windows, macOS, and Linux,
-rebuilds the release tree deterministically, and uses the official Lean action
-with an axiom audit.  The real freeTSA interoperability test is opt-in because
+including the declared Python 3.9 minimum, builds both a wheel and a temporary
+immutable evidence package, verifies the frozen v3 manifest, and uses the
+official Lean action with an axiom audit. The real freeTSA interoperability test is opt-in because
 ordinary CI must not depend on network availability.
 
 ## Repository map
 
 - `acsd.py`, `cose.py`, `tsa.py`, `pec_core.py`: executable reference path;
+- `approval_set.py`, `event_disclosure.py`, `identity_disclosure.py`, and
+  `package_manifest.py`: narrow protocol components shared by CLI and tests;
 - `SPEC.md`: object, trust, and claim semantics;
 - `ANONYMITY.md`: content-anonymous scope and known linkability;
 - `TEST-PLAN.md` and `design/SECURITY-ROUTE-LEDGER.md`: attacks and design
@@ -221,12 +257,16 @@ ordinary CI must not depend on network availability.
   `release-v2.0.0/`, `release-v2.1.0/`, and `release-v2.1.1/` trees are retained rather than
   overwritten.
 
-Build and verify the candidate release with:
+Build a new evidence snapshot, or verify a frozen snapshot's manifest, with:
 
 ```text
-python build_release.py
+python build_release.py --out release-v3.1.0-rc1
 python verify_release.py release-v3.0.0
 ```
+
+The installable wheel and the immutable paper/evidence snapshot are separate
+artifacts. The evolving root tree is `3.1.0.dev0`; `release-v3.0.0/` remains a
+frozen historical package and is not rebuilt from later source.
 
 The benchmark prints fresh measurements without modifying the frozen release
 report.  A maintainer can deliberately refresh that report with

@@ -12,10 +12,12 @@ Exit code 0 = no unexpected divergence (known divergences are reported, not
 failed). Exit code 2 = a vector violated its expected verdict or the two
 implementations disagree.
 """
+import argparse
 import json
 import pathlib
 import subprocess
 import sys
+import tempfile
 
 ROOT = pathlib.Path(__file__).resolve().parent
 PROJECT = ROOT.parent
@@ -129,16 +131,18 @@ def py_side(text: str) -> dict:
 
 def node_side(texts: list) -> list:
     payload = json.dumps(texts, ensure_ascii=False).encode("utf-8")
-    tmp = ROOT / "_vectors_input.tmp.json"
-    tmp.write_bytes(payload)
-    try:
+    with tempfile.TemporaryDirectory() as directory:
+        tmp = pathlib.Path(directory) / "vectors.json"
+        tmp.write_bytes(payload)
         r = subprocess.run(["node", str(REF_JS), str(tmp)], capture_output=True, check=True)
-    finally:
-        tmp.unlink(missing_ok=True)
     return json.loads(r.stdout)
 
 
 def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--report-output")
+    parser.add_argument("--vectors-output")
+    args = parser.parse_args()
     ids = [v[0] for v in VECTORS]
     texts = [v[1] for v in VECTORS]
     py = [py_side(t) for t in texts]
@@ -184,11 +188,13 @@ def main() -> int:
             "unexpected_failures": failures,
         },
     }
-    (ROOT / "canonical_diff_report.json").write_text(
-        json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
-    (ROOT / "canonical_diff_vectors.json").write_text(
-        json.dumps([{"id": v[0], "text": v[1], "expect_accept": v[2], "note": v[3]} for v in VECTORS],
-                   ensure_ascii=False, indent=2), encoding="utf-8")
+    if args.report_output:
+        pathlib.Path(args.report_output).write_text(
+            json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+    if args.vectors_output:
+        pathlib.Path(args.vectors_output).write_text(
+            json.dumps([{"id": v[0], "text": v[1], "expect_accept": v[2], "note": v[3]} for v in VECTORS],
+                       ensure_ascii=False, indent=2), encoding="utf-8")
 
     s = report["summary"]
     print(f"total={s['total']} agree_bytes={s['agree_bytes']} agree_reject={s['agree_reject']} "

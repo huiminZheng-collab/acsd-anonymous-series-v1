@@ -27,9 +27,9 @@ protocol testing and MUST be labelled non-external.
 | `wrong-salt` | correct bytes, wrong secret salt | `DISCLOSURE_BINDING_MISMATCH` | hash opening is exact |
 | `noncontiguous-dialogue` | omit an internal dialogue turn from disclosed window | `DISCLOSURE_WINDOW_INVALID` | window order is meaningful |
 | `single-author-disclosure` | one otherwise valid author signature opens a team dialogue | `DISCLOSURE_APPROVAL_MISSING` | a corresponding author cannot disclose alone |
-| `git-time-upgrade` | request `EXTERNALLY_NOT_AFTER` with only Git timestamp | `TIME_CAPABILITY_MISSING` | Git time is not independent time |
+| `git-time-upgrade` | request legacy `EXTERNALLY_NOT_AFTER` with only Git timestamp | `TIME_CAPABILITY_MISSING` | Git time is not independent time |
 | `witness-time-upgrade` | use a witness observation as a timestamp | `TIME_CAPABILITY_MISSING` | observation is not trusted wall clock |
-| `valid-rfc3161-sidecar` | valid nonce-bearing receipt over exact approval-target digest and an external signer pin | `VALID` plus `EXTERNALLY_NOT_AFTER` | external time has exact scope |
+| `valid-rfc3161-sidecar` | legacy nonce-bearing receipt over exact approval-target digest and an external signer pin | `VALID` plus legacy `EXTERNALLY_NOT_AFTER` | retained v0.1/v0.2 scope |
 | `receipt-replayed-to-v2` | attach v1 receipt to v2 PEC | `RECEIPT_SUBJECT_MISMATCH` | no historical backfill |
 | `exclusive-slot-double-sign` | two valid PECs for the same exclusive policy slot | `EQUIVOCATION` | cryptographic conflict, not human motive |
 | `missing-sidecar` | policy requests external time but no receipt is supplied | `INDETERMINATE` / residual obligation | absence is not accusation |
@@ -71,7 +71,11 @@ and are automated in `test_cli_signing.py`, `test_cose.py`,
 | omit, alter, or replay the RFC 3161 nonce | `TSR_NONCE_MISMATCH` |
 | use absent, non-critical, or non-exclusive timeStamping EKU | reject |
 | use a non-TSTInfo CMS content type or mismatched signature algorithm | reject |
-| verify a package certificate without an external trust argument | no `EXTERNALLY_NOT_AFTER` |
+| verify a package certificate without an external trust argument | no `APPROVAL_SET_EXISTED_NOT_AFTER` |
+| timestamp a target before adding author signatures | never `APPROVAL_SET_EXISTED_NOT_AFTER` |
+| mutate or add a COSE approval after approval-set closure | approval-set mismatch |
+| replay one slot identity disclosure to another release or slot | identity scope/key mismatch |
+| present one valid slot disclosure as a complete byline | `PARTIAL_BYLINE_KEY_ASSENT` only |
 | explicitly verify the built-in local TSA | `LOCAL_TEST_VERIFIED`, never external time |
 
 ## Acceptance gates

@@ -55,3 +55,15 @@ new-key approval. Acceptance would falsify the v3 security goal; the current
 verifier rejects it specifically as an unauthorized successor. This is an
 empirical executable result. The Lean result separately proves the abstract
 implication from accepted succession to predecessor quorum under typed inputs.
+
+## 2026-09-13 evidence-closure and scoped-disclosure decisions
+
+| Approach | Target or obstruction | Evidence | Missing check | Cost | Status |
+|---|---|---|---|---|---|
+| Timestamp the unsigned approval target | Proves target existence, but signatures may be added after the timestamp | Temporal-confusion regression and typed Lean target/set distinction | None; it cannot establish approval completion | low | ruled out |
+| Timestamp a canonical set of exact approval-signature bytes | Establishes that the complete accepted signature set existed no later than TSA time | `approval_set.py`, CLI TSA flow, mutation tests, typed Lean time subject | Multiple external TSA interoperability runs | low | attempted |
+| Trust `approval_key_ids` self-reported inside a disclosure | Lets an object claim its own authorization without proving signatures | Earlier demo accepted identifiers without signature envelopes | None; circular authorization source | low | ruled out |
+| Atomically verify disclosure policy, event scope, Merkle opening, bound public keys, and all signatures | Prevents a valid opening or signature from being detached and relabelled | `event_disclosure.py`, real-signature demo, replay/policy/opening/key tests | More event kinds and editor workflow | medium | attempted |
+| Put identity unblinding inside the frozen release | Mutates the priority artifact and forces unnecessary coauthor disclosure | Manifest closure and conference workflow require historical byte stability | None; external sidecar is the required boundary | low | ruled out |
+| Sign an external identity mapping with the exact release-slot key | Supports selective unblinding without certifying natural-person truth or other slots | CLI commands, slot/release/type-confusion tests, Lean partial/full-byline result | Venue workflow study and identifier validation profiles | low | attempted |
+| Implement offline revocation without a precommitted authority or global ordering source | A stolen key and its original holder can both make valid later statements; an offline verifier cannot know the globally latest one | Same-slot fork model and absence of an independent freshness oracle | Transparency/recovery deployment model | high | ruled out |

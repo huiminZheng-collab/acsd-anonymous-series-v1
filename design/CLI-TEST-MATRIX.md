@@ -54,8 +54,8 @@
 | M-VER-04 | 删除一个文件（manifest 多出条目） | `TAMPERED`；exit 1 |
 | M-VER-05 | 塞入 manifest 未列的文件 | `TAMPERED`（MANIFEST_SET_MISMATCH 语义）；exit 1 |
 | M-VER-06 | 从全新目录（无任何依赖）verify | 同样结果（离线、零外部依赖） |
-| M-VER-07 | 合法 finalized-untimestamped | 作者批准仍可 `VALID`；不输出 EXTERNALLY_NOT_AFTER |
-| M-VER-08 | 带 TSA 回执且验证者给出外部 signer cert/fingerprint pin | 验证 tsq/tsr/nonce/profile/genTime 后输出 `EXTERNALLY_NOT_AFTER`；不输出创作时间类声明 |
+| M-VER-07 | 合法 finalized-untimestamped | 作者批准仍可 `VALID`；不输出 `APPROVAL_SET_EXISTED_NOT_AFTER` |
+| M-VER-08 | 带 TSA 回执且验证者给出外部 signer cert/fingerprint pin | 验证 approval-set/tsq/tsr/nonce/profile/genTime 后输出 `APPROVAL_SET_EXISTED_NOT_AFTER`；不输出创作时间类声明 |
 | M-VER-09 | TSA 回执被换（另一个 tsr） | exit 1 `RECEIPT_SUBJECT_MISMATCH` |
 | M-VER-10 | awaiting-approvals 中间态目录 | `INCOMPLETE`；列出缺的 key；exit 5 |
 | M-VER-11 | 非 canonical JSON 的 release.json（键乱序） | `TAMPERED`/`PEC_NONCANONICAL`；exit 1 |
@@ -77,7 +77,7 @@
 
 - 差分 canonical 测试（`design/canonical_diff_runner.py`）作为
   M-VER-11/12 的底层依赖，CI 中必须先跑且 exit 0。
-- 当前 v3 unittest（59 pass + 1 个网络测试离线 skip）、1,000 个生成式
+- 当前 v3.1-development unittest（79 pass + 2 个环境相关 skip）、1,000 个生成式
   差分样本与 demo/v1 复验保持通过。
 
 ## 7. 授权谱系回归

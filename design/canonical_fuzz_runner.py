@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import argparse
 import random
 import statistics
 import string
@@ -29,6 +30,9 @@ def generated(rng: random.Random, depth: int = 0):
 
 
 def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--output")
+    args = parser.parse_args()
     rng = random.Random(SEED)
     texts = []
     for index in range(SAMPLES):
@@ -65,8 +69,10 @@ def main() -> int:
         "text_verdict_agreements": verdict_agreements,
         "failure_indices": failures,
     }
-    output = __import__("pathlib").Path(__file__).with_name("canonical_fuzz_report.json")
-    output.write_text(json.dumps(report, indent=2), encoding="utf-8")
+    if args.output:
+        __import__("pathlib").Path(args.output).write_text(
+            json.dumps(report, indent=2), encoding="utf-8"
+        )
     print(json.dumps(report))
     return 1 if failures else 0
 

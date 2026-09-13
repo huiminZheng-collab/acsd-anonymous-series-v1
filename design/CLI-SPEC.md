@@ -171,7 +171,8 @@ release-dir/
 
 ## 8. RFC 3161 集成（finalize --tsa）
 
-1. 只发送 **SHA-256 imprint**（`approval_target_digest`），携带随机 nonce；
+1. 全部必要签名验证通过后，先构造绑定每个 exact COSE 字节串的
+   `approval_set_digest`，再只发送该 **SHA-256 imprint**，携带随机 nonce；
    原始 DER、服务返回的 signer certificate 和报告入包。
 2. TSA 不可达：默认失败（exit 4，状态回退，已有签名保留）；显式
    `--allow-untimestamped` 才降级为 `finalized-untimestamped`，且
@@ -179,7 +180,8 @@ release-dir/
 3. 包内 certificate 不自证可信。`verify` 只有收到外部
    `--tsa-trust-cert` 或 `--tsa-trust-fingerprint` 后，才检查 imprint、nonce、
    CMS/TSTInfo profile、ESS signer id、关键且专用的 timeStamping EKU 与签名，
-   并输出 `EXTERNALLY_NOT_AFTER`。当前模型是 exact signer pin，不是通用 PKIX
+   并输出 `APPROVAL_SET_EXISTED_NOT_AFTER`。旧 v0.1/v0.2 的 target-only 回执
+   仍可验证，但不得升级为 approval-set 时间结论。当前模型是 exact signer pin，不是通用 PKIX
    path/revocation 验证。
 4. 禁止把 Git 时间、本地时钟、见证观察当作时间证据（沿用 claim_policy）。
 
@@ -197,10 +199,19 @@ release-dir/
   `peer_review`。
 - 帮助文本与 README 禁止出现"证明作者身份""证明创作时间""防止抄袭"等
   措辞；允许的措辞见 SPEC.md 的 claim_policy 表。
-- `verify` 的 `EXTERNALLY_NOT_AFTER` 只绑定"TSA 见到该 imprint 不晚于
+- `verify` 的 `APPROVAL_SET_EXISTED_NOT_AFTER` 只绑定"TSA 见到完整批准集的
+  imprint 不晚于
   genTime"。
+
+## 10.1 选择性揭盲
+
+- `disclose-identity` 只为 exact release 的一个作者 slot 生成包外 sidecar；
+  不修改已冻结 release，也不替其他 slot 揭盲。
+- `verify-identity` 的成功结果是
+  `SLOT_KEY_ASSENT_TO_IDENTITY_ASSERTION`，不是自然人身份或会议录用验证。
+- 同一 slot 的冲突陈述不自动选赢家；缺少任一 slot 时不得输出完整 byline。
 
 ## 11. 范围外（明确不做，v1.0 前）
 
-- 多机构交叉系列包（跨 series）、透明日志/见证服务、zero-knowledge 选择性
-  披露、作者身份链接、BBS/匿名凭据、GUI。
+- 多机构交叉系列包（跨 series）、透明日志/见证服务、zero-knowledge
+  或不可链接凭据、BBS/匿名凭据、GUI。直接的 slot-to-identity 公共链接已实现。

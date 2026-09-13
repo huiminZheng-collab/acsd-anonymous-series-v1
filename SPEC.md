@@ -1,6 +1,6 @@
-# ACSD PEC and authorized-lineage profile v0.2
+# ACSD PEC and authorized-lineage profile v0.3
 
-Status: v0.2 research profile with an executable v3.0 reference
+Status: v0.3 research profile with an executable v3.1-development reference
 implementation. The terms **MUST** and **MUST NOT** describe the profile
 contract, not a deployed standard. The Python CLI implements the binding and
 cryptographic packaging rules; Lean certifies a separate abstract composition
@@ -14,8 +14,9 @@ A Provenance Evidence Capsule (PEC) binds an exact scholarly release to:
    by unanimous approval-target signatures;
 2. a sequence of commitments to research materials such as a Git snapshot,
    a research note, or a key human--AI dialogue; and
-3. optional, separately verified external receipts over the exact jointly
-   signed approval-target digest.
+3. an approval set closing over the exact byte strings of every signature used
+   for acceptance; and
+4. optional, separately verified external receipts over that complete set.
 
 It allows a later disclosure to prove that disclosed material matches an
 earlier commitment.  It also prevents a verifier from upgrading the evidence
@@ -56,6 +57,7 @@ governance_digest    = H(canonical AuthorshipGovernanceStatement bytes)
 event_digest         = H(canonical EvidenceEvent body)
 pec_digest           = H(canonical PEC body)
 approval_target_digest = H(canonical ApprovalTarget body)
+approval_set_digest    = H(canonical ApprovalSet body)
 disclosure_digest    = H(canonical Disclosure body)
 ```
 
@@ -71,7 +73,7 @@ the envelope is therefore a sidecar, not a recursively signed field.
 
 ```json
 {
-  "schema": "acsd-pec/v0.2",
+  "schema": "acsd-pec/v0.3",
   "pec_id": "random-128-bit-or-longer-identifier",
   "subject": {
     "work_id": "stable WorkID from PaperRelease",
@@ -97,11 +99,19 @@ the envelope is therefore a sidecar, not a recursively signed field.
 The CLI constructs an `acsd-approval-target/v2` object containing the work id,
 release digest, governance digest, PEC digest, sorted required key ids, and the
 lineage-transition digest (null only for a genesis release).
-Every required key signs the exact same canonical target. For v0.2 this set
+Every required key signs the exact same canonical target. For v0.3 this set
 MUST equal the complete `PaperRelease.authors` key set; a subset policy is not
 supported. A PEC is accepted only if every public key hashes to its declared
 key id, all target signatures, referenced objects, event links, and policy
 conditions verify. Mutable `state.json` is never an approval oracle.
+
+After signature verification, finalization constructs
+`acsd-approval-set/v1`. It binds `approval_target_digest`, the sorted author
+key set and SHA-256 digest of each exact COSE approval byte string, plus the
+corresponding exact predecessor-authorization signatures when authority
+changes. This closes the object before timestamping: an RFC 3161 receipt over
+the earlier target alone establishes only target existence, not that any
+approval signature existed at that time.
 
 The governance statement's `manuscript_sha256` MUST equal the exact
 `PaperRelease.content.sha256`. Its byline member keys MUST map one-for-one to
@@ -241,14 +251,15 @@ an exact predecessor digest, and a commitment:
 }
 ```
 
-The event commitment is over a domain-separated encoding containing the
-event kind, `pec_id`, `event_id`, sequence, and raw evidence bytes.  A
-`salted-sha256-v1` commitment MUST use an independently generated 256-bit
-secret salt for material that could be guessed.  A bare hash of a short note,
-prompt, or title MUST be treated as publicly guessable, not sealed.
+The event object, including its kind, id, sequence and commitment root, is
+bound by the PEC approval target. A `salted-sha256-v1` commitment MUST use an
+independently generated 256-bit secret salt for material that could be guessed.
+A bare hash of a short note, prompt, or title MUST be treated as publicly
+guessable, not sealed.
 
-For `dialogue_snapshot`, `merkle-dialogue-v1` commits separately salted,
-ordered turns.  A disclosure may open a contiguous window with its leaf
+For `dialogue_snapshot`, `merkle-dialogue-v1` hashes each leaf as the
+domain-separated tuple `(index, salt, exact turn bytes)` and commits the
+ordered leaves. A disclosure may open a contiguous window with its leaf
 values, salts, indices, and Merkle paths; it does not need to reveal other
 turns.  This proves membership and position in the committed dialogue root,
 not who typed a turn, which provider generated a turn, or that the dialogue
@@ -274,7 +285,7 @@ existing evidence while reusing those approvals.
 | `KEY_ASSENT` | valid signature over exact PEC or referenced object | natural-person identity |
 | `GOVERNANCE_ASSENT` | independently valid governance statement and required member approvals | contribution truth; legal authorship |
 | `COMMITTED_EVIDENCE_MATCH` | valid disclosure that opens the exact event commitment | early creation; causal authorship |
-| `EXTERNALLY_NOT_AFTER` | RFC 3161 receipt over the exact approval target, verified with an external signer pin | first creation; global priority; originality |
+| `APPROVAL_SET_EXISTED_NOT_AFTER` | RFC 3161 receipt over the complete exact approval set, verified with an external signer pin | first creation; global priority; originality |
 
 The policy MUST list at least these global non-claims:
 `natural_person_authorship`, `contribution_truth`, `originality_truth`,
@@ -283,16 +294,17 @@ The policy MUST list at least these global non-claims:
 An implementation MUST NOT emit an outcome that is absent from the exact
 policy or whose required capability is unavailable.  In particular,
 `git_snapshot`, `dialogue_snapshot`, a local clock, a series rank, or a
-witness observation cannot be relabelled `EXTERNALLY_NOT_AFTER`.
+witness observation cannot be relabelled
+`APPROVAL_SET_EXISTED_NOT_AFTER`. Legacy v0.1/v0.2 target-only receipts retain
+the narrower `EXTERNALLY_NOT_AFTER` label and never upgrade to the new result.
 
 The policy is itself a closed, canonical object. Its minimum v0.1 form is:
 
 ```json
 {
-  "schema": "acsd-pec-claim-policy/v0.1",
-  "permitted_outcomes": ["KEY_ASSENT", "COMMITTED_EVIDENCE_MATCH"],
+  "permitted_outcomes": ["KEY_ASSENT", "GOVERNANCE_ASSENT", "COMMITTED_EVIDENCE_MATCH", "APPROVAL_SET_EXISTED_NOT_AFTER"],
   "required_capabilities": {
-    "EXTERNALLY_NOT_AFTER": ["rfc3161-exact-approval-target-imprint"]
+    "APPROVAL_SET_EXISTED_NOT_AFTER": ["rfc3161-exact-approval-set-imprint"]
   },
   "global_non_claims": ["natural_person_authorship", "contribution_truth", "originality_truth", "legal_nonrepudiation", "peer_review"]
 }
@@ -305,15 +317,15 @@ given implementation-defined meanings.
 
 ```json
 {
-  "schema": "acsd-pec-disclosure/v0.1",
+  "schema": "acsd-event-disclosure/v1",
   "pec_digest": "sha256 hex",
   "event_id": "exact event id",
   "event_sequence": 3,
   "kind": "same kind as committed event",
-  "disclosure_mode": "full | dialogue_window",
-  "opened_material": "bytes or structured leaves",
-  "opening_secret_or_merkle_paths": "as required by commitment scheme",
-  "approval_key_ids": ["all required PEC approval key ids, sorted"]
+  "disclosure_mode": "dialogue_window",
+  "opened_material": [
+    {"index": 4, "bytes": "exact UTF-8 text", "salt": "hex", "path": []}
+  ]
 }
 ```
 
@@ -322,50 +334,70 @@ form is:
 
 ```json
 {
-  "schema": "acsd-pec-disclosure-policy/v0.1",
-  "approval_rule": "unanimous-current-release-authors",
-  "permitted_modes": {
-    "git_snapshot": ["full"],
-    "dialogue_snapshot": ["dialogue_window", "full"],
-    "research_note_snapshot": ["full"],
-    "role_acknowledgement": ["full"]
+  "schema": "acsd-disclosure-policy/v1",
+  "event_kinds": {
+    "dialogue_snapshot": {
+      "modes": ["dialogue_window"],
+      "authorization": "all-release-authors"
+    }
   }
 }
 ```
 
 Thus no corresponding author, first author, or PEC issuer may disclose team
 material unilaterally in v0.1. A disclosure's separate approval-envelope set
-MUST contain exactly one valid signature from every listed approval key over
-the same canonical disclosure body. A disclosure MUST bind the exact PEC
-digest, event id, sequence, kind, and commitment scheme. A verifier rejects a
-disclosure that opens valid bytes for another PEC, another event, another
-governance statement, or an unauthorized window.
+MUST contain exactly one valid COSE signature from every listed approval key
+over the same canonical disclosure body. The verifier derives that key set
+from the approved PEC; a signer list inside the disclosure cannot authorize
+itself. Policy validation, event binding, Merkle opening, public-key binding,
+and all required signatures form one atomic acceptance decision. A verifier
+rejects a disclosure that opens valid bytes for another PEC, another event,
+another governance statement, or an unauthorized window.
 
-PEC v0.1 supports direct commitment openings only.  It does not claim
+PEC v0.3 supports the dialogue-window opening above. It does not claim
 zero-knowledge selective disclosure, anonymous credentials, redaction
 soundness beyond the disclosed leaf proofs, or post-disclosure revocation.
 
+### 8.1 Per-slot identity disclosure
+
+An identity disclosure is an external sidecar signed by the exact key of one
+author slot. It binds `release_id`, `work_id`, `author_slot`,
+`author_key_id`, an identity assertion, the fixed purpose
+`publication-unblinding`, and an optional publication reference. It never
+changes the frozen release and does not create a lineage successor.
+
+The successful result is `SLOT_KEY_ASSENT_TO_IDENTITY_ASSERTION`: the exact
+pseudonymous slot key signed that mapping. It is not a natural-person identity
+check and does not prove that a DOI exists or that a venue accepted the work.
+A full-byline result requires a separate valid disclosure for every exact
+release slot. Any missing slot remains partial; two conflicting disclosures
+for one slot produce a conflict with no protocol-selected winner.
+
 ## 9. External evidence sidecars
 
-An external sidecar is not included in the immutable approval target. It names
-`approval_target_digest`, has its own canonical bytes, and is verified under a
-trust decision supplied independently by the verifier.
+An external receipt sidecar is not included in the immutable approval set. It
+names `approval_set_digest`, has its own canonical bytes, and is verified under
+a trust decision supplied independently by the verifier.
 
 - **RFC 3161 sidecar:** retains the raw nonce-bearing request and response,
   verifies an exact signer-certificate/fingerprint pin and the message imprint
-  over `approval_target_digest`, and
-  permits only `EXTERNALLY_NOT_AFTER`.
+  over `approval_set_digest`, and permits only
+  `APPROVAL_SET_EXISTED_NOT_AFTER`.
 - **Transparency/witness sidecar:** retains the signed statement, receipt,
   checkpoint, policy, and any required inclusion/consistency proof.  It
   permits only the policy's observation or equivocation outcomes.
 - **Missing sidecar:** yields `INDETERMINATE` for the outcome requiring it;
   it does not invalidate the base PEC.
 
-No receipt may be replayed from an old target to a revised target, because the
+No receipt may be replayed from an old approval set to a revised set, because the
 imprint and sidecar subject digest must equal the exact current
-`approval_target_digest`. A certificate copied into the package is not its own
+`approval_set_digest`. A certificate copied into the package is not its own
 trust anchor. The reference CLI does exact signer pinning, not general PKIX
 path construction or revocation checking.
+
+Legacy v0.1/v0.2 packages timestamped only `approval_target_digest`. Their
+receipts may establish that unsigned target's external not-after time, but
+cannot establish when the author or predecessor signatures were added.
 
 ## 10. Verification procedure
 
@@ -379,11 +411,14 @@ path construction or revocation checking.
    approval signatures.
 4. Recompute every event digest and enforce the event sequence and predecessor
    chain.
-5. Recompute `approval_target_digest`; verify every time sidecar binds that
-   digest exactly. Disclosures continue to bind their exact PEC/event scope.
+5. Recompute the approval set from the exact verified signature byte strings.
+   Verify every v0.3 time sidecar binds `approval_set_digest` exactly. Keep
+   legacy target-only evidence typed separately.
 6. Recompute the claim policy's required capabilities and emit only the
    allowed outcomes.  Retain all unmet obligations as residual evidence gaps.
-7. Emit `INDETERMINATE` rather than an accusation when required evidence is
+7. For a disclosure, atomically check policy, exact PEC/event scope, commitment
+   opening, public-key binding, and all required signatures.
+8. Emit `INDETERMINATE` rather than an accusation when required evidence is
    unavailable, redacted, stale, or policy-inadequate.
 
 Stable rejection codes for the first corpus include:
@@ -399,8 +434,10 @@ Stable rejection codes for the first corpus include:
 ## 11. Formalization boundary
 
 The Lean core models typed approval targets and approvals, exact digest reuse,
-policy-authorized capability derivation, real predecessor-digest links, and a
-decomposed time-evidence predicate. Hash collision resistance, signature
+policy-authorized capability derivation, real predecessor-digest links, and
+typed target-versus-approval-set time evidence. Its scoped-statement layer
+separates event, identity, and time claims and models per-slot versus full-
+byline disclosure. Hash collision resistance, signature
 unforgeability, parser refinement, encryption secrecy, RFC 3161 operation, and
 service governance remain assumptions attached to executable components.
 

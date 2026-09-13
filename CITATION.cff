@@ -2,7 +2,7 @@ cff-version: 1.2.0
 message: "If you use the ACSD profile or reference implementation, cite this software and its accompanying manuscript."
 title: "ACSD: Anonymous Scholarly Claim and Disclosure"
 type: software
-version: 3.0.0
+version: 3.1.0-dev0
 date-released: 2026-09-13
 authors:
   - name: "ACSD contributors"
