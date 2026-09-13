@@ -1,8 +1,12 @@
-import json, pathlib, sys
+import hashlib
+import json
+import pathlib
+import sys
 
 from cryptography.hazmat.primitives import serialization
 
 import cose
+import claim_derivation as claim_core
 from acsd import check_approval_target, check_bindings
 from event_disclosure import verify_event_disclosure
 from pec_core import adapt_v1_release, canonical, digest
@@ -35,18 +39,36 @@ def verify_package(root='demo'):
             public_keys[key_id],
             expected_payload=canonical(target),
         )
+    approval_evidence = claim_core.AppraisedEvidence(
+        claim_core.EvidenceKind.UNANIMOUS_APPROVAL,
+        claim_core.ApprovalTargetSubject(digest(target)),
+        digest({
+            "target_digest": digest(target),
+            "approval_certificate_digests": [
+                {
+                    "key_id": key_id,
+                    "sha256": hashlib.sha256(
+                        (root / f"release-approvals/{key_id}.cose").read_bytes()
+                    ).hexdigest(),
+                }
+                for key_id in sorted(required)
+            ],
+        }),
+    )
+    approval_derivations = claim_core.derive(
+        [approval_evidence],
+        claim_core.permitted_claims(pec["claim_policy"]["permitted_outcomes"]),
+    )
     disclosure_result = verify_event_disclosure(
         disclosure, pec, public_keys, signatures,
         accepted_pec_digest=digest(pec),
     )
+    granted_outcomes = list(claim_core.wire_outcomes(approval_derivations))
+    granted_outcomes.append(disclosure_result["outcome"])
     return {
         'manifest_entries': entries,
         'pec_digest': digest(pec),
-        'granted_outcomes': [
-            'KEY_ASSENT',
-            'GOVERNANCE_ASSENT',
-            'COMMITTED_EVIDENCE_MATCH',
-        ],
+        'granted_outcomes': granted_outcomes,
         'event_result': disclosure_result,
         'non_claims': pec['claim_policy']['global_non_claims'],
         'status': 'VALID',

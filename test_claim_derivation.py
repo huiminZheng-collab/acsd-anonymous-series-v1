@@ -1,36 +1,91 @@
 import unittest
 
-from claim_derivation import Claim, ClaimKind, Evidence, EvidenceKind, decision, derive
+from claim_derivation import (
+    AppraisedEvidence,
+    ApprovalSetSubject,
+    ApprovalTargetSubject,
+    Claim,
+    ClaimKind,
+    EventSubject,
+    EvidenceKind,
+    GRANTS,
+    IdentitySubject,
+    StatementSubject,
+    decision,
+    derive,
+    derived_claims,
+    permitted_claims,
+    wire_outcomes,
+)
+
+
+DIGESTS = [format(index, "064x") for index in range(1, 12)]
+TARGET_SUBJECT = ApprovalTargetSubject(DIGESTS[0])
+SET_SUBJECT = ApprovalSetSubject(DIGESTS[1])
+EVENT_SUBJECT = EventSubject(DIGESTS[2], "event-1", DIGESTS[3], 2, 4)
+IDENTITY_SUBJECT = IdentitySubject(DIGESTS[4], 1, DIGESTS[5], DIGESTS[6])
+STATEMENT_SUBJECT = StatementSubject(DIGESTS[7])
+
+
+def subject_for(kind):
+    if kind in (EvidenceKind.UNANIMOUS_APPROVAL,
+                EvidenceKind.APPROVAL_TARGET_TIMESTAMP):
+        return TARGET_SUBJECT
+    if kind == EvidenceKind.APPROVAL_SET_TIMESTAMP:
+        return SET_SUBJECT
+    if kind == EvidenceKind.EVENT_DISCLOSURE:
+        return EVENT_SUBJECT
+    if kind == EvidenceKind.SLOT_IDENTITY_ASSENT:
+        return IDENTITY_SUBJECT
+    return STATEMENT_SUBJECT
+
+
+def claim_subject_for(kind):
+    if kind in (
+        ClaimKind.KEY_ASSENT,
+        ClaimKind.GOVERNANCE_ASSENT,
+        ClaimKind.TARGET_IMPRINT_EXISTED_NOT_AFTER,
+        ClaimKind.ORIGINALITY_VERIFIED,
+    ):
+        return TARGET_SUBJECT
+    if kind in (
+        ClaimKind.APPROVAL_SET_IMPRINT_EXISTED_NOT_AFTER,
+        ClaimKind.SIGNERS_UNCOMPROMISED_AT_TIME,
+    ):
+        return SET_SUBJECT
+    if kind == ClaimKind.COMMITTED_EVIDENCE_MATCH:
+        return EVENT_SUBJECT
+    if kind in (
+        ClaimKind.SLOT_KEY_ASSENT_TO_IDENTITY_ASSERTION,
+        ClaimKind.NATURAL_PERSON_IDENTITY_VERIFIED,
+    ):
+        return IDENTITY_SUBJECT
+    return STATEMENT_SUBJECT
 
 
 class TestClaimDerivation(unittest.TestCase):
-    def test_evidence_types_do_not_substitute_for_each_other(self):
-        subject = "a" * 64
+    def evidence(self, kind, certificate=8):
+        return AppraisedEvidence(kind, subject_for(kind), DIGESTS[certificate])
+
+    def test_complete_six_by_ten_matrix_matches_only_declared_rules(self):
         permitted = list(ClaimKind)
-        target = Evidence(EvidenceKind.APPROVAL_TARGET_TIMESTAMP, subject, True)
-        self.assertEqual(
-            decision(
-                [target], permitted,
-                Claim(ClaimKind.TARGET_IMPRINT_EXISTED_NOT_AFTER, subject),
-            ),
-            "GRANTED",
-        )
-        self.assertEqual(
-            decision(
-                [target], permitted,
-                Claim(ClaimKind.APPROVAL_SET_IMPRINT_EXISTED_NOT_AFTER, subject),
-            ),
-            "DENIED",
-        )
+        for evidence_kind in EvidenceKind:
+            evidence = self.evidence(evidence_kind)
+            for claim_kind in ClaimKind:
+                with self.subTest(evidence=evidence_kind, claim=claim_kind):
+                    expected = claim_kind in GRANTS[evidence_kind]
+                    self.assertEqual(
+                        decision(
+                            [evidence], permitted,
+                            Claim(claim_kind, claim_subject_for(claim_kind)),
+                        ),
+                        "GRANTED" if expected else "DENIED",
+                    )
 
     def test_composition_is_only_the_union_of_explicit_grants(self):
-        subject = "b" * 64
-        permitted = list(ClaimKind)
-        evidence = [
-            Evidence(EvidenceKind.APPROVAL_TARGET_TIMESTAMP, subject, True),
-            Evidence(EvidenceKind.SLOT_IDENTITY_ASSENT, subject, True),
-        ]
-        granted = derive(evidence, permitted)
+        target = self.evidence(EvidenceKind.APPROVAL_TARGET_TIMESTAMP)
+        identity = self.evidence(EvidenceKind.SLOT_IDENTITY_ASSENT, 9)
+        granted = derived_claims([target, identity], list(ClaimKind))
         self.assertEqual(
             {claim.kind for claim in granted},
             {
@@ -38,31 +93,68 @@ class TestClaimDerivation(unittest.TestCase):
                 ClaimKind.SLOT_KEY_ASSENT_TO_IDENTITY_ASSERTION,
             },
         )
-        self.assertNotIn(
-            Claim(ClaimKind.NATURAL_PERSON_IDENTITY_VERIFIED, subject), granted
-        )
+        self.assertFalse(any(
+            claim.kind == ClaimKind.NATURAL_PERSON_IDENTITY_VERIFIED
+            for claim in granted
+        ))
 
     def test_policy_and_exact_subject_are_both_required(self):
-        subject = "c" * 64
-        evidence = [Evidence(EvidenceKind.SCITT_INCLUSION, subject, True)]
+        evidence = self.evidence(EvidenceKind.SCITT_INCLUSION)
         self.assertEqual(
             decision(
-                evidence, [], Claim(ClaimKind.STATEMENT_REGISTERED, subject)
+                [evidence], [], Claim(ClaimKind.STATEMENT_REGISTERED, evidence.subject)
             ),
             "DENIED",
         )
+        other = StatementSubject(DIGESTS[10])
         self.assertEqual(
             decision(
-                evidence, [ClaimKind.STATEMENT_REGISTERED],
-                Claim(ClaimKind.STATEMENT_REGISTERED, "d" * 64),
+                [evidence], [ClaimKind.STATEMENT_REGISTERED],
+                Claim(ClaimKind.STATEMENT_REGISTERED, other),
             ),
             "DENIED",
         )
 
-    def test_unverified_atom_grants_nothing(self):
-        subject = "e" * 64
-        evidence = [Evidence(EvidenceKind.UNANIMOUS_APPROVAL, subject, False)]
-        self.assertEqual(derive(evidence, list(ClaimKind)), frozenset())
+    def test_evidence_kind_requires_its_exact_subject_type(self):
+        with self.assertRaisesRegex(ValueError, "EVIDENCE_SUBJECT_KIND_MISMATCH"):
+            AppraisedEvidence(
+                EvidenceKind.APPROVAL_SET_TIMESTAMP,
+                ApprovalTargetSubject(DIGESTS[0]),
+                DIGESTS[1],
+            )
+
+    def test_invalid_digest_and_event_window_are_rejected(self):
+        with self.assertRaisesRegex(ValueError, "INVALID_TARGET_DIGEST"):
+            ApprovalTargetSubject("not-a-digest")
+        with self.assertRaisesRegex(ValueError, "INVALID_EVENT_WINDOW"):
+            EventSubject(DIGESTS[0], "event", DIGESTS[1], 4, 3)
+
+    def test_derivation_retains_exact_support_certificate(self):
+        evidence = self.evidence(EvidenceKind.UNANIMOUS_APPROVAL)
+        derivations = derive(
+            [evidence],
+            [ClaimKind.KEY_ASSENT, ClaimKind.GOVERNANCE_ASSENT],
+        )
+        self.assertEqual(len(derivations), 2)
+        self.assertTrue(all(
+            item.supporting_certificate_digests == (DIGESTS[8],)
+            for item in derivations
+        ))
+        self.assertEqual(
+            wire_outcomes(derivations),
+            ("KEY_ASSENT", "GOVERNANCE_ASSENT"),
+        )
+
+    def test_wire_vocabulary_is_a_boundary_mapping(self):
+        claims = permitted_claims([
+            "EXTERNALLY_NOT_AFTER", "APPROVAL_SET_EXISTED_NOT_AFTER"
+        ])
+        self.assertEqual(claims, {
+            ClaimKind.TARGET_IMPRINT_EXISTED_NOT_AFTER,
+            ClaimKind.APPROVAL_SET_IMPRINT_EXISTED_NOT_AFTER,
+        })
+        with self.assertRaisesRegex(ValueError, "CLAIM_POLICY_UNKNOWN_OUTCOME"):
+            permitted_claims(["HUMAN_AUTHORSHIP_PROVED"])
 
 
 if __name__ == "__main__":

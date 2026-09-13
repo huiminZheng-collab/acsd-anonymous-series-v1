@@ -219,20 +219,22 @@ Linux/macOS:
 The authoritative `check.py` gate is read-only and finishes by comparing all
 source-tree file hashes with its starting snapshot. It contains:
 
-- 95 Python tests passing, with the live-network and two unavailable Windows
+- 101 Python tests passing, with the live-network and two unavailable Windows
   capability cases skipped locally;
 - 64 fixed Python-Node canonical-JSON vectors with no unexpected divergence;
 - 1,000 seeded generated differential cases with 1,000 byte and verdict
   agreements;
 - independent Node verification of Python-produced approval COSE;
-- a checked-in 4-by-4 typed evidence/claim confusion matrix with all 12
-  cross-kind substitutions denied, plus a key-compromise timeline;
+- a complete 6-by-10 typed unary compatibility test plus a checked-in selected
+  4-by-4 semantic-confusion challenge with all 12 off-diagonal substitutions
+  denied and a key-compromise timeline;
 - the frozen v1 corpus: 8 releases, 18 endorsements, 7 series objects, 13
   scenarios, 30/30 profile checks, and 113/113 manifest entries;
 - a scaling sample from 10 to 5,000 in-memory objects, recorded in
   `design/performance_report.json`;
-- a Lean 4.33.1 build with 39 theorems covering PEC, lineage, scoped claims, selective identity,
-  atomic event disclosure, and typed time subjects with no
+- a Lean 4.33.1 build with 50 theorems covering PEC, lineage, scoped claims,
+  parameterized appraisal/checker correspondence, selective identity, atomic
+  event disclosure, and typed time subjects with no
   `sorry`/`admit`; the separately published v1 formal core's 53
   release/series/team theorems are a distinct inherited proof surface.
 

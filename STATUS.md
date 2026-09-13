@@ -1,7 +1,8 @@
-# ACSD v3.1.0-rc1 status
+# ACSD live-source status after v3.1.0-rc1
 
-Checked 2026-09-13 in the local work tree. This is a release candidate, not a
-public deployment or venue submission.
+Checked 2026-09-13 in the local work tree. The committed v3.1.0-rc1 snapshot
+remains immutable; the typed-appraisal changes described here are live-source
+work toward a later candidate, not a public deployment or venue submission.
 
 ## Implemented
 
@@ -34,10 +35,13 @@ public deployment or venue submission.
   double control for key-set or threshold changes;
 - exact transition binding and replay rejection, authorized branch handling,
   and same-parent/same-slot fork detection without an invented winner.
+- a pure typed appraisal kernel used by every public granting path, with
+  domain-separated approval-target, approval-set, event-window, identity-slot,
+  and registration subjects and exact supporting-certificate digests.
 
 ## Acceptance evidence
 
-- Python: 95 tests pass locally; the live TSA test and two unavailable Windows
+- Python: 101 tests pass locally; the live TSA test and two unavailable Windows
   capability cases are skipped.
 - Canonical JSON: 64 fixed vectors have no unexpected divergence; 1,000/1,000
   seeded generated cases agree between Python and Node on bytes and text-layer
@@ -48,10 +52,10 @@ public deployment or venue submission.
   response passed the complete pinned-signer profile on 2026-09-12.
 - Inherited v1: 8 releases, 18 endorsements, 7 signed series objects, 13
   scenarios, 30/30 profile checks, and 113/113 manifest entries.
-- Typed derivation: the 4-by-4 confusion matrix has all 16 expected decisions,
-  all 12 cross-kind substitutions are denied, and three unsupported social
-  claims have no evidence mapping.
-- Lean 4.33.1: build succeeds; 39 PEC/lineage/scoped-claim theorems; no
+- Typed derivation: the complete 6-by-10 unary compatibility test has no
+  undeclared conversion; the checked-in 4-by-4 challenge retains all 16
+  expected decisions, and three unsupported social claims have no rule.
+- Lean 4.33.1: build succeeds; 50 PEC/lineage/scoped-appraisal theorems; no
   `sorry` or `admit` in the formal sources. The separately published v1 core's
   53 release/team/series theorems remain a distinct inherited model and are not
   included in this v3 count.
@@ -80,6 +84,12 @@ Every derivation over a union of evidence sets also has a compatible, verified,
 exact-subject supporting atom in one component; union does not manufacture a
 new capability.
 
+The newer appraisal layer additionally parameterizes the exact subject, keeps
+its declarative rule relation separate from the executable Boolean checker, and
+proves checker soundness and completeness, exact-support provenance,
+append-component support, target/set separation, and absence of a natural-person
+identity rule. Adapter correctness is still an explicit boundary assumption.
+
 ## Remaining product hardening
 
 - encrypted or OS-backed private-key storage (generated keys are presently
@@ -91,3 +101,5 @@ new capability.
 - deployed transparency/gossip services and cross-series federation.
 - precommitted recovery authorities or hardware-backed recovery workflows;
   without one, loss of the predecessor threshold safely freezes the lineage.
+- a canonical Python/Node verification transcript and its refinement into the
+  Lean appraisal checker.

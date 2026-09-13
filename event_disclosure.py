@@ -9,6 +9,7 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
 import cose
+import claim_derivation as claim_core
 from pec_core import HEX, canonical, digest, require, verify_dialogue_window
 
 
@@ -145,9 +146,35 @@ def verify_event_disclosure(
             raise
         except Exception as exc:
             raise ValueError("DISCLOSURE_SIGNATURE_INVALID") from exc
+    subject = claim_core.EventSubject(
+        accepted_pec_digest,
+        event["event_id"],
+        commitment["digest"],
+        window[0]["index"],
+        window[-1]["index"],
+    )
+    certificate_digest = digest({
+        "body_digest": digest(disclosure),
+        "signature_digests": [
+            {"key_id": key_id, "sha256": hashlib.sha256(signatures[key_id]).hexdigest()}
+            for key_id in required
+        ],
+    })
+    derivations = claim_core.derive(
+        [claim_core.AppraisedEvidence(
+            claim_core.EvidenceKind.EVENT_DISCLOSURE,
+            subject,
+            certificate_digest,
+        )],
+        claim_core.permitted_claims(
+            pec.get("claim_policy", {}).get("permitted_outcomes", [])
+        ),
+    )
+    outcomes = claim_core.wire_outcomes(derivations)
+    require(outcomes == ("COMMITTED_EVIDENCE_MATCH",), "CLAIM_NOT_DERIVED")
     return {
         "status": "VALID",
-        "outcome": "COMMITTED_EVIDENCE_MATCH",
+        "outcome": outcomes[0],
         "pec_digest": accepted_pec_digest,
         "event_id": event["event_id"],
         "event_sequence": event["sequence"],

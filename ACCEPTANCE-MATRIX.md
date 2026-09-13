@@ -12,7 +12,8 @@
 | Authorized sibling conflict detection | `compare-successors` on two same-parent/same-slot children | PASS; no winner inferred |
 | Event predecessor and sequence integrity | `validate_pec`, corpus tests | PASS |
 | Claim-policy non-amplification | forbidden outcome gate, attack corpus | PASS |
-| Typed evidence/claim non-confusion | `claim_derivation.py`, 4-by-4 checked-in semantic matrix | PASS; 12/12 cross-kind substitutions denied |
+| Typed evidence/claim non-confusion | `claim_derivation.py`, complete 6-by-10 unit matrix, selected 4-by-4 checked-in challenge | PASS; no undeclared conversion |
+| Single production claim path | architecture gate plus release, time, event, identity, and demo adapters | PASS; no manual string grant append |
 | Dialogue Merkle commitment | `dialogue_root`, `dialogue_proof`, `verify_dialogue_window` | PASS |
 | Selective contiguous dialogue opening | `test_dialogue_merkle.py`, `test_demo.py` | PASS |
 | External sidecar subject/capability binding | `verify_sidecar_subject`, `test_sidecar.py` | PASS |
@@ -20,10 +21,10 @@
 | Self-contained evidence package | artifact-mode `check.py`, strict manifest pre/post check, deterministic rebuild | PASS |
 | Installed wheel execution | temporary venv, console-script keygen/release/verify outside source | PASS |
 | Independent one-command gate | `run_all.ps1`, `run_all.sh` | PASS; reports formal status explicitly |
-| Lean formal compilation | `formal/ACSD/PEC.lean`, `formal/ACSD/Lineage.lean`, `formal/ACSD/ScopedClaims.lean`, pinned 4.33.1 project | PASS |
+| Lean formal compilation | PEC, lineage, scoped-claim, and parameterized appraisal modules; pinned 4.33.1 project | PASS |
 
-The formal row contains 39 PEC/composition/lineage/scoped-claim theorems; the
-explicit axiom audit checks 15 central boundary theorems. It does not claim parser
+The formal row contains 50 PEC/composition/lineage/scoped-appraisal theorems;
+the explicit axiom audit checks 20 central boundary theorems. It does not claim parser
 refinement, cryptographic security, or natural-person truth. The separately
 published v1 formal core's 53 release/team/series theorems are not recounted as
 new v3 theorems.

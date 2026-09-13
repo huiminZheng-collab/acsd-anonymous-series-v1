@@ -15,3 +15,8 @@ import ACSD
 #print axioms ACSD.approval_set_time_requires_set_subject
 #print axioms ACSD.derivation_over_union_has_component_support
 #print axioms ACSD.target_timestamp_cannot_derive_approval_set_time
+#print axioms ACSD.checkClaim_sound
+#print axioms ACSD.checkClaim_complete
+#print axioms ACSD.derivation_over_append_has_component_support
+#print axioms ACSD.target_time_cannot_derive_approval_set_time
+#print axioms ACSD.unsupported_natural_identity_has_no_rule

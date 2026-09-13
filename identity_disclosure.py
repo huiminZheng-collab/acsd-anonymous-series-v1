@@ -9,6 +9,7 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
 import cose
+import claim_derivation as claim_core
 from pec_core import canonical, digest, require
 
 
@@ -99,8 +100,27 @@ def verify(body, signature: bytes, release, public_key: Ed25519PublicKey):
         raise
     except Exception as exc:
         raise ValueError("IDENTITY_DISCLOSURE_SIGNATURE_INVALID") from exc
+    subject = claim_core.IdentitySubject(
+        digest(release),
+        slot,
+        author["key_id"],
+        digest(assertion),
+    )
+    derivations = claim_core.derive(
+        [claim_core.AppraisedEvidence(
+            claim_core.EvidenceKind.SLOT_IDENTITY_ASSENT,
+            subject,
+            hashlib.sha256(signature).hexdigest(),
+        )],
+        [claim_core.ClaimKind.SLOT_KEY_ASSENT_TO_IDENTITY_ASSERTION],
+    )
+    outcomes = claim_core.wire_outcomes(derivations)
+    require(
+        outcomes == ("SLOT_KEY_ASSENT_TO_IDENTITY_ASSERTION",),
+        "CLAIM_NOT_DERIVED",
+    )
     return {
-        "status": "SLOT_KEY_ASSENT_TO_IDENTITY_ASSERTION",
+        "status": outcomes[0],
         "author_slot": slot,
         "author_key_id": author["key_id"],
         "identity_assertion": assertion,

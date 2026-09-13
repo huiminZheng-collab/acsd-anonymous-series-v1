@@ -35,6 +35,7 @@ sys.path.insert(0, str(ROOT))
 import cose  # noqa: E402
 import tsa  # noqa: E402
 import approval_set  # noqa: E402
+import claim_derivation as claim_core  # noqa: E402
 import identity_disclosure  # noqa: E402
 from acsd_version import __version__  # noqa: E402
 from event_disclosure import DEFAULT_POLICY as DEFAULT_DISCLOSURE_POLICY  # noqa: E402
@@ -1101,6 +1102,7 @@ def verify_release_dir(root: pathlib.Path, trusted_tsa_cert_der: bytes = None,
     key_ids = sorted(adapted["author_key_ids"])
     target_bytes = canonical(target)
     valid = {}
+    approval_certificate_digests = {}
     for kid in key_ids:
         approval_path = root / f"approvals/{kid}.cose"
         try:
@@ -1110,17 +1112,18 @@ def verify_release_dir(root: pathlib.Path, trusted_tsa_cert_der: bytes = None,
         if not approval_path.exists():
             continue
         try:
-            cose.cose_verify(approval_path.read_bytes(), pub, expected_payload=target_bytes)
+            approval_bytes = approval_path.read_bytes()
+            cose.cose_verify(approval_bytes, pub, expected_payload=target_bytes)
             valid[kid] = True
+            approval_certificate_digests[kid] = hashlib.sha256(approval_bytes).hexdigest()
         except ValueError as e:
             return EXIT_VERIFY_FAIL, "TAMPERED", {"error_code": str(e)}
         except Exception:
             return EXIT_VERIFY_FAIL, "TAMPERED", {"error_code": "APPROVAL_SIGNATURE_INVALID"}
     missing = [k for k in key_ids if not valid.get(k)]
     permitted = set(pec["claim_policy"]["permitted_outcomes"])
-    granted = []
-    if not missing:
-        granted = [o for o in ("KEY_ASSENT", "GOVERNANCE_ASSENT") if o in permitted]
+    permitted_claim_kinds = claim_core.permitted_claims(permitted)
+    appraised_evidence = []
     data = {
         "work_id": adapted["work_id"],
         "release_digest": adapted["digest"],
@@ -1129,7 +1132,7 @@ def verify_release_dir(root: pathlib.Path, trusted_tsa_cert_der: bytes = None,
         "approval_target_digest": digest(target),
         "state": state.get("state"),
         "missing_approvals": missing,
-        "granted_outcomes": granted,
+        "granted_outcomes": [],
         "non_claims": pec["claim_policy"]["global_non_claims"],
     }
     if missing:
@@ -1172,6 +1175,28 @@ def verify_release_dir(root: pathlib.Path, trusted_tsa_cert_der: bytes = None,
         return EXIT_VERIFY_FAIL, "TAMPERED", {
             **data, "error_code": "APPROVAL_SET_MISSING"
         }
+
+    approval_support_digest = (
+        digest(approval_set_obj) if approval_set_obj is not None else
+        digest({
+            "target_digest": digest(target),
+            "approval_certificate_digests": [
+                {"key_id": kid, "sha256": approval_certificate_digests[kid]}
+                for kid in key_ids
+            ],
+        })
+    )
+    appraised_evidence.append(claim_core.AppraisedEvidence(
+        claim_core.EvidenceKind.UNANIMOUS_APPROVAL,
+        claim_core.ApprovalTargetSubject(digest(target)),
+        approval_support_digest,
+    ))
+
+    def refresh_granted_outcomes() -> None:
+        derivations = claim_core.derive(appraised_evidence, permitted_claim_kinds)
+        data["granted_outcomes"] = list(claim_core.wire_outcomes(derivations))
+
+    refresh_granted_outcomes()
 
     # Optional timestamp verification (imprint binding + genTime).  v0.3
     # timestamps the complete approval set; legacy PECs retain target-only
@@ -1227,14 +1252,22 @@ def verify_release_dir(root: pathlib.Path, trusted_tsa_cert_der: bytes = None,
             data["timestamp_gen_time"] = info["genTime"].isoformat()
             data["timestamp_signer_fingerprint"] = info["signer_fingerprint"]
             if not is_local_test:
-                outcome = (
-                    "APPROVAL_SET_EXISTED_NOT_AFTER"
-                    if pec.get("schema") == PEC_SCHEMA
-                    else "EXTERNALLY_NOT_AFTER"
-                )
-                if outcome in permitted:
-                    data["granted_outcomes"].append(outcome)
-                elif require_external_time:
+                if pec.get("schema") == PEC_SCHEMA:
+                    time_kind = claim_core.EvidenceKind.APPROVAL_SET_TIMESTAMP
+                    time_subject = claim_core.ApprovalSetSubject(subject_digest)
+                    expected_outcome = "APPROVAL_SET_EXISTED_NOT_AFTER"
+                else:
+                    time_kind = claim_core.EvidenceKind.APPROVAL_TARGET_TIMESTAMP
+                    time_subject = claim_core.ApprovalTargetSubject(subject_digest)
+                    expected_outcome = "EXTERNALLY_NOT_AFTER"
+                appraised_evidence.append(claim_core.AppraisedEvidence(
+                    time_kind,
+                    time_subject,
+                    hashlib.sha256(tsr_path.read_bytes()).hexdigest(),
+                ))
+                refresh_granted_outcomes()
+                if (expected_outcome not in data["granted_outcomes"]
+                        and require_external_time):
                     return EXIT_INCOMPLETE, "EXTERNAL_TIME_NOT_AUTHORIZED", data
     elif require_external_time:
         return EXIT_INCOMPLETE, "EXTERNAL_TIME_MISSING", data
