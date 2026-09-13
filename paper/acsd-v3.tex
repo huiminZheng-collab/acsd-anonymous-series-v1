@@ -7,6 +7,7 @@
 \usepackage{microtype}
 \usepackage{amsmath,amssymb}
 \usepackage{booktabs}
+\usepackage{float}
 \usepackage{xcolor}
 \usepackage{hyperref}
 \hypersetup{
@@ -14,14 +15,14 @@
   linkcolor=blue,
   citecolor=blue,
   urlcolor=blue,
-  pdftitle={ACSD: An Executable Profile for Anonymous Scholarly Releases, Series Lineage, and Cyclic Citations},
+  pdftitle={ACSD: Authorized Lineage for Anonymous Scholarly Releases},
   pdfauthor={}
 }
 \newcommand{\workid}{\textsf{WorkID}}
 \newcommand{\releaseid}{\textsf{ReleaseID}}
 \newcommand{\acsd}{\textsc{ACSD}}
 \newcommand{\sha}{\textsf{SHA-256}}
-\title{\acsd: An Executable Profile for Anonymous Scholarly Releases,\\ Series Lineage, and Cyclic Citations}
+\title{\acsd: Authorized Lineage for Anonymous Scholarly Releases}
 \author{Anonymous authors}
 \date{}
 
@@ -29,7 +30,7 @@
 \maketitle
 
 \begin{abstract}
-Anonymous scholarly disclosure needs a more precise answer than ``put a signed PDF in a repository.'' A signature identifies a signing key, not necessarily a person; a repository timestamp is not independent time; and mutually citing papers appear circular if every reference is a content hash. This paper presents \acsd, a narrow executable profile for anonymous scholarly releases. A compact approval target binds exact release, governance, and provenance-policy digests before every required pseudonymous key signs it. A separate optional series layer binds stable random \workid s to completed content-addressed releases, separating a possibly cyclic semantic citation graph from an acyclic commitment graph. The implementation uses standard tagged Ed25519/EdDSA COSE, derives claims through a closed capability calculus rather than from policy labels alone, and grants external time only for an RFC~3161 response checked against a verifier-supplied signer pin. Evaluation includes 64 fixed and 1,000 generated Python--Node canonical-JSON cases, an independent Node approval verifier, adversarial timestamp tests, a real-TSA interoperability existence check, and 16 new Lean theorems over the v2 composition rules. We state the boundary explicitly: none of these mechanisms proves natural-person identity, contribution truth, originality, peer review, or legal nonrepudiation.
+Anonymous scholarly disclosure needs a more precise answer than ``put a signed PDF in a repository.'' A signature identifies a signing key, not necessarily a person; a repository timestamp is not independent time; and an exact predecessor hash does not say who may publish the next version. This paper presents \acsd, a narrow executable profile for anonymous scholarly releases and authorized lineage. A compact approval target binds exact release, governance, provenance-policy, and lineage-transition digests before every required pseudonymous key signs it. An unchanged predecessor authority can authorize an exact child through those same approvals; a key-set or threshold change additionally requires a predecessor-quorum set of signatures over the exact transition. The optional series layer remains separate, permitting cyclic semantic citation while exact release commitments stay acyclic. The implementation uses tagged Ed25519/EdDSA COSE, a closed capability calculus, and independently pinned RFC~3161 evidence. Evaluation includes an executable fresh-key n+1 attack, authorized rotation and fork cases, 64 fixed and 1,000 generated Python--Node canonical-JSON cases, adversarial timestamp tests, and 21 axiom-free Lean theorems. None of these mechanisms proves natural-person identity, contribution truth, originality, peer review, or legal nonrepudiation.
 \end{abstract}
 
 \section{Introduction}
@@ -77,15 +78,16 @@ The main contributions are:
   \item a two-layer construction that permits cyclic scholarly citations over stable \workid s while keeping content commitments acyclic;
   \item signed UTF-8 byte-range citation witnesses and a restricted canonical JSON profile to reduce field-interpretation ambiguity;
   \item explicit classifications for branches, equivocation, and copied content under a fresh lineage;
-  \item an acyclic unanimous-approval target and closed capability calculus that prevent unsigned policy amplification and approval reuse after governance or PEC substitution; and
-  \item an executable prototype with a one-command release path, independent COSE verification, adversarial RFC~3161 checks, generated differential testing, and an axiom-free Lean model of the composition rules.
+  \item an acyclic unanimous-approval target and closed capability calculus that prevent unsigned policy amplification and approval reuse after governance or PEC substitution;
+  \item an exact lineage transition requiring predecessor-quorum signatures, rejecting a fresh-key n+1 claimant while supporting explicit author/key changes and branches; and
+  \item an executable prototype with one-command release and revision paths, independent COSE verification, adversarial RFC~3161 checks, generated differential testing, and an axiom-free Lean model of the composition rules.
 \end{enumerate}
 
 \section{Scope and Threat Model}
 
 \paragraph{Assets.} A release contains manuscript bytes, an ordered list of anonymous author keys, roles and contribution declarations, an AI-use declaration, and optional parent-release information. A series package contains references to completed releases, a series key, sequencing information, and cross-paper semantic relations. Public keys are pseudonymous identifiers.
 
-\paragraph{Adversary.} We consider a party that can copy public content, generate fresh keys, reorder or substitute unsigned metadata, present a signed but malformed JSON payload, and claim unsupported cross-paper citations. We also consider a series key that signs two incompatible objects. We do not assume that a signature reveals a human identity, that a contribution declaration is factually true, or that a local timestamp is trusted.
+\paragraph{Adversary.} We consider a party that can copy public content, generate fresh keys, reuse the exact WorkID and predecessor digests, claim the next unused version number, reorder or substitute unsigned metadata, present a signed but malformed JSON payload, and claim unsupported cross-paper citations. We also consider a series key that signs two incompatible objects. We do not assume that a signature reveals a human identity, that a contribution declaration is factually true, or that a local timestamp is trusted.
 
 \paragraph{Non-goals.} \acsd\ does not prove authorship by a natural person, independent discovery, plagiarism, venue acceptance, peer review, or legal nonrepudiation. These are not merely unimplemented features: some require social, institutional, or legal evidence outside the cryptographic object. The profile instead preserves evidence that can be useful in a later dispute.
 
@@ -116,25 +118,24 @@ their required capabilities, and mandatory non-claims. A PEC also names one
 team key as an issuer for provenance, but that label alone grants no outcome:
 the complete team must still approve the common target.
 
-The v2 command-line profile constructs an acyclic
-\texttt{acsd-approval-target/v1} object. It points to already complete objects
+The v3 command-line profile constructs an acyclic
+\texttt{acsd-approval-target/v2} object. It points to already complete objects
 and is itself signed only through detached approval envelopes. The following is
 a structurally valid, pretty-printed example with illustrative digest values:
 
+\begingroup\scriptsize
 \begin{verbatim}
 {
- "schema":"acsd-approval-target/v1",
+ "schema":"acsd-approval-target/v2",
  "work_id":"urn:uuid:12345678-1234-1234-1234-123456789abc",
- "release_digest":
-  "1111111111111111111111111111111111111111111111111111111111111111",
- "governance_digest":
-  "2222222222222222222222222222222222222222222222222222222222222222",
- "pec_digest":
-  "3333333333333333333333333333333333333333333333333333333333333333",
- "required_key_ids":[
-  "4444444444444444444444444444444444444444444444444444444444444444"]
+ "release_digest":"1111111111111111111111111111111111111111111111111111111111111111",
+ "governance_digest":"2222222222222222222222222222222222222222222222222222222222222222",
+ "pec_digest":"3333333333333333333333333333333333333333333333333333333333333333",
+ "required_key_ids":["4444444444444444444444444444444444444444444444444444444444444444"],
+ "lineage_transition_digest":null
 }
 \end{verbatim}
+\endgroup
 
 Every required key issues a tagged COSE Sign1 signature over the same
 canonical target bytes. Verification recomputes all four bindings and each key
@@ -158,6 +159,76 @@ approvals to fail their payload check. Even an approved policy entry yields no
 outcome without its separately verified capability. A verifier can thus state
 that the pseudonymous keys jointly approved this exact tuple, but cannot infer
 who controls them without separate enrollment evidence.
+
+\subsection{Authorized succession rather than version-number possession}
+
+An exact predecessor digest proves structural continuity, not authority. A
+fresh-key attacker can copy a public WorkID, name the real predecessor, choose
+the consecutive version number, and validly sign the resulting child with the
+attacker's keys. No hash or slot-conflict check answers whether those keys were
+entitled to create the parent-to-child edge. ACSD v3 therefore binds every
+release to a \emph{lineage authority}: a sorted author-key set and a threshold
+for authorizing the next edge. The default threshold is unanimity. It is stored
+in the predecessor, so a child cannot lower it unilaterally.
+
+Let $P$ be an accepted predecessor, $C$ a proposed child, $A_P$ the authority
+bound by $P$, and $A_C$ the authority proposed by $C$. The verifier accepts a
+lineage edge only if
+\[
+ \mathrm{AuthorizedSuccessor}(P,C) = \mathrm{ExactEdge}(P,C) \land
+ \mathrm{Authorization}(P,C),
+\]
+where
+\[
+ \mathrm{Authorization}(P,C)=
+ \begin{cases}
+  \mathrm{Quorum}(A_P,\mathrm{ApproveTarget}(C)), & A_P=A_C,\\
+  \mathrm{Quorum}(A_P,\mathrm{Transition}(P,C)) \land
+  \mathrm{AllApprove}(A_C,C), & A_P\ne A_C.
+ \end{cases}
+\]
+Here \textsf{ExactEdge} requires the same WorkID, exact parent release and PEC
+digests, and either a same-line increment by one or a new named line beginning
+at version one. \textsf{Transition} binds both authorities and the exact child
+release, governance, and PEC digests. The child approval target binds the
+transition digest. The construction is acyclic because the transition refers
+to complete child bodies while detached approvals refer to their completed
+digests.
+
+For an unchanged authority object, the ordinary child approvals already constitute
+predecessor authorization and no duplicate signing step is needed. A key-set or
+threshold change uses double control: the predecessor threshold signs the exact
+transition and every new author signs the child target. This resembles the
+old-and-new authorization pattern used for TUF root-key updates, but ACSD
+applies it to a single scholarly lineage edge rather than software repository
+metadata~\cite{tufspec}. A series key may advertise a verified child as a head;
+it cannot manufacture predecessor-author assent by itself.
+
+Consider the concrete n+1 attack. Mallory constructs a child with P's WorkID,
+P's exact release and PEC digests, the next version number, Mallory's public
+key, and a valid Mallory signature over every child-controlled object. The
+object is internally signed but has neither an unchanged predecessor authority
+nor a transition signed by $A_P$. The implementation returns
+\texttt{VALID\_OBJECT\_BUT\_UNAUTHORIZED\_SUCCESSOR}. It does not accuse
+Mallory of plagiarism; it rejects only the claimed lineage edge.
+
+This conclusion is relative to an accepted exact predecessor, not to the
+WorkID string alone. The CLI can pin a previously accepted parent with
+\texttt{--expected-parent-release-id}; otherwise it reports
+\texttt{UNPINNED\_EXACT\_PARENT}. Without an external parent anchor, an isolated
+package proves only that the authority named by its embedded parent authorized
+the edge; it cannot distinguish a separately fabricated genesis that copied a
+public WorkID.
+
+Threshold choice exposes a real safety--liveness tradeoff. Unanimity prevents
+one coauthor from transferring the lineage alone but lets one lost or dissenting
+key freeze it. A lower threshold improves availability and is therefore allowed
+only when committed by the predecessor. There is no post-hoc identity recovery
+in this profile: without a precommitted recovery authority, lost threshold keys
+safely stop the cryptographic lineage. Nor can a later message erase a valid
+past authorization. Two valid distinct children in the same exclusive slot are
+reported as equivocation with no automatic winner; choosing by observation time
+requires an external transparency or governance policy.
 
 \subsection{Citation witnesses}
 
@@ -256,31 +327,7 @@ requires a separate policy.
 
 The v1 prototype uses Python for deterministic fixture generation and a zero-dependency Node.js verifier for strict CBOR/COSE and profile validation; the two paths are intentionally separate. The package is designed for offline replay: locked dependencies are included, and the verification driver regenerates fixtures, verifies a standalone release, independently verifies the series profile, builds a manifest, and verifies that manifest.
 
-A command-line tool (\texttt{acsd.py}) turns the profile into an executable workflow: \texttt{keygen}, \texttt{init}, \texttt{approve}, \texttt{finalize}, \texttt{verify}, and a one-command \texttt{release} path for one or more locally available author keys. Approval status is derived from verified COSE files, never trusted from mutable state metadata. COSE uses the registered EdDSA value $-8$, requires tag 18, and rejects non-minimal or ambiguous CBOR encodings. A zero-dependency Node path independently verifies Python-produced approvals. The canonical JSON layer is exercised by 64 fixed Python--Node vectors plus 1,000 seeded generated cases; all generated cases agree on canonical bytes and text-layer verdicts. Three known object-layer float typing differences do not change the text-layer rejection result and remain recorded in the canonical specification.
-
-\begin{table}[t]
-\centering
-\caption{Executable evaluation corpus. The first seven rows are inherited v1 fixture results; the remaining rows are new v2 results reproducible from this release.}
-\begin{tabular}{lr}
-\toprule
-Object or check & Count / result \\
-\midrule
-Standalone release versions & 8 / 8 valid without series packages \\
-Author endorsements & 18 / 18 bound to the intended release \\
-Signed series objects & 7 \\
-Closed normal, attack, and indeterminate scenarios & 13 / 13 expected outcomes \\
-Independent profile checks & 30 / 30 passed \\
-Canonical JSON regression cases & 11 / 11 Python--Node agreement \\
-Public-manifest entries & 113 / 113 verified \\
-v2 differential canonical-JSON vectors & 64 / 64 accept/reject agreement \\
-Offline v2 unit-test methods & 51 passed; 1 network test skipped \\
-Seeded generated canonical cases & 1000 / 1000 byte and verdict agreement \\
-Independent approval implementations & Python producer / Node verifier \\
-Real-TSA existence check & 1 freeTSA response verified \\
-New PEC theorems in the abstract core & 16; no \texttt{sorry}/\texttt{admit} \\
-\bottomrule
-\end{tabular}
-\end{table}
+A command-line tool (\texttt{acsd.py}) turns the profile into an executable workflow: \texttt{keygen}, \texttt{init}, \texttt{authorize}, \texttt{approve}, \texttt{finalize}, \texttt{verify}, and \texttt{compare-successors}, plus one-command \texttt{release} and \texttt{revise} paths. Approval status is derived from verified COSE files, never trusted from mutable state metadata. COSE uses the registered EdDSA value $-8$, requires tag 18, and rejects non-minimal or ambiguous CBOR encodings. A zero-dependency Node path independently verifies Python-produced approvals. The canonical JSON layer is exercised by 64 fixed Python--Node vectors plus 1,000 seeded generated cases; all generated cases agree on canonical bytes and text-layer verdicts. Three known object-layer float typing differences do not change the text-layer rejection result and remain recorded in the canonical specification.
 
 The negative corpus includes the inherited rank, unsupported-edge,
 citation-offset, canonical-JSON, and path attacks. New cross-layer regressions
@@ -293,6 +340,39 @@ rejected at their intended boundary. The single freeTSA result is an existence
 check that the adapter can consume one real service response, not a reliability
 study or a multi-provider conformance survey.
 
+The lineage corpus begins with the smallest discriminating attack: a child
+with the exact WorkID and parent release/PEC digests, n+1, a fresh attacker
+key, and complete self-approval. It is rejected at the missing
+predecessor-quorum boundary. Positive cases cover unchanged authority, key
+rotation, one-of-two and two-of-two thresholds, and a named branch; negative
+cases cover threshold downgrade and transition-signature replay. Two valid
+same-slot siblings yield equivocation with no winner.
+
+\begin{table}[H]
+\centering
+\caption{Executable evaluation corpus. The first seven rows are inherited v1 fixture results; the remaining rows are reproducible from v3.}
+\begin{tabular}{lr}
+\toprule
+Object or check & Count / result \\
+\midrule
+Standalone release versions & 8 / 8 valid without series packages \\
+Author endorsements & 18 / 18 bound to the intended release \\
+Signed series objects & 7 \\
+Closed normal, attack, and indeterminate scenarios & 13 / 13 expected outcomes \\
+Independent profile checks & 30 / 30 passed \\
+Canonical JSON regression cases & 11 / 11 Python--Node agreement \\
+Public-manifest entries & 113 / 113 verified \\
+v3 differential canonical-JSON vectors & 64 / 64 accept/reject agreement \\
+Offline v3 unit-test methods & 59 passed; 1 network test skipped \\
+Seeded generated canonical cases & 1000 / 1000 byte and verdict agreement \\
+Independent approval implementations & Python producer / Node verifier \\
+Authorized-lineage scenarios & 8 / 8 expected outcomes \\
+Real-TSA existence check & 1 freeTSA response verified \\
+PEC and lineage theorems in the abstract core & 21; no \texttt{sorry}/\texttt{admit} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
 The measurements remain prototype-scale rather than a throughput claim. They
 were recorded under Python 3.12.14 on 64-bit Windows 10.0.26200, a 13th Gen
 Intel Core i7-1360P with 16 logical processors, and 31.7 GiB physical memory.
@@ -304,33 +384,38 @@ objects was 7.04 MiB. This excludes filesystem, COSE, and network cost, so it
 is a smoke test for obvious scaling anomalies, not a statistically powered
 performance evaluation; dispersion beyond minimum and median was not retained.
 
-The v2 Lean development uses concrete approval targets, approvals, digest-linked
-events, a closed outcome type, and decomposed time evidence. Its 16 theorems
+The v3 Lean development uses concrete approval targets, approvals, digest-linked
+events, a closed outcome type, decomposed time evidence, and typed lineage
+authorities and transitions. Its 21 theorems
 prove, among other facts, that an approval for one target digest cannot be
 reused for a different target; a granted result implies acceptance and policy
 permission; key assent requires all target approvals; and external time
 requires exact-subject, signer-pin, nonce, profile, and non-local predicates.
+The lineage theorems show that every accepted successor has predecessor-quorum
+evidence, a fresh authority cannot enter through the unchanged-authority path,
+and a transition bound to one child digest cannot authorize another child.
 The model deliberately accepts signature validity and digest equality as inputs.
 It does not prove parser refinement, SHA-256 collision resistance, Ed25519
 unforgeability, TSA honesty, or general PKIX correctness.
 
-These 16 are new PEC and cross-layer composition theorems, not a recount of the
+These 21 are PEC, lineage, and cross-layer composition theorems, not a recount of the
 separately published v1 Lean core.\footnote{The v1 proof surface is archived at
 \url{https://github.com/huiminZheng-collab/acsd-anonymous-series-v1/tree/main/formal-core}.}
 The v1 artifact records 53 theorem statements
 about release catalogs, teams, lineage, series graphs, citation witnesses, and
 lifecycle rules. That earlier model remains an inherited, distinct proof
-surface; it was neither deleted nor compressed into the new count. The smaller
-v2 count reflects a deliberately narrower model of approval-target reuse,
-capability gating, event links, and external-time preconditions.
+surface; it was neither deleted nor compressed into the new count. The v3
+count concerns the narrower executable model of approval-target reuse,
+capability gating, event links, external-time preconditions, and authorized
+succession.
 
 \section{Related Work}
 
-The profile builds on established foundations. PROV-DM supplies a general vocabulary for entities, activities, agents, derivations, and bundles~\cite{prov}. Software Heritage identifiers provide intrinsic identifiers for software objects~\cite{swhid}; Trusty URIs provide hash-bearing immutable artifact identifiers~\cite{trusty}. COSE defines the signed binary envelope used for endorsements~\cite{cose}. SCITT specifies a broader architecture for signed statements and transparency receipts~\cite{scitt}. RFC~3161 specifies the timestamp protocol~\cite{rfc3161}.
+The profile builds on established foundations. PROV-DM supplies a general vocabulary for entities, activities, agents, derivations, and bundles~\cite{prov}. Software Heritage identifiers provide intrinsic identifiers for software objects~\cite{swhid}; Trusty URIs provide hash-bearing immutable artifact identifiers~\cite{trusty}. COSE defines the signed binary envelope used for endorsements~\cite{cose}. SCITT specifies a broader architecture for signed statements and transparency receipts~\cite{scitt}. RFC~3161 specifies the timestamp protocol~\cite{rfc3161}. TUF uses predecessor and successor root thresholds to preserve trust through root-key updates~\cite{tufspec}; in-toto binds supply-chain steps to authorized functionaries~\cite{intoto}. These are the closest authorization patterns, although neither specifies anonymous scholarly WorkID succession.
 
-\acsd\ does not claim to replace these systems or invent their primitives. Its narrow contribution is an executable scholarly profile that combines: self-contained anonymous paper releases; a separate series layer for mutual citations; exact text-token witnesses; explicit conflict predicates; and counterexamples against common overclaims about signatures, local clocks, and copied content.
+\acsd\ does not claim to replace these systems or invent threshold delegation. Its narrow contribution is an executable scholarly profile that combines: self-contained anonymous paper releases; exact predecessor-authorized succession; a separate series layer for mutual citations; exact text-token witnesses; explicit conflict predicates; and counterexamples against common overclaims about signatures, local clocks, and copied content.
 
-\begin{table}[t]
+\begin{table}[H]
 \centering
 \caption{Capability boundary (not a performance comparison).}
 \begin{tabular}{p{0.23\linewidth}p{0.29\linewidth}p{0.36\linewidth}}
@@ -341,20 +426,21 @@ OpenTimestamps & Blockchain-anchored timestamp proofs & Optional time sidecar; n
 Software Heritage / SWHID & Persistent intrinsic identifiers for archived software objects & ACSD binds scholarly release roles, declarations and paper relations \\
 Zenodo & Versioned archival record and DOI & ACSD's byte-level policy and pseudonymous team assent remain explicit \\
 RFC 3161 & TSA-signed message-imprint time evidence & Exact not-after evidence only; never authorship or originality \\
-ACSD & Release, governance, revision, witness and claim-policy profile & Composes these boundaries while retaining backend trust assumptions \\
+TUF / in-toto & Threshold key update and authorized software-supply-chain functionaries & ACSD scopes old/new authority to exact scholarly child objects \\
+ACSD & Release, governance, authorized revision, witness and claim-policy profile & Composes these boundaries while retaining backend trust assumptions \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 \section{Limitations and Future Work}
 
-Several extensions are intentionally deferred. First, relations across independently administered series require policy and an interoperable cross-series package model. Second, anti-equivocation evidence from transparency logs or gossip requires deployed service assumptions. Third, the parser, canonicalization, hash, and signature implementations have not been refined into the Lean model. Fourth, generated private keys are unencrypted PEM files; a production CLI needs encrypted or operating-system-backed storage. Fifth, exact TSA signer pinning does not replace PKIX path construction and revocation when a deployment requires those services. Finally, content-anonymous publication does not hide repository-account, network, timing, or public-key linkage, and richer citation/editor integration remains future work.
+Several extensions are intentionally deferred. First, relations across independently administered series require policy and an interoperable cross-series package model. Second, anti-equivocation evidence from transparency logs or gossip requires deployed service assumptions. Third, the parser, threshold counter, canonicalization, hash, and signature implementations have not been refined into the Lean model. Fourth, generated private keys are unencrypted PEM files; a production CLI needs encrypted or operating-system-backed storage. Fifth, exact TSA signer pinning does not replace PKIX path construction and revocation when a deployment requires those services. Sixth, v3 has no precommitted recovery authority: loss of enough predecessor keys freezes the lineage, while an already valid transfer cannot be retroactively revoked. Finally, content-anonymous publication does not hide repository-account, network, timing, or public-key linkage, and richer citation/editor integration remains future work.
 
 These are reasons to state the present result narrowly, not reasons to weaken the useful evidence it already preserves.
 
 \section{Conclusion}
 
-\acsd\ turns a vague ``anonymous signed paper'' idea into a limited but executable evidence profile. It binds exact released objects to pseudonymous-key approvals, supports ordered roles and revisions, permits mutual scholarly citation without cyclic hash dependencies, and rejects several malformed or misleading artifacts. It leaves human identity, originality, and independent time as claims requiring additional evidence. This division of claims is the central design principle: preserve what cryptography can verify, and make the remaining social questions explicit.
+\acsd\ turns a vague ``anonymous signed paper'' idea into a limited but executable evidence profile. It binds exact released objects to pseudonymous-key approvals, distinguishes a signed object from a predecessor-authorized successor, supports ordered roles and branches, permits mutual scholarly citation without cyclic hash dependencies, and detects same-slot authorized forks without inventing a winner. It leaves human identity, originality, recovery without prior authority, and independent time as claims requiring additional evidence. This division of claims is the central design principle: preserve what cryptography can verify, and make the remaining social questions explicit.
 
 \begin{thebibliography}{9}
 \bibitem{prov}
@@ -378,6 +464,12 @@ C. Adams et al. \emph{Internet X.509 Public Key Infrastructure Time-Stamp Protoc
 \bibitem{opentimestamps}
 OpenTimestamps. \emph{A timestamp proof standard for blockchain anchoring}.
 Project documentation, accessed 2026-09-11. \url{https://opentimestamps.org/}
+
+\bibitem{tufspec}
+The Update Framework. \emph{The Update Framework Specification}, version 1.0.28. \url{https://theupdateframework.github.io/specification/v1.0.28/}
+
+\bibitem{intoto}
+in-toto. \emph{in-toto Specification}. \url{https://github.com/in-toto/docs/blob/master/in-toto-spec.md}
 \end{thebibliography}
 
 \end{document}

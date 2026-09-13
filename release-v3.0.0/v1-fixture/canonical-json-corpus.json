@@ -1,0 +1,16 @@
+{
+  "schema": "acsd-v1.6.0-canonical-json-corpus/v1",
+  "cases": [
+    {"id": "empty-object", "body": "{}", "expected_canonical": true},
+    {"id": "nested-ascii", "body": "{\"a\":1,\"b\":[true,null,\"x\"]}", "expected_canonical": true},
+    {"id": "utf8-string-value", "body": "{\"label\":\"匿名\"}", "expected_canonical": true},
+    {"id": "leading-whitespace", "body": " {\"a\":1}", "expected_canonical": false},
+    {"id": "key-order", "body": "{\"b\":1,\"a\":2}", "expected_canonical": false},
+    {"id": "duplicate-key", "body": "{\"a\":1,\"a\":1}", "expected_canonical": false},
+    {"id": "decimal-number", "body": "{\"a\":1.0}", "expected_canonical": false},
+    {"id": "unsafe-integer", "body": "{\"a\":9007199254740992}", "expected_canonical": false},
+    {"id": "nonascii-key", "body": "{\"é\":1}", "expected_canonical": false},
+    {"id": "trailing-newline", "body": "{\"a\":1}\n", "expected_canonical": false},
+    {"id": "invalid-json", "body": "{\"a\":", "expected_canonical": false}
+  ]
+}

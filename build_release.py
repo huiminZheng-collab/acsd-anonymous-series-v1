@@ -1,4 +1,4 @@
-"""Build the deterministic, cache-free ACSD v2 release directory."""
+"""Build the deterministic, cache-free ACSD v3 release directory."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parent
-DEST = ROOT / "release-v2.1.1"
+DEST = ROOT / "release-v3.0.0"
 FILES = (
     "ACCEPTANCE-MATRIX.md",
     "ANONYMITY.md",
@@ -34,6 +34,7 @@ FILES = (
     "test_corpus.py",
     "test_demo.py",
     "test_dialogue_merkle.py",
+    "test_lineage_authorization.py",
     "test_node_integration.py",
     "test_node_approval.py",
     "test_package_adapter.py",
@@ -73,11 +74,12 @@ FILES = (
     "formal/AxiomAudit.lean",
     "formal/ACSD/Core.lean",
     "formal/ACSD/PEC.lean",
+    "formal/ACSD/Lineage.lean",
     "formal/lake-manifest.json",
     "formal/lakefile.toml",
     "formal/lean-toolchain",
-    "paper/acsd-v2.tex",
-    "paper/build/acsd-v2.pdf",
+    "paper/acsd-v3.tex",
+    "paper/build/acsd-v3.pdf",
 )
 
 # Directories copied recursively (with exclusions). The v1 fixture corpus is
@@ -143,7 +145,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--check", action="store_true", help="rebuild separately and compare with the candidate")
     args = parser.parse_args()
-    staging = ROOT / "release-v2.1.1.staging"
+    staging = ROOT / "release-v3.0.0.staging"
     if args.check:
         if not DEST.is_dir():
             raise FileNotFoundError(DEST.name)
