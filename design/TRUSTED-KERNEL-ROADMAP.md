@@ -75,10 +75,12 @@ structural checker enforces signer/payload/input/Merkle closure. Lean now
 strictly decodes that restricted canonical JSON, retains separate approval,
 event, and policy scopes plus COSE input digests, and has a composed soundness
 theorem from a decoded closed transcript group to a parameterized claim.
-Complete Python/Lean derivations agree on 27/27 cases across the closed v1
-approval/event certificate and the v2 identity extension. Identity now has
-exact release/slot/key/assertion/signature/input closure. Approval-set time,
-lineage, and a second-domain instance remain open.
+Complete Python/Lean derivations agree on 35/35 cases across the closed v1
+approval/event certificate, v2 identity extension, and v3 approval-set-time
+extension. Identity has exact release/slot/key/assertion/signature/input
+closure. Time has exact approval-set, author-approval, request, response,
+certificate, report, signer-pin, authority-class, and UTC-subject closure.
+Lineage and a second-domain instance remain open.
 
 ### P1 — structural simplification
 
@@ -130,13 +132,12 @@ checks should the project describe itself as cross-domain.
 | Continue adding independent verifier-specific grants | Existing paths had manual string grants and vocabulary drift | None; this directly violates the single-kernel objective | ruled out |
 | Typed exact-subject unary kernel | ACSD evidence families already have distinct safe unary claims | Production integration and full matrix | attempted |
 | General-purpose recursive trust language | Mature systems such as SecPAL and RATS already occupy this space | No ACSD requirement justifies the complexity | ruled out for P0 |
-| Finite multi-premise rules with proof certificates | Needed for quorum and a real second-domain instance | Approval/event/identity JSON-to-Lean refinement exists; time/lineage and a second domain remain | attempted |
+| Finite multi-premise rules with proof certificates | Needed for quorum and a real second-domain instance | Approval/event/identity/time JSON-to-Lean refinement exists; lineage and a second domain remain | attempted |
 | Full parser/crypto verification in Lean | Would maximize assurance but dominates current project cost | First establish a narrow transcript and refinement boundary | unexplored P2 |
 
 ## Smallest next experiment
 
-Extend the same two-author release with one approval-set timestamp and one
-authorized lineage edge. Python and Node
+Extend the same two-author release with one authorized lineage edge. Python and Node
 must emit byte-identical verification transcripts; Lean must emit the same
 parameterized claims. Removing any single required support digest must remove
 the corresponding exact claim. This is an empirical/refinement check; the Lean

@@ -1,4 +1,4 @@
-"""Pure structural checker for acsd-verification-certificate/v1.
+"""Pure structural checker for ACSD verification certificates.
 
 The byte-level Python and Node adapters emit a transcript without claims. This
 module checks closure of the transcript and converts only closed fact groups
@@ -18,10 +18,13 @@ HEX64 = re.compile(r"[0-9a-f]{64}")
 MAX_SAFE_INTEGER = 9_007_199_254_740_991
 SCHEMA_V1 = "acsd-verification-certificate/v1"
 SCHEMA_V2 = "acsd-verification-certificate/v2"
+SCHEMA_V3 = "acsd-verification-certificate/v3"
 INPUT_ROLES = {
     "approval-target", "pec", "event-disclosure", "public-key",
     "author-approval-cose", "event-disclosure-cose",
     "release", "identity-disclosure", "identity-disclosure-cose",
+    "approval-set", "time-request", "time-response", "tsa-certificate",
+    "time-report",
 }
 TOP_FIELDS_V1 = {
     "schema", "inputs", "approval_target", "policy", "event_disclosure",
@@ -29,6 +32,7 @@ TOP_FIELDS_V1 = {
     "timestamp_facts", "trusted_inputs",
 }
 TOP_FIELDS_V2 = TOP_FIELDS_V1 | {"release_context"}
+TOP_FIELDS_V3 = TOP_FIELDS_V2 | {"approval_set"}
 
 
 def _require(condition, code):
@@ -101,8 +105,11 @@ def appraised_evidence(certificate: dict, certificate_digest: str) -> Tuple[clai
     _digest(certificate_digest, "TRANSCRIPT_CERTIFICATE_DIGEST")
     _require(isinstance(certificate, dict), "TRANSCRIPT_FIELDS")
     schema = certificate.get("schema")
-    _require(schema in {SCHEMA_V1, SCHEMA_V2}, "TRANSCRIPT_SCHEMA")
-    expected_fields = TOP_FIELDS_V2 if schema == SCHEMA_V2 else TOP_FIELDS_V1
+    _require(schema in {SCHEMA_V1, SCHEMA_V2, SCHEMA_V3}, "TRANSCRIPT_SCHEMA")
+    expected_fields = (
+        TOP_FIELDS_V3 if schema == SCHEMA_V3 else
+        TOP_FIELDS_V2 if schema == SCHEMA_V2 else TOP_FIELDS_V1
+    )
     _require(set(certificate) == expected_fields, "TRANSCRIPT_FIELDS")
     input_digests = _input_digests(certificate)
 
@@ -194,8 +201,11 @@ def appraised_evidence(certificate: dict, certificate_digest: str) -> Tuple[clai
             certificate_digest,
         ))
 
-    _require(certificate["timestamp_facts"] == [], "TRANSCRIPT_UNSUPPORTED_EXTENSION")
-    _require(certificate["trusted_inputs"] == [], "TRANSCRIPT_UNSUPPORTED_EXTENSION")
+    if schema != SCHEMA_V3:
+        _require(certificate["timestamp_facts"] == [],
+                 "TRANSCRIPT_UNSUPPORTED_EXTENSION")
+        _require(certificate["trusted_inputs"] == [],
+                 "TRANSCRIPT_UNSUPPORTED_EXTENSION")
     if schema == SCHEMA_V1:
         _require(certificate["identity_assertions"] == [],
                  "TRANSCRIPT_UNSUPPORTED_EXTENSION")
@@ -291,6 +301,110 @@ def appraised_evidence(certificate: dict, certificate_digest: str) -> Tuple[clai
                     ),
                     certificate_digest,
                 ))
+
+    if schema == SCHEMA_V3:
+        approval_set = certificate["approval_set"]
+        _require(isinstance(approval_set, dict) and set(approval_set) == {
+            "body_digest", "approval_target_digest", "author_approvals",
+            "lineage_authorizations",
+        }, "TRANSCRIPT_APPROVAL_SET")
+        set_digest = _digest(
+            approval_set["body_digest"], "TRANSCRIPT_APPROVAL_SET_DIGEST"
+        )
+        _require(
+            approval_set["approval_target_digest"] == target_digest,
+            "TRANSCRIPT_APPROVAL_SET_TARGET",
+        )
+        set_approvals = approval_set["author_approvals"]
+        _require(isinstance(set_approvals, list), "TRANSCRIPT_APPROVAL_SET_AUTHORS")
+        parsed_set_approvals = []
+        for item in set_approvals:
+            _require(isinstance(item, dict) and set(item) == {
+                "key_id", "cose_sha256"
+            }, "TRANSCRIPT_APPROVAL_SET_AUTHOR")
+            parsed_set_approvals.append((
+                _digest(item["key_id"], "TRANSCRIPT_APPROVAL_SET_KEY"),
+                _digest(item["cose_sha256"], "TRANSCRIPT_APPROVAL_SET_COSE"),
+            ))
+        selected_approvals = [
+            (item["key_id"], item["cose_digest"])
+            for item in facts if item["purpose"] == "author-approval"
+        ]
+        approval_set_closed = (
+            parsed_set_approvals == selected_approvals
+            and [key for key, _ in parsed_set_approvals] == approval_keys
+            and approval_set["lineage_authorizations"] == []
+        )
+
+        time_facts = certificate["timestamp_facts"]
+        trusted = certificate["trusted_inputs"]
+        _require(isinstance(time_facts, list) and len(time_facts) == 1,
+                 "TRANSCRIPT_TIME_FACTS")
+        _require(isinstance(trusted, list) and len(trusted) == 1,
+                 "TRANSCRIPT_TRUSTED_INPUTS")
+        time_fact = time_facts[0]
+        trust = trusted[0]
+        expected_time_fields = {
+            "schema", "subject_kind", "subject_digest", "not_after_utc",
+            "request_digest", "response_digest", "certificate_digest",
+            "report_digest", "approval_set_input_digest", "nonce",
+            "signer_fingerprint", "trust_model", "authority_class",
+            "policy_oid", "serial_hex",
+        }
+        _require(isinstance(time_fact, dict) and set(time_fact) == expected_time_fields,
+                 "TRANSCRIPT_TIME_FACT")
+        _require(isinstance(trust, dict) and set(trust) == {
+            "kind", "signer_fingerprint", "certificate_digest", "authority_class"
+        }, "TRANSCRIPT_TRUSTED_INPUT")
+        for field in (
+            "subject_digest", "request_digest", "response_digest",
+            "certificate_digest", "report_digest", "approval_set_input_digest",
+            "signer_fingerprint",
+        ):
+            _digest(time_fact[field], "TRANSCRIPT_TIME_DIGEST")
+        _require(
+            isinstance(time_fact["nonce"], str)
+            and re.fullmatch(r"[0-9a-f]{32}", time_fact["nonce"]),
+            "TRANSCRIPT_TIME_NONCE",
+        )
+        _require(
+            isinstance(time_fact["policy_oid"], str) and time_fact["policy_oid"]
+            and isinstance(time_fact["serial_hex"], str)
+            and re.fullmatch(r"[0-9a-f]+", time_fact["serial_hex"]),
+            "TRANSCRIPT_TIME_METADATA",
+        )
+        time_subject = claims.ApprovalSetTimeSubject(
+            set_digest, time_fact["not_after_utc"]
+        )
+        time_closed = (
+            approval_set_closed
+            and time_fact["schema"] == "acsd-rfc3161-appraisal/v1"
+            and time_fact["subject_kind"] == "approval-set"
+            and time_fact["subject_digest"] == set_digest
+            and time_fact["trust_model"] == "exact-signer-pin"
+            and time_fact["authority_class"] == "external"
+            and trust == {
+                "kind": "tsa-exact-signer-pin",
+                "signer_fingerprint": time_fact["signer_fingerprint"],
+                "certificate_digest": time_fact["certificate_digest"],
+                "authority_class": "external",
+            }
+            and input_digests.get("approval-set", []) == [
+                time_fact["approval_set_input_digest"]
+            ]
+            and input_digests.get("time-request", []) == [time_fact["request_digest"]]
+            and input_digests.get("time-response", []) == [time_fact["response_digest"]]
+            and input_digests.get("tsa-certificate", []) == [
+                time_fact["certificate_digest"]
+            ]
+            and input_digests.get("time-report", []) == [time_fact["report_digest"]]
+        )
+        if time_closed:
+            evidence.append(claims.AppraisedEvidence(
+                claims.EvidenceKind.APPROVAL_SET_TIMESTAMP,
+                time_subject,
+                certificate_digest,
+            ))
     return tuple(evidence)
 
 

@@ -183,6 +183,8 @@ def parse_tstinfo(tstinfo_der: bytes):
     # kids: [0]=version, [1]=policy, [2]=messageImprint(SEQ), [3]=serial, [4]=genTime
     imprint = None
     imprint_algorithm = None
+    policy_oid = None
+    serial = None
     gen_time = None
     nonce = None
     if len(kids) > 2 and kids[2][0] == 0x30:
@@ -192,6 +194,10 @@ def parse_tstinfo(tstinfo_der: bytes):
             alg = list(_children(sub[0][1])) if sub[0][0] == 0x30 else []
             if alg and alg[0][0] == 0x06:
                 imprint_algorithm = _oid_bytes_to_str(alg[0][1])
+    if len(kids) > 1 and kids[1][0] == 0x06:
+        policy_oid = _oid_bytes_to_str(kids[1][1])
+    if len(kids) > 3 and kids[3][0] == 0x02:
+        serial = _positive_int(kids[3][1], "TSR_SERIAL_INVALID")
     for index, (tag, child) in enumerate(kids):
         if tag == 0x18:
             gen_time = _generalized_time_to_dt(child)
@@ -200,6 +206,8 @@ def parse_tstinfo(tstinfo_der: bytes):
     return {
         "version": _positive_int(kids[0][1], "TSR_VERSION") if kids and kids[0][0] == 0x02 else None,
         "imprint_algorithm": imprint_algorithm,
+        "policy_oid": policy_oid,
+        "serial": serial,
         "imprint": imprint,
         "genTime": gen_time,
         "nonce": nonce,

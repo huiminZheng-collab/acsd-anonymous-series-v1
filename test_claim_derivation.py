@@ -2,8 +2,9 @@ import unittest
 
 from claim_derivation import (
     AppraisedEvidence,
-    ApprovalSetSubject,
+    ApprovalSetTimeSubject,
     ApprovalTargetSubject,
+    ApprovalTargetTimeSubject,
     Claim,
     ClaimKind,
     EventSubject,
@@ -21,16 +22,22 @@ from claim_derivation import (
 
 DIGESTS = [format(index, "064x") for index in range(1, 12)]
 TARGET_SUBJECT = ApprovalTargetSubject(DIGESTS[0])
-SET_SUBJECT = ApprovalSetSubject(DIGESTS[1])
+TARGET_TIME_SUBJECT = ApprovalTargetTimeSubject(
+    DIGESTS[0], "2026-09-13T00:00:00+00:00"
+)
+SET_SUBJECT = ApprovalSetTimeSubject(
+    DIGESTS[1], "2026-09-13T00:00:01+00:00"
+)
 EVENT_SUBJECT = EventSubject(DIGESTS[2], "event-1", 0, DIGESTS[3], 2, 4)
 IDENTITY_SUBJECT = IdentitySubject(DIGESTS[4], 1, DIGESTS[5], DIGESTS[6])
 STATEMENT_SUBJECT = StatementSubject(DIGESTS[7])
 
 
 def subject_for(kind):
-    if kind in (EvidenceKind.UNANIMOUS_APPROVAL,
-                EvidenceKind.APPROVAL_TARGET_TIMESTAMP):
+    if kind == EvidenceKind.UNANIMOUS_APPROVAL:
         return TARGET_SUBJECT
+    if kind == EvidenceKind.APPROVAL_TARGET_TIMESTAMP:
+        return TARGET_TIME_SUBJECT
     if kind == EvidenceKind.APPROVAL_SET_TIMESTAMP:
         return SET_SUBJECT
     if kind == EvidenceKind.EVENT_DISCLOSURE:
@@ -44,10 +51,11 @@ def claim_subject_for(kind):
     if kind in (
         ClaimKind.KEY_ASSENT,
         ClaimKind.GOVERNANCE_ASSENT,
-        ClaimKind.TARGET_IMPRINT_EXISTED_NOT_AFTER,
         ClaimKind.ORIGINALITY_VERIFIED,
     ):
         return TARGET_SUBJECT
+    if kind == ClaimKind.TARGET_IMPRINT_EXISTED_NOT_AFTER:
+        return TARGET_TIME_SUBJECT
     if kind in (
         ClaimKind.APPROVAL_SET_IMPRINT_EXISTED_NOT_AFTER,
         ClaimKind.SIGNERS_UNCOMPROMISED_AT_TIME,
@@ -128,6 +136,8 @@ class TestClaimDerivation(unittest.TestCase):
             ApprovalTargetSubject("not-a-digest")
         with self.assertRaisesRegex(ValueError, "INVALID_EVENT_WINDOW"):
             EventSubject(DIGESTS[0], "event", 0, DIGESTS[1], 4, 3)
+        with self.assertRaisesRegex(ValueError, "INVALID_NOT_AFTER_UTC"):
+            ApprovalSetTimeSubject(DIGESTS[1], "2026-09-13")
 
     def test_derivation_retains_exact_support_certificate(self):
         evidence = self.evidence(EvidenceKind.UNANIMOUS_APPROVAL)

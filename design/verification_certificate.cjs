@@ -5,6 +5,7 @@
 // verified byte-level facts and deliberately emits no verdict or claim.
 
 const crypto = require("crypto");
+const childProcess = require("child_process");
 const fs = require("fs");
 const path = require("path");
 const {canonicalJson} = require("./canonical_ref.cjs");
@@ -12,6 +13,7 @@ const {verify} = require("./verify_approval.cjs");
 
 const SCHEMA_V1 = "acsd-verification-certificate/v1";
 const SCHEMA_V2 = "acsd-verification-certificate/v2";
+const SCHEMA_V3 = "acsd-verification-certificate/v3";
 const sha256 = (bytes) => crypto.createHash("sha256").update(bytes).digest("hex");
 
 function fail(condition, code) {
@@ -68,7 +70,8 @@ function verifyWindow(rootHex, opened) {
 }
 
 function build(root, options = {}) {
-  const includeIdentity = options.includeIdentity === true;
+  const includeTime = typeof options.timeFixture === "string";
+  const includeIdentity = options.includeIdentity === true || includeTime;
   const targetFile = readCanonical(root, "approval-target.json");
   const pecFile = readCanonical(root, "pec.json");
   const disclosureFile = readCanonical(root, "dialogue-disclosure.json");
@@ -199,13 +202,76 @@ function build(root, options = {}) {
       cose_digest: sha256(coseRaw),
     });
   }
+  let approvalSetFact = null;
+  let timestampFacts = [];
+  let trustedInputs = [];
+  if (includeTime) {
+    fail(/^[0-9a-f]{64}$/.test(options.trustedTsaFingerprint || ""),
+      "TIME_TRUST_PIN_REQUIRED");
+    const approvalSetFile = readCanonical(root, "approval/approval-set.json");
+    const approvalSet = approvalSetFile.value;
+    fail(approvalSet && Object.keys(approvalSet).sort().join(",") === [
+      "schema", "approval_target_digest", "author_approvals",
+      "lineage_authorizations",
+    ].sort().join(",") && approvalSet.schema === "acsd-approval-set/v1",
+    "APPROVAL_SET_FIELDS");
+    fail(approvalSet.approval_target_digest === targetDigest,
+      "APPROVAL_SET_TARGET_MISMATCH");
+    const expectedApprovals = signatureFacts
+      .filter((item) => item.purpose === "author-approval")
+      .map((item) => ({key_id: item.key_id, cose_sha256: item.cose_digest}));
+    fail(canonicalJson(approvalSet.author_approvals) === canonicalJson(expectedApprovals) &&
+      Array.isArray(approvalSet.lineage_authorizations) &&
+      approvalSet.lineage_authorizations.length === 0,
+    "APPROVAL_SET_AUTHOR_SIGNATURE_MISMATCH");
+
+    const python = process.env.ACSD_PYTHON || "python";
+    const oracle = childProcess.spawnSync(python, [
+      path.join(__dirname, "..", "time_evidence.py"), root, options.timeFixture,
+      "--trusted-fingerprint", options.trustedTsaFingerprint,
+      ...(options.externalAuthority ? ["--external-authority"] : []),
+    ], {encoding: "utf8"});
+    fail(oracle.status === 0, `TIME_ORACLE_FAILED:${(oracle.stderr || "").trim()}`);
+    let appraisal;
+    try { appraisal = JSON.parse(oracle.stdout); }
+    catch (_) { throw new Error("TIME_ORACLE_OUTPUT"); }
+    const fixtureFiles = [
+      ["time-request", "time-fixture/request.tsq", "request.tsq"],
+      ["time-response", "time-fixture/response.tsr", "response.tsr"],
+      ["tsa-certificate", "time-fixture/tsa-cert.der", "tsa-cert.der"],
+      ["time-report", "time-fixture/report.json", "report.json"],
+    ];
+    inputs.push({
+      role: "approval-set", path: "approval/approval-set.json",
+      sha256: sha256(approvalSetFile.raw),
+    });
+    for (const [role, logical, name] of fixtureFiles) {
+      inputs.push({
+        role, path: logical,
+        sha256: sha256(fs.readFileSync(path.join(options.timeFixture, name))),
+      });
+    }
+    approvalSetFact = {
+      body_digest: sha256(approvalSetFile.payload),
+      approval_target_digest: approvalSet.approval_target_digest,
+      author_approvals: approvalSet.author_approvals,
+      lineage_authorizations: approvalSet.lineage_authorizations,
+    };
+    timestampFacts = [appraisal];
+    trustedInputs = [{
+      kind: "tsa-exact-signer-pin",
+      signer_fingerprint: appraisal.signer_fingerprint,
+      certificate_digest: appraisal.certificate_digest,
+      authority_class: appraisal.authority_class,
+    }];
+  }
   inputs = [...new Map(inputs.map((item) => [item.path, item])).values()]
     .sort((a, b) => a.path.localeCompare(b.path) || a.role.localeCompare(b.role));
   signatureFacts.sort((a, b) =>
     a.purpose.localeCompare(b.purpose) || a.key_id.localeCompare(b.key_id));
   const opened = disclosure.opened_material;
   const result = {
-    schema: includeIdentity ? SCHEMA_V2 : SCHEMA_V1,
+    schema: includeTime ? SCHEMA_V3 : (includeIdentity ? SCHEMA_V2 : SCHEMA_V1),
     inputs,
     approval_target: {
       target_digest: targetDigest,
@@ -235,8 +301,8 @@ function build(root, options = {}) {
       opened_leaf_count: opened.length,
     }],
     identity_assertions: identityAssertions,
-    timestamp_facts: [],
-    trusted_inputs: [],
+    timestamp_facts: timestampFacts,
+    trusted_inputs: trustedInputs,
   };
   if (includeIdentity) {
     result.release_context = {
@@ -247,17 +313,26 @@ function build(root, options = {}) {
       })),
     };
   }
+  if (includeTime) result.approval_set = approvalSetFact;
   return result;
 }
 
 if (require.main === module) {
   try {
-    if (![3, 4].includes(process.argv.length) ||
-        (process.argv.length === 4 && process.argv[3] !== "--include-identity")) {
-      throw new Error("usage: node verification_certificate.cjs BUNDLE [--include-identity]");
-    }
+    const args = process.argv.slice(3);
+    const includeIdentity = args.includes("--include-identity");
+    const timeAt = args.indexOf("--time-fixture");
+    const pinAt = args.indexOf("--trusted-tsa-fingerprint");
+    const known = new Set(["--include-identity", "--time-fixture",
+      "--trusted-tsa-fingerprint", "--external-authority"]);
+    fail(args.every((value, index) => known.has(value) ||
+      (index > 0 && ["--time-fixture", "--trusted-tsa-fingerprint"].includes(args[index - 1]))),
+    "usage: node verification_certificate.cjs BUNDLE [options]");
     process.stdout.write(canonicalJson(build(process.argv[2], {
-      includeIdentity: process.argv[3] === "--include-identity",
+      includeIdentity,
+      timeFixture: timeAt >= 0 ? args[timeAt + 1] : undefined,
+      trustedTsaFingerprint: pinAt >= 0 ? args[pinAt + 1] : undefined,
+      externalAuthority: args.includes("--external-authority"),
     })) + "\n");
   } catch (error) {
     console.error(String(error && error.message ? error.message : error));

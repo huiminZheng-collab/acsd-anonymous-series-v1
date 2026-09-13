@@ -17,6 +17,7 @@ PYTHON_ADAPTER = ROOT / "design/verification_certificate.py"
 NODE_ADAPTER = ROOT / "design/verification_certificate.cjs"
 CHECKED_CERTIFICATE = ROOT / "design/verification_certificate_demo.json"
 CHECKED_CERTIFICATE_V2 = ROOT / "design/verification_certificate_demo_v2.json"
+CHECKED_CERTIFICATE_V3 = ROOT / "design/verification_certificate_demo_v3.json"
 
 
 def run_python(bundle):
@@ -54,6 +55,10 @@ class TestVerificationCertificate(unittest.TestCase):
 
     def checked_v2(self):
         raw = CHECKED_CERTIFICATE_V2.read_bytes()
+        return json.loads(raw), hashlib.sha256(raw).hexdigest()
+
+    def checked_v3(self):
+        raw = CHECKED_CERTIFICATE_V3.read_bytes()
         return json.loads(raw), hashlib.sha256(raw).hexdigest()
 
     def test_python_and_node_emit_identical_fact_certificate(self):
@@ -120,6 +125,48 @@ class TestVerificationCertificate(unittest.TestCase):
             ),
             ("KEY_ASSENT", "GOVERNANCE_ASSENT", "COMMITTED_EVIDENCE_MATCH"),
         )
+
+    def test_time_v3_derives_exact_approval_set_not_after_claim(self):
+        certificate, certificate_digest = self.checked_v3()
+        derivations = verification_transcript.derive(certificate, certificate_digest)
+        self.assertEqual(
+            claim_derivation.wire_outcomes(derivations),
+            (
+                "KEY_ASSENT", "GOVERNANCE_ASSENT", "COMMITTED_EVIDENCE_MATCH",
+                "APPROVAL_SET_EXISTED_NOT_AFTER",
+                "SLOT_KEY_ASSENT_TO_IDENTITY_ASSERTION",
+            ),
+        )
+        time_claim = next(
+            item.claim for item in derivations
+            if item.claim.kind == claim_derivation.ClaimKind.APPROVAL_SET_IMPRINT_EXISTED_NOT_AFTER
+        )
+        self.assertEqual(time_claim.subject.not_after_utc,
+                         "2026-09-13T11:37:22+00:00")
+
+    def test_time_input_or_authority_substitution_removes_only_time_claim(self):
+        for mutate in (
+            lambda value: next(
+                item for item in value["inputs"] if item["role"] == "time-response"
+            ).update(sha256="0" * 64),
+            lambda value: value["timestamp_facts"][0].update(
+                authority_class="local-test"
+            ),
+            lambda value: value["approval_set"]["author_approvals"][0].update(
+                cose_sha256="0" * 64
+            ),
+        ):
+            certificate, certificate_digest = self.checked_v3()
+            mutate(certificate)
+            self.assertEqual(
+                claim_derivation.wire_outcomes(
+                    verification_transcript.derive(certificate, certificate_digest)
+                ),
+                (
+                    "KEY_ASSENT", "GOVERNANCE_ASSENT", "COMMITTED_EVIDENCE_MATCH",
+                    "SLOT_KEY_ASSENT_TO_IDENTITY_ASSERTION",
+                ),
+            )
 
     def test_corrupt_signature_produces_no_certificate_in_either_adapter(self):
         with tempfile.TemporaryDirectory() as directory:

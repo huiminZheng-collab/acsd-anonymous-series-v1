@@ -1255,11 +1255,15 @@ def verify_release_dir(root: pathlib.Path, trusted_tsa_cert_der: bytes = None,
             if not is_local_test:
                 if pec.get("schema") == PEC_SCHEMA:
                     time_kind = claim_core.EvidenceKind.APPROVAL_SET_TIMESTAMP
-                    time_subject = claim_core.ApprovalSetSubject(subject_digest)
+                    time_subject = claim_core.ApprovalSetTimeSubject(
+                        subject_digest, info["genTime"].isoformat()
+                    )
                     expected_outcome = "APPROVAL_SET_EXISTED_NOT_AFTER"
                 else:
                     time_kind = claim_core.EvidenceKind.APPROVAL_TARGET_TIMESTAMP
-                    time_subject = claim_core.ApprovalTargetSubject(subject_digest)
+                    time_subject = claim_core.ApprovalTargetTimeSubject(
+                        subject_digest, info["genTime"].isoformat()
+                    )
                     expected_outcome = "EXTERNALLY_NOT_AFTER"
                 appraised_evidence.append(claim_core.AppraisedEvidence(
                     time_kind,

@@ -16,6 +16,10 @@ from typing import FrozenSet, Iterable, Tuple, Union
 
 
 HEX64 = re.compile(r"[0-9a-f]{64}")
+UTC_INSTANT = re.compile(
+    r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}"
+    r"(?:\.[0-9]{1,6})?\+00:00"
+)
 
 
 def _require_digest(value: str, field: str) -> None:
@@ -26,6 +30,11 @@ def _require_digest(value: str, field: str) -> None:
 def _require_nonnegative(value: int, field: str) -> None:
     if not isinstance(value, int) or isinstance(value, bool) or value < 0:
         raise ValueError("INVALID_" + field.upper())
+
+
+def _require_utc_instant(value: str) -> None:
+    if not isinstance(value, str) or UTC_INSTANT.fullmatch(value) is None:
+        raise ValueError("INVALID_NOT_AFTER_UTC")
 
 
 class EvidenceKind(str, Enum):
@@ -59,11 +68,23 @@ class ApprovalTargetSubject:
 
 
 @dataclass(frozen=True)
-class ApprovalSetSubject:
+class ApprovalTargetTimeSubject:
+    target_digest: str
+    not_after_utc: str
+
+    def __post_init__(self) -> None:
+        _require_digest(self.target_digest, "target_digest")
+        _require_utc_instant(self.not_after_utc)
+
+
+@dataclass(frozen=True)
+class ApprovalSetTimeSubject:
     approval_set_digest: str
+    not_after_utc: str
 
     def __post_init__(self) -> None:
         _require_digest(self.approval_set_digest, "approval_set_digest")
+        _require_utc_instant(self.not_after_utc)
 
 
 @dataclass(frozen=True)
@@ -111,7 +132,8 @@ class StatementSubject:
 
 Subject = Union[
     ApprovalTargetSubject,
-    ApprovalSetSubject,
+    ApprovalTargetTimeSubject,
+    ApprovalSetTimeSubject,
     EventSubject,
     IdentitySubject,
     StatementSubject,
@@ -121,8 +143,8 @@ Subject = Union[
 SUBJECT_TYPES = {
     EvidenceKind.UNANIMOUS_APPROVAL: ApprovalTargetSubject,
     EvidenceKind.EVENT_DISCLOSURE: EventSubject,
-    EvidenceKind.APPROVAL_TARGET_TIMESTAMP: ApprovalTargetSubject,
-    EvidenceKind.APPROVAL_SET_TIMESTAMP: ApprovalSetSubject,
+    EvidenceKind.APPROVAL_TARGET_TIMESTAMP: ApprovalTargetTimeSubject,
+    EvidenceKind.APPROVAL_SET_TIMESTAMP: ApprovalSetTimeSubject,
     EvidenceKind.SCITT_INCLUSION: StatementSubject,
     EvidenceKind.SLOT_IDENTITY_ASSENT: IdentitySubject,
 }
@@ -205,13 +227,13 @@ class Claim:
             ClaimKind.KEY_ASSENT: ApprovalTargetSubject,
             ClaimKind.GOVERNANCE_ASSENT: ApprovalTargetSubject,
             ClaimKind.COMMITTED_EVIDENCE_MATCH: EventSubject,
-            ClaimKind.TARGET_IMPRINT_EXISTED_NOT_AFTER: ApprovalTargetSubject,
-            ClaimKind.APPROVAL_SET_IMPRINT_EXISTED_NOT_AFTER: ApprovalSetSubject,
+            ClaimKind.TARGET_IMPRINT_EXISTED_NOT_AFTER: ApprovalTargetTimeSubject,
+            ClaimKind.APPROVAL_SET_IMPRINT_EXISTED_NOT_AFTER: ApprovalSetTimeSubject,
             ClaimKind.STATEMENT_REGISTERED: StatementSubject,
             ClaimKind.SLOT_KEY_ASSENT_TO_IDENTITY_ASSERTION: IdentitySubject,
             ClaimKind.NATURAL_PERSON_IDENTITY_VERIFIED: IdentitySubject,
             ClaimKind.ORIGINALITY_VERIFIED: ApprovalTargetSubject,
-            ClaimKind.SIGNERS_UNCOMPROMISED_AT_TIME: ApprovalSetSubject,
+            ClaimKind.SIGNERS_UNCOMPROMISED_AT_TIME: ApprovalSetTimeSubject,
         }[self.kind]
         if not isinstance(self.subject, expected):
             raise ValueError("CLAIM_SUBJECT_KIND_MISMATCH")

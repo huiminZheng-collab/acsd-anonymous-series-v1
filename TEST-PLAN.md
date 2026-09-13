@@ -94,6 +94,14 @@ bytes, and Lean must independently require the exact release/slot/key,
 identity-payload/signature, and COSE-input closure before deriving the narrow
 slot-assent claim.
 
+`acsd-verification-certificate/v3` preserves both earlier profiles and adds one
+complete approval set, the exact RFC 3161 request/response/certificate/report
+inputs, and an explicitly supplied signer pin and external-authority policy
+fact. The time claim subject contains both the approval-set digest and the
+normalized UTC time. Python performs the DER/CMS verification as an explicit
+cryptographic oracle for both high-level adapters; Python and Node still
+independently reconstruct and agree on the surrounding canonical transcript.
+
 | Mutation | Adapter result | Pure checker result |
 |---|---|---|
 | unchanged two-author demo | byte-identical Python/Node certificate | approval and exact event evidence atoms |
@@ -114,6 +122,11 @@ slot-assent claim.
 | remove the identity policy outcome | transcript remains parseable | verified identity evidence grants no claim |
 | duplicate a disclosed identity slot | both structural decoders reject | ambiguous slot identity is never appraised |
 | use slot zero or reuse one release author key in two slots | both structural decoders reject | malformed author-slot context is never appraised |
+| substitute one v3 approval entry or its COSE input | transcript remains parseable or strict decoding rejects | approval-set time claim disappears |
+| substitute the timestamp response, certificate pin, or report digest | transcript remains parseable | approval-set time claim disappears |
+| mark the pinned TSA as local rather than external | transcript remains parseable | approval-set time claim disappears |
+| change the approval target under an otherwise intact v3 set | strict decoder rejects | no cross-target time projection |
+| omit the timestamp policy fact | transcript remains parseable | verified receipt grants no time claim |
 
 The dependency-substitution cases test precision, not adapter authenticity: a
 standalone transcript is meaningful only when its exact digest is bound to the
@@ -140,11 +153,15 @@ raw adapter output being evaluated.
 8. V2 identity claims must depend on one exact release/slot/key/assertion tuple
    and one exact signature/input tuple; mutations may not disturb independent
    approval or event claims.
+9. V3 approval-set time claims must depend on the complete exact author
+   approval projection, receipt inputs, nonce, signer pin, external-authority
+   policy, and exact `(approval_set_digest, not_after_utc)` subject.
 
 ## Out-of-scope tests for the deterministic local suite
 
 No offline corpus case asserts real TSA independence, real model-provider attestation,
 anonymity against repository metadata, legal authorship, or the truth of a
 team's contribution statement.  Those would require external participants or
-governance evidence, not more fixture signatures. A separate opt-in test has
-verified one real freeTSA response; it is not part of deterministic CI.
+governance evidence, not more fixture signatures. A checked-in freeTSA response
+over the demo approval set is verified offline by deterministic tests. It is a
+single interoperability existence check, not evidence about service reliability.

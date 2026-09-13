@@ -12,6 +12,7 @@ import hashlib
 import json
 import pathlib
 import sys
+from typing import Optional
 
 ROOT = pathlib.Path(__file__).resolve().parent
 PROJECT = ROOT.parent
@@ -20,13 +21,16 @@ sys.path.insert(0, str(PROJECT))
 from cryptography.hazmat.primitives import serialization  # noqa: E402
 
 import cose  # noqa: E402
+import approval_set  # noqa: E402
 import identity_disclosure  # noqa: E402
+import time_evidence  # noqa: E402
 from event_disclosure import key_id_of  # noqa: E402
 from pec_core import canonical, digest, require, verify_dialogue_window  # noqa: E402
 
 
 SCHEMA_V1 = "acsd-verification-certificate/v1"
 SCHEMA_V2 = "acsd-verification-certificate/v2"
+SCHEMA_V3 = "acsd-verification-certificate/v3"
 
 
 def _sha256(raw: bytes) -> str:
@@ -44,8 +48,17 @@ def _read_canonical(root: pathlib.Path, relative: str):
     return value, raw
 
 
-def build(root: pathlib.Path, *, include_identity: bool = False) -> dict:
+def build(
+    root: pathlib.Path,
+    *,
+    include_identity: bool = False,
+    time_fixture: Optional[pathlib.Path] = None,
+    trusted_tsa_fingerprint: Optional[str] = None,
+    external_authority: bool = False,
+) -> dict:
     root = pathlib.Path(root)
+    include_time = time_fixture is not None
+    include_identity = include_identity or include_time
     target, target_raw = _read_canonical(root, "approval-target.json")
     pec, pec_raw = _read_canonical(root, "pec.json")
     disclosure, disclosure_raw = _read_canonical(root, "dialogue-disclosure.json")
@@ -158,6 +171,58 @@ def build(root: pathlib.Path, *, include_identity: bool = False) -> dict:
             "cose_digest": _sha256(cose_raw),
         })
 
+    approval_set_fact = None
+    timestamp_facts = []
+    trusted_inputs = []
+    if include_time:
+        require(trusted_tsa_fingerprint is not None, "TIME_TRUST_PIN_REQUIRED")
+        approval_set_obj, approval_set_raw = _read_canonical(
+            root, "approval/approval-set.json"
+        )
+        approval_set.verify_from_signatures(
+            approval_set_obj,
+            target,
+            {
+                key_id: (root / "release-approvals" / f"{key_id}.cose").read_bytes()
+                for key_id in required
+            },
+            {},
+        )
+        appraisal = time_evidence.verify(
+            root,
+            pathlib.Path(time_fixture),
+            trusted_tsa_fingerprint,
+            external_authority=external_authority,
+        )
+        fixture = pathlib.Path(time_fixture)
+        time_files = [
+            ("time-request", "time-fixture/request.tsq", fixture / "request.tsq"),
+            ("time-response", "time-fixture/response.tsr", fixture / "response.tsr"),
+            ("tsa-certificate", "time-fixture/tsa-cert.der", fixture / "tsa-cert.der"),
+            ("time-report", "time-fixture/report.json", fixture / "report.json"),
+        ]
+        inputs.append({
+            "role": "approval-set",
+            "path": "approval/approval-set.json",
+            "sha256": _sha256(approval_set_raw),
+        })
+        inputs.extend({
+            "role": role, "path": logical, "sha256": _sha256(path.read_bytes())
+        } for role, logical, path in time_files)
+        approval_set_fact = {
+            "body_digest": digest(approval_set_obj),
+            "approval_target_digest": approval_set_obj["approval_target_digest"],
+            "author_approvals": approval_set_obj["author_approvals"],
+            "lineage_authorizations": approval_set_obj["lineage_authorizations"],
+        }
+        timestamp_facts = [appraisal]
+        trusted_inputs = [{
+            "kind": "tsa-exact-signer-pin",
+            "signer_fingerprint": appraisal["signer_fingerprint"],
+            "certificate_digest": appraisal["certificate_digest"],
+            "authority_class": appraisal["authority_class"],
+        }]
+
     # Public keys appear for both signature purposes. Inputs are a set of exact
     # byte objects, while signature_facts retain both uses.
     inputs = sorted(
@@ -166,7 +231,9 @@ def build(root: pathlib.Path, *, include_identity: bool = False) -> dict:
     )
     signature_facts.sort(key=lambda item: (item["purpose"], item["key_id"]))
     result = {
-        "schema": SCHEMA_V2 if include_identity else SCHEMA_V1,
+        "schema": SCHEMA_V3 if include_time else (
+            SCHEMA_V2 if include_identity else SCHEMA_V1
+        ),
         "inputs": inputs,
         "approval_target": {
             "target_digest": digest(target),
@@ -196,8 +263,8 @@ def build(root: pathlib.Path, *, include_identity: bool = False) -> dict:
             "opened_leaf_count": len(window),
         }],
         "identity_assertions": identity_assertions,
-        "timestamp_facts": [],
-        "trusted_inputs": [],
+        "timestamp_facts": timestamp_facts,
+        "trusted_inputs": trusted_inputs,
     }
     if include_identity:
         result["release_context"] = {
@@ -207,11 +274,13 @@ def build(root: pathlib.Path, *, include_identity: bool = False) -> dict:
                 for author in release["authors"]
             ],
         }
+    if include_time:
+        result["approval_set"] = approval_set_fact
     return result
 
 
-def encoded(root: pathlib.Path, *, include_identity: bool = False) -> bytes:
-    return canonical(build(root, include_identity=include_identity))
+def encoded(root: pathlib.Path, **options) -> bytes:
+    return canonical(build(root, **options))
 
 
 def main() -> int:
@@ -219,9 +288,16 @@ def main() -> int:
     parser.add_argument("bundle")
     parser.add_argument("--output")
     parser.add_argument("--include-identity", action="store_true")
+    parser.add_argument("--time-fixture", type=pathlib.Path)
+    parser.add_argument("--trusted-tsa-fingerprint")
+    parser.add_argument("--external-authority", action="store_true")
     args = parser.parse_args()
     output = encoded(
-        pathlib.Path(args.bundle), include_identity=args.include_identity
+        pathlib.Path(args.bundle),
+        include_identity=args.include_identity,
+        time_fixture=args.time_fixture,
+        trusted_tsa_fingerprint=args.trusted_tsa_fingerprint,
+        external_authority=args.external_authority,
     ) + b"\n"
     if args.output:
         pathlib.Path(args.output).write_bytes(output)

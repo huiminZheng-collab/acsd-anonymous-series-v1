@@ -42,6 +42,18 @@ def subject_json(subject: claims.Subject) -> dict:
             "kind": "approval-target",
             "target_digest_nat": digest_nat(subject.target_digest),
         }
+    if isinstance(subject, claims.ApprovalSetTimeSubject):
+        return {
+            "kind": "approval-set-time",
+            "set_digest_nat": digest_nat(subject.approval_set_digest),
+            "not_after_utc": subject.not_after_utc,
+        }
+    if isinstance(subject, claims.ApprovalTargetTimeSubject):
+        return {
+            "kind": "approval-target-time",
+            "target_digest_nat": digest_nat(subject.target_digest),
+            "not_after_utc": subject.not_after_utc,
+        }
     if isinstance(subject, claims.EventSubject):
         return {
             "kind": "event-window",
@@ -206,6 +218,35 @@ def identity_mutations(base: dict):
     yield "release-duplicate-author-key", value
 
 
+def time_mutations(base: dict):
+    yield "time-v3-valid", copy.deepcopy(base)
+
+    value = copy.deepcopy(base)
+    item = next(entry for entry in value["inputs"] if entry["role"] == "time-response")
+    item["sha256"] = "0" * 64
+    yield "time-response-input-substitution", value
+
+    value = copy.deepcopy(base)
+    value["approval_set"]["author_approvals"][0]["cose_sha256"] = "0" * 64
+    yield "time-approval-entry-substitution", value
+
+    value = copy.deepcopy(base)
+    value["timestamp_facts"][0]["authority_class"] = "local-test"
+    yield "time-local-authority", value
+
+    value = copy.deepcopy(base)
+    value["trusted_inputs"][0]["signer_fingerprint"] = "0" * 64
+    yield "time-trust-pin-substitution", value
+
+    value = copy.deepcopy(base)
+    value["approval_set"]["approval_target_digest"] = "0" * 64
+    yield "time-target-substitution", value
+
+    value = copy.deepcopy(base)
+    value["policy"]["permitted_outcomes"].remove("APPROVAL_SET_EXISTED_NOT_AFTER")
+    yield "time-policy-absence", value
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--checker", required=True, type=pathlib.Path)
@@ -215,10 +256,17 @@ def main() -> int:
     identity_base = json.loads(
         (ROOT / "verification_certificate_demo_v2.json").read_bytes()
     )
+    time_base = json.loads(
+        (ROOT / "verification_certificate_demo_v3.json").read_bytes()
+    )
     compared = 0
     with tempfile.TemporaryDirectory() as temporary:
         directory = pathlib.Path(temporary)
-        for name, certificate in list(mutations(base)) + list(identity_mutations(identity_base)):
+        cases = (
+            list(mutations(base)) + list(identity_mutations(identity_base))
+            + list(time_mutations(time_base))
+        )
+        for name, certificate in cases:
             raw = canonical(certificate)
             certificate_digest = hashlib.sha256(raw).hexdigest()
             try:
@@ -251,7 +299,7 @@ def main() -> int:
                     )
             compared += 1
 
-        for label, value in (("v1", base), ("v2", identity_base)):
+        for label, value in (("v1", base), ("v2", identity_base), ("v3", time_base)):
             noncanonical = json.dumps(value, indent=2).encode("utf-8")
             lean = run_lean(checker, noncanonical, directory)
             if lean.returncode == 0:

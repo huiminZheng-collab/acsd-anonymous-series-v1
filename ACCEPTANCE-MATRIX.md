@@ -17,8 +17,9 @@
 | Adapter transcript agreement | independent Python/Node adapters over exact approval, disclosure, key, and Merkle inputs | PASS; canonical certificate bytes identical |
 | Critical-evidence deletion | remove one author/event signature or substitute Merkle scope | PASS; only dependent claims disappear |
 | Transcript-to-appraisal formal bridge | Lean executable closure checks plus independent support/appraisal relations | PASS; composed soundness theorem and weak-rule counterexample |
-| Canonical transcript to Lean refinement | strict Lean JSON decoder plus complete scoped-derivation differential | PASS; 27/27 positive/adverse cases agree across v1 and v2 |
+| Canonical transcript to Lean refinement | strict Lean JSON decoder plus complete scoped-derivation differential | PASS; 35/35 positive/adverse cases agree across v1, v2, and v3 |
 | Selective identity transcript closure | v2 release/slot/key/assertion/signature/input checks and adverse mutations | PASS; substitutions remove only the identity claim |
+| Exact approval-set time closure | v3 approval-set/signature/request/response/certificate/report/trust checks | PASS; exact set and UTC time are in the claim subject |
 | Dialogue Merkle commitment | `dialogue_root`, `dialogue_proof`, `verify_dialogue_window` | PASS |
 | Selective contiguous dialogue opening | `test_dialogue_merkle.py`, `test_demo.py` | PASS |
 | External sidecar subject/capability binding | `verify_sidecar_subject`, `test_sidecar.py` | PASS |
@@ -28,8 +29,8 @@
 | Independent one-command gate | `run_all.ps1`, `run_all.sh` | PASS; reports formal status explicitly |
 | Lean formal compilation | PEC, lineage, scoped-claim, and parameterized appraisal modules; pinned 4.33.1 project | PASS |
 
-The formal row contains 64 PEC/composition/lineage/scoped-appraisal/transcript
-theorems; the explicit axiom audit checks 32 central boundary theorems. It proves
+The formal row contains 67 PEC/composition/lineage/scoped-appraisal/transcript
+theorems; the explicit axiom audit checks 35 central boundary theorems. It proves
 soundness after strict decoding and empirically checks the restricted JSON
 projection; it does not claim cryptographic implementation correctness or
 natural-person truth. The separately

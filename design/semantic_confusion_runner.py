@@ -13,8 +13,9 @@ sys.path.insert(0, str(PROJECT))
 
 from claim_derivation import (  # noqa: E402
     AppraisedEvidence,
-    ApprovalSetSubject,
+    ApprovalSetTimeSubject,
     ApprovalTargetSubject,
+    ApprovalTargetTimeSubject,
     Claim,
     ClaimKind,
     EventSubject,
@@ -29,7 +30,12 @@ from claim_derivation import (  # noqa: E402
 SUBJECT = "a" * 64
 CERTIFICATE = "b" * 64
 TARGET_SUBJECT = ApprovalTargetSubject(SUBJECT)
-SET_SUBJECT = ApprovalSetSubject(SUBJECT)
+TARGET_TIME_SUBJECT = ApprovalTargetTimeSubject(
+    SUBJECT, "2026-09-13T00:00:00+00:00"
+)
+SET_SUBJECT = ApprovalSetTimeSubject(
+    SUBJECT, "2026-09-13T00:00:00+00:00"
+)
 EVENT_SUBJECT = EventSubject(SUBJECT, "event-1", 0, SUBJECT, 0, 1)
 IDENTITY_SUBJECT = IdentitySubject(SUBJECT, 0, SUBJECT, SUBJECT)
 STATEMENT_SUBJECT = StatementSubject(SUBJECT)
@@ -47,7 +53,7 @@ COLUMNS = [
 ]
 
 EVIDENCE_SUBJECTS = {
-    EvidenceKind.APPROVAL_TARGET_TIMESTAMP: TARGET_SUBJECT,
+    EvidenceKind.APPROVAL_TARGET_TIMESTAMP: TARGET_TIME_SUBJECT,
     EvidenceKind.APPROVAL_SET_TIMESTAMP: SET_SUBJECT,
     EvidenceKind.SCITT_INCLUSION: STATEMENT_SUBJECT,
     EvidenceKind.SLOT_IDENTITY_ASSENT: IDENTITY_SUBJECT,
@@ -55,7 +61,7 @@ EVIDENCE_SUBJECTS = {
 }
 
 CLAIM_SUBJECTS = {
-    ClaimKind.TARGET_IMPRINT_EXISTED_NOT_AFTER: TARGET_SUBJECT,
+    ClaimKind.TARGET_IMPRINT_EXISTED_NOT_AFTER: TARGET_TIME_SUBJECT,
     ClaimKind.APPROVAL_SET_IMPRINT_EXISTED_NOT_AFTER: SET_SUBJECT,
     ClaimKind.STATEMENT_REGISTERED: STATEMENT_SUBJECT,
     ClaimKind.SLOT_KEY_ASSENT_TO_IDENTITY_ASSERTION: IDENTITY_SUBJECT,
@@ -84,7 +90,7 @@ def build_report():
         })
 
     at_t0 = [AppraisedEvidence(
-        EvidenceKind.APPROVAL_TARGET_TIMESTAMP, TARGET_SUBJECT, CERTIFICATE
+        EvidenceKind.APPROVAL_TARGET_TIMESTAMP, TARGET_TIME_SUBJECT, CERTIFICATE
     )]
     at_t2 = at_t0 + [AppraisedEvidence(
         EvidenceKind.UNANIMOUS_APPROVAL, TARGET_SUBJECT, "c" * 64

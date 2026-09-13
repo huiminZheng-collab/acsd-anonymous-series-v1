@@ -25,8 +25,12 @@ private def claimName : ScopedClaim → String
 private def subjectJson : ScopedSubject → Json
   | .approvalTarget target => Json.mkObj [
       ("kind", "approval-target"), ("target_digest_nat", digestJson target)]
-  | .approvalSet set => Json.mkObj [
-      ("kind", "approval-set"), ("set_digest_nat", digestJson set)]
+  | .approvalTargetTime target time => Json.mkObj [
+      ("kind", "approval-target-time"), ("target_digest_nat", digestJson target),
+      ("not_after_utc", time)]
+  | .approvalSetTime set time => Json.mkObj [
+      ("kind", "approval-set-time"), ("set_digest_nat", digestJson set),
+      ("not_after_utc", time)]
   | .eventWindow pec eventId sequence commitment first last => Json.mkObj [
       ("kind", "event-window"), ("pec_digest_nat", digestJson pec),
       ("event_id", eventId), ("event_sequence", sequence),

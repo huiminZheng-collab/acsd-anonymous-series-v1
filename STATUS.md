@@ -44,28 +44,31 @@ work toward a later candidate, not a public deployment or venue submission.
 
 ## Acceptance evidence
 
-- Python: 116 tests pass locally; the live TSA test and two unavailable Windows
+- Python: 122 tests pass locally; the live TSA test and two unavailable Windows
   capability cases are skipped.
 - Canonical JSON: 64 fixed vectors have no unexpected divergence; 1,000/1,000
   seeded generated cases agree between Python and Node on bytes and text-layer
   verdicts.
 - COSE: Python-produced approvals verify on the independent Node path, and
   corrupted signatures are rejected.
-- RFC 3161: local adverse cases pass; a real freeTSA ECDSA P-384/SHA-512
-  response passed the complete pinned-signer profile on 2026-09-12.
+- RFC 3161: local adverse cases pass; a checked-in freeTSA fixture timestamps
+  the exact complete demo approval set at `2026-09-13T11:37:22+00:00` and
+  passes offline verification against its explicitly pinned signer. This is an
+  interoperability existence check, not a service-reliability study.
 - Inherited v1: 8 releases, 18 endorsements, 7 signed series objects, 13
   scenarios, 30/30 profile checks, and 113/113 manifest entries.
 - Typed derivation: the complete 6-by-10 unary compatibility test has no
   undeclared conversion; the checked-in 4-by-4 challenge retains all 16
   expected decisions, and three unsupported social claims have no rule.
 - Verification transcript: Python and Node produce byte-identical canonical
-  v1 approval/event and v2 identity certificates; corrupt or missing COSE
+  v1 approval/event, v2 identity, and v3 approval-set-time certificates;
+  corrupt or missing COSE
   produces no certificate, and deleting or substituting one fact removes only
   its dependent claims in the pure checker.
-- JSON-to-Lean refinement: Lean directly and strictly decodes both canonical
+- JSON-to-Lean refinement: Lean directly and strictly decodes all three canonical
   schemas and independently emits the same complete scoped derivations as
-  Python in 27/27 positive and adverse cases.
-- Lean 4.33.1: build succeeds; 64 PEC/lineage/scoped-appraisal/transcript
+  Python in 35/35 positive and adverse cases.
+- Lean 4.33.1: build succeeds; 67 PEC/lineage/scoped-appraisal/transcript
   theorems; no
   `sorry` or `admit` in the formal sources. The separately published v1 core's
   53 release/team/series theorems remain a distinct inherited model and are not
@@ -121,5 +124,5 @@ explicit appraisal rule. A concrete two-key countermodel proves that the weak
 - deployed transparency/gossip services and cross-series federation.
 - precommitted recovery authorities or hardware-backed recovery workflows;
   without one, loss of the predecessor threshold safely freezes the lineage.
-- extend the now-connected JSON/Lean approval-event-identity profile to
-  approval-set time and lineage without weakening either closed schema.
+- extend the now-connected JSON/Lean approval-event-identity-time profile to
+  authorized lineage without weakening any closed schema.

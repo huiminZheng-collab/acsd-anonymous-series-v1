@@ -295,7 +295,7 @@ existing evidence while reusing those approvals.
 | `KEY_ASSENT` | valid signature over exact PEC or referenced object | natural-person identity |
 | `GOVERNANCE_ASSENT` | independently valid governance statement and required member approvals | contribution truth; legal authorship |
 | `COMMITTED_EVIDENCE_MATCH` | valid disclosure that opens the exact event commitment | early creation; causal authorship |
-| `APPROVAL_SET_EXISTED_NOT_AFTER` | RFC 3161 receipt over the complete exact approval set, verified with an external signer pin | first creation; global priority; originality |
+| `APPROVAL_SET_EXISTED_NOT_AFTER` | RFC 3161 receipt over the complete exact approval set, verified with an external signer pin; claim subject is `(approval_set_digest, not_after_utc)` | first creation; global priority; originality |
 
 The policy MUST list at least these global non-claims:
 `natural_person_authorship`, `contribution_truth`, `originality_truth`,
@@ -391,8 +391,9 @@ a trust decision supplied independently by the verifier.
 
 - **RFC 3161 sidecar:** retains the raw nonce-bearing request and response,
   verifies an exact signer-certificate/fingerprint pin and the message imprint
-  over `approval_set_digest`, and permits only
-  `APPROVAL_SET_EXISTED_NOT_AFTER`.
+  over `approval_set_digest`, normalizes the authenticated `genTime` to UTC,
+  and permits only `APPROVAL_SET_EXISTED_NOT_AFTER` for the exact typed subject
+  `(approval_set_digest, not_after_utc)`.
 - **Transparency/witness sidecar:** retains the signed statement, receipt,
   checkpoint, policy, and any required inclusion/consistency proof.  It
   permits only the policy's observation or equivocation outcomes.
@@ -404,6 +405,11 @@ imprint and sidecar subject digest must equal the exact current
 `approval_set_digest`. A certificate copied into the package is not its own
 trust anchor. The reference CLI does exact signer pinning, not general PKIX
 path construction or revocation checking.
+
+The checked-in freeTSA fixture over the demo approval set records the exact
+request, response, signer certificate, nonce, policy OID, serial number, and
+authenticated UTC time. It is an offline-reproducible interoperability
+existence check, not a measurement of TSA availability or reliability.
 
 Legacy v0.1/v0.2 packages timestamped only `approval_target_digest`. Their
 receipts may establish that unsigned target's external not-after time, but
@@ -445,7 +451,8 @@ Stable rejection codes for the first corpus include:
 
 The Lean core models typed approval targets and approvals, exact digest reuse,
 policy-authorized capability derivation, real predecessor-digest links, and
-typed target-versus-approval-set time evidence. Its scoped-statement layer
+typed target-versus-approval-set time evidence whose subjects retain the exact
+normalized UTC instant. Its scoped-statement layer
 separates event, identity, and time claims and models per-slot versus full-
 byline disclosure. Hash collision resistance, signature
 unforgeability, parser refinement, encryption secrecy, RFC 3161 operation, and

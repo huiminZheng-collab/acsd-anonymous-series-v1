@@ -23,12 +23,15 @@ import ACSD
 #print axioms ACSD.approvalGroupClosedB_iff
 #print axioms ACSD.eventGroupClosedB_iff
 #print axioms ACSD.identityGroupClosedB_iff
+#print axioms ACSD.timeGroupClosedB_iff
 #print axioms ACSD.checkApprovalGroup_sound
 #print axioms ACSD.checkEventGroup_sound
 #print axioms ACSD.checkIdentityGroup_sound
+#print axioms ACSD.checkTimeGroup_sound
 #print axioms ACSD.transcriptAtoms_sound
 #print axioms ACSD.transcript_checkClaim_sound
 #print axioms ACSD.weak_any_approval_accepts_missing_required_signer
 #print axioms ACSD.transcriptClaims_sound
 #print axioms ACSD.decodedCertificateV1Claims_sound
 #print axioms ACSD.decodedCertificateV2Claims_sound
+#print axioms ACSD.decodedCertificateV3Claims_sound

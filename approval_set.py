@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import pathlib
-from typing import Dict, Iterable, List
+from typing import Dict, Iterable, List, Mapping
 
 from pec_core import HEX, digest, require
 
@@ -22,16 +22,62 @@ def _validated_key_ids(key_ids: Iterable[str]) -> List[str]:
     return values
 
 
-def _sha256_file(path: pathlib.Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
-
-
-def _entries(root: pathlib.Path, directory: str, key_ids: Iterable[str]) -> List[Dict[str, str]]:
-    key_ids = _validated_key_ids(key_ids)
+def entries_from_signatures(signatures: Mapping[str, bytes]) -> List[Dict[str, str]]:
+    """Pure projection from an exact key-to-COSE byte map."""
+    require(isinstance(signatures, Mapping), "APPROVAL_SET_SIGNATURE_MAP_INVALID")
+    key_ids = _validated_key_ids(signatures.keys())
+    require(
+        all(isinstance(signatures[key_id], bytes) for key_id in key_ids),
+        "APPROVAL_SET_SIGNATURE_BYTES_INVALID",
+    )
     return [
-        {"key_id": key_id, "cose_sha256": _sha256_file(root / directory / f"{key_id}.cose")}
+        {
+            "key_id": key_id,
+            "cose_sha256": hashlib.sha256(signatures[key_id]).hexdigest(),
+        }
         for key_id in sorted(key_ids)
     ]
+
+
+def build_from_signatures(
+    approval_target,
+    author_signatures: Mapping[str, bytes],
+    lineage_signatures: Mapping[str, bytes],
+):
+    """Pure approval-set construction, independent of filesystem layout."""
+    return {
+        "schema": SCHEMA,
+        "approval_target_digest": digest(approval_target),
+        "author_approvals": entries_from_signatures(author_signatures),
+        "lineage_authorizations": entries_from_signatures(lineage_signatures),
+    }
+
+
+def verify_from_signatures(
+    obj,
+    approval_target,
+    author_signatures: Mapping[str, bytes],
+    lineage_signatures: Mapping[str, bytes],
+):
+    """Pure verification against exact signature byte maps."""
+    require(obj.get("schema") == SCHEMA, "APPROVAL_SET_SCHEMA")
+    expected = build_from_signatures(
+        approval_target, author_signatures, lineage_signatures
+    )
+    require(
+        obj.get("approval_target_digest") == expected["approval_target_digest"],
+        "APPROVAL_SET_TARGET_MISMATCH",
+    )
+    require(
+        obj.get("author_approvals") == expected["author_approvals"],
+        "APPROVAL_SET_AUTHOR_SIGNATURE_MISMATCH",
+    )
+    require(
+        obj.get("lineage_authorizations") == expected["lineage_authorizations"],
+        "APPROVAL_SET_LINEAGE_SIGNATURE_MISMATCH",
+    )
+    require(set(obj) == set(expected), "APPROVAL_SET_FIELDS")
+    return {"approval_set_digest": digest(obj)}
 
 
 def _require_exact_files(root: pathlib.Path, directory: str, key_ids, code: str) -> None:
@@ -52,31 +98,38 @@ def build(root: pathlib.Path, approval_target, author_key_ids, lineage_key_ids):
         root, "lineage/authorizations", lineage_key_ids,
         "APPROVAL_SET_LINEAGE_FILE_SET_MISMATCH",
     )
-    return {
-        "schema": SCHEMA,
-        "approval_target_digest": digest(approval_target),
-        "author_approvals": _entries(root, "approvals", author_key_ids),
-        "lineage_authorizations": _entries(
-            root, "lineage/authorizations", lineage_key_ids
-        ),
-    }
+    return build_from_signatures(
+        approval_target,
+        {
+            key_id: (root / "approvals" / f"{key_id}.cose").read_bytes()
+            for key_id in author_key_ids
+        },
+        {
+            key_id: (root / "lineage/authorizations" / f"{key_id}.cose").read_bytes()
+            for key_id in lineage_key_ids
+        },
+    )
 
 
 def verify(obj, root: pathlib.Path, approval_target, author_key_ids, lineage_key_ids):
     """Verify exact membership and byte digests; signature validity is separate."""
-    require(obj.get("schema") == SCHEMA, "APPROVAL_SET_SCHEMA")
-    require(
-        obj.get("approval_target_digest") == digest(approval_target),
-        "APPROVAL_SET_TARGET_MISMATCH",
+    root = pathlib.Path(root)
+    _require_exact_files(
+        root, "approvals", author_key_ids, "APPROVAL_SET_AUTHOR_FILE_SET_MISMATCH"
     )
-    expected = build(root, approval_target, author_key_ids, lineage_key_ids)
-    require(
-        obj.get("author_approvals") == expected["author_approvals"],
-        "APPROVAL_SET_AUTHOR_SIGNATURE_MISMATCH",
+    _require_exact_files(
+        root, "lineage/authorizations", lineage_key_ids,
+        "APPROVAL_SET_LINEAGE_FILE_SET_MISMATCH",
     )
-    require(
-        obj.get("lineage_authorizations") == expected["lineage_authorizations"],
-        "APPROVAL_SET_LINEAGE_SIGNATURE_MISMATCH",
+    return verify_from_signatures(
+        obj,
+        approval_target,
+        {
+            key_id: (root / "approvals" / f"{key_id}.cose").read_bytes()
+            for key_id in author_key_ids
+        },
+        {
+            key_id: (root / "lineage/authorizations" / f"{key_id}.cose").read_bytes()
+            for key_id in lineage_key_ids
+        },
     )
-    require(set(obj) == set(expected), "APPROVAL_SET_FIELDS")
-    return {"approval_set_digest": digest(obj)}

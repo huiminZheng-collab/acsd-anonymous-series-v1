@@ -1,8 +1,9 @@
-"""Check Python/Node agreement on frozen v1 and identity-aware v2 certificates."""
+"""Check Python/Node agreement on frozen v1/v2/v3 certificates."""
 
 from __future__ import annotations
 
 import pathlib
+import os
 import subprocess
 import sys
 
@@ -14,19 +15,34 @@ from verification_certificate import encoded  # noqa: E402
 
 
 def main() -> int:
-    for version, include_identity, checked_name in (
-        ("v1", False, "verification_certificate_demo.json"),
-        ("v2", True, "verification_certificate_demo_v2.json"),
+    fingerprint = "32e841a95cc1164101ffde41298ef2fc75c1c4372ef095e88a6bbd47dfb191fc"
+    fixture = ROOT / "rfc3161-approval-set-fixture"
+    for version, options, checked_name in (
+        ("v1", {}, "verification_certificate_demo.json"),
+        ("v2", {"include_identity": True}, "verification_certificate_demo_v2.json"),
+        ("v3", {
+            "time_fixture": fixture,
+            "trusted_tsa_fingerprint": fingerprint,
+            "external_authority": True,
+        }, "verification_certificate_demo_v3.json"),
     ):
-        python_bytes = encoded(
-            PROJECT / "demo", include_identity=include_identity
-        ) + b"\n"
+        python_bytes = encoded(PROJECT / "demo", **options) + b"\n"
         command = [
             "node", str(ROOT / "verification_certificate.cjs"), str(PROJECT / "demo")
         ]
-        if include_identity:
+        if version == "v2":
             command.append("--include-identity")
-        node = subprocess.run(command, cwd=PROJECT, capture_output=True)
+        if version == "v3":
+            command.extend([
+                "--time-fixture", str(fixture),
+                "--trusted-tsa-fingerprint", fingerprint,
+                "--external-authority",
+            ])
+        environment = dict(os.environ)
+        environment["ACSD_PYTHON"] = sys.executable
+        node = subprocess.run(
+            command, cwd=PROJECT, capture_output=True, env=environment
+        )
         if node.returncode:
             sys.stderr.buffer.write(node.stderr)
             return node.returncode
@@ -35,7 +51,7 @@ def main() -> int:
             print(f"{version} certificate differs across adapters or checked evidence",
                   file=sys.stderr)
             return 2
-    print("verification-certificate: Python/Node v1/v2 canonical transcripts PASS")
+    print("verification-certificate: Python/Node v1/v2/v3 canonical transcripts PASS")
     return 0
 
 

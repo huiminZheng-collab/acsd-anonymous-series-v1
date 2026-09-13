@@ -11,7 +11,8 @@ digests, and timestamp subjects are part of the claim itself. -/
 
 inductive ScopedSubject where
   | approvalTarget (target : Digest)
-  | approvalSet (set : Digest)
+  | approvalTargetTime (target : Digest) (notAfterUtc : String)
+  | approvalSetTime (set : Digest) (notAfterUtc : String)
   | eventWindow (pec : Digest) (eventId : String) (eventSequence : Nat)
       (commitment : Digest) (firstIndex lastIndex : Nat)
   | identityAssertion (release : Digest) (slot : Nat) (key : KeyId)
@@ -57,8 +58,8 @@ def compatibleB : EvidenceKind → ScopedClaim → Bool
 
 def evidenceSubjectB : EvidenceKind → ScopedSubject → Bool
   | .unanimousApproval, .approvalTarget _ => true
-  | .approvalTargetTimestamp, .approvalTarget _ => true
-  | .approvalSetTimestamp, .approvalSet _ => true
+  | .approvalTargetTimestamp, .approvalTargetTime _ time => !time.isEmpty
+  | .approvalSetTimestamp, .approvalSetTime _ time => !time.isEmpty
   | .eventDisclosure, .eventWindow _ _ _ _ first last => decide (first ≤ last)
   | .identityDisclosure, .identityAssertion _ _ _ _ => true
   | .scittInclusion, .registeredStatement _ => true
@@ -69,12 +70,12 @@ def claimSubjectB : ScopedClaim → ScopedSubject → Bool
   | .governanceAssent, .approvalTarget _ => true
   | .committedEvidenceMatch, .eventWindow _ _ _ _ first last => decide (first ≤ last)
   | .slotKeyIdentityAssent, .identityAssertion _ _ _ _ => true
-  | .approvalTargetExistedNotAfter, .approvalTarget _ => true
-  | .approvalSetExistedNotAfter, .approvalSet _ => true
+  | .approvalTargetExistedNotAfter, .approvalTargetTime _ time => !time.isEmpty
+  | .approvalSetExistedNotAfter, .approvalSetTime _ time => !time.isEmpty
   | .statementRegistered, .registeredStatement _ => true
   | .naturalPersonIdentityVerified, .identityAssertion _ _ _ _ => true
   | .originalityVerified, .approvalTarget _ => true
-  | .signersUncompromisedAtTime, .approvalSet _ => true
+  | .signersUncompromisedAtTime, .approvalSetTime _ time => !time.isEmpty
   | _, _ => false
 
 theorem compatibleB_of_rule
@@ -187,7 +188,7 @@ theorem target_time_cannot_derive_approval_set_time
     (targetKind : item.kind = .approvalTargetTimestamp) :
     ¬ AppraisalDerives policy [item] {
       kind := .approvalSetExistedNotAfter,
-      subject := .approvalSet setDigest
+      subject := .approvalSetTime setDigest "1970-01-01T00:00:00+00:00"
     } := by
   intro derived
   rcases derives_has_exact_support derived with ⟨witness, member, _, rule⟩

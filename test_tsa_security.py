@@ -29,6 +29,8 @@ class TestTSASecurity(unittest.TestCase):
         )
         self.assertEqual(info["nonce"], request["nonce"])
         self.assertEqual(info["trust_model"], "exact-signer-pin")
+        self.assertIsInstance(info["policy_oid"], str)
+        self.assertIsInstance(info["serial"], int)
 
     def test_wrong_nonce_is_rejected(self):
         with self.assertRaisesRegex(ValueError, "TSR_NONCE_MISMATCH"):

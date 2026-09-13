@@ -29,6 +29,21 @@ class TestApprovalSet(unittest.TestCase):
             result = approval_set.verify(obj, root, target, [alice, bob], [old])
             self.assertEqual(result["approval_set_digest"], digest(obj))
 
+    def test_pure_builder_matches_filesystem_adapter(self):
+        with tempfile.TemporaryDirectory() as d:
+            root, target, obj, alice, bob, old = self._fixture(d)
+            pure = approval_set.build_from_signatures(
+                target,
+                {
+                    alice: (root / "approvals" / f"{alice}.cose").read_bytes(),
+                    bob: (root / "approvals" / f"{bob}.cose").read_bytes(),
+                },
+                {
+                    old: (root / "lineage" / "authorizations" / f"{old}.cose").read_bytes()
+                },
+            )
+            self.assertEqual(pure, obj)
+
     def test_signature_added_after_timestamp_changes_set_digest(self):
         with tempfile.TemporaryDirectory() as d:
             root, target, obj, alice, bob, old = self._fixture(d)

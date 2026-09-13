@@ -267,18 +267,22 @@ transparency service.
   Python and Node independently exercise canonicalization and signatures. An
   executable 4-by-4 evidence/claim confusion matrix now matches the closed
   compatibility relation, and Lean proves that every derivation over a union
-  has a matching verified support atom in one component.
+  has a matching verified support atom in one component. The strict certificate
+  path now covers v1 approval/event, v2 selective identity, and v3 exact
+  approval-set time; Python and Lean agree on 35/35 positive and adverse cases.
+  The v3 time subject retains both the exact approval-set digest and normalized
+  UTC instant, while exact receipt/trust inputs remain visible assumptions.
 - **Problem:** the proof assumes typed inputs and cryptographic predicates. It
   does not prove that the DER/CBOR/JSON parsers and executable verifier refine
   those predicates.
 - **Candidate approaches:** a small extracted/reference checker; proof-producing
   test vectors; parser refinement for only the restricted canonical subset;
   property-based correspondence tests as empirical evidence.
-- **Smallest experiment:** choose the scoped-disclosure verifier's smallest
-  canonical body and prove or exhaustively test the mapping from accepted bytes
-  to the Lean input record.
-- **Missing checks:** cost estimate, trusted-computing-base inventory, and a
-  defensible boundary between theorem and implementation assurance.
+- **Smallest experiment:** add one authorized lineage edge to the same closed
+  transcript profile and require exact Python/Node bytes plus Python/Lean claim
+  agreement under predecessor-authority deletion and substitution.
+- **Missing checks:** lineage transcript refinement, a second-domain instance,
+  and a maintained trusted-computing-base inventory.
 
 ### D-12 — Comparative and human evaluation
 

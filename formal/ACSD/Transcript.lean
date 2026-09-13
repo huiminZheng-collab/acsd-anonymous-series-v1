@@ -39,6 +39,26 @@ structure TranscriptIdentity where
   coseDigest : Digest
   deriving DecidableEq, Repr
 
+structure TranscriptTime where
+  approvalSetDigest : Digest
+  approvalTargetDigest : Digest
+  authorApprovals : List (KeyId × Digest)
+  lineageAuthorizations : List (KeyId × Digest)
+  notAfterUtc : String
+  policyOid : String
+  serialHex : String
+  requestDigest : Digest
+  responseDigest : Digest
+  certificateDigest : Digest
+  reportDigest : Digest
+  approvalSetInputDigest : Digest
+  signerFingerprint : Digest
+  trustedSignerFingerprint : Digest
+  trustedCertificateDigest : Digest
+  authorityExternal : Bool
+  trustedAuthorityExternal : Bool
+  deriving DecidableEq, Repr
+
 structure VerificationTranscript where
   targetDigest : Digest
   approvalPecDigest : Digest
@@ -59,6 +79,12 @@ structure VerificationTranscript where
   releaseSlots : List (Nat × KeyId)
   identityFacts : List TranscriptIdentity
   identityCoseDigests : List Digest
+  timeFacts : List TranscriptTime
+  approvalSetInputDigests : List Digest
+  timeRequestDigests : List Digest
+  timeResponseDigests : List Digest
+  tsaCertificateDigests : List Digest
+  timeReportDigests : List Digest
   signatures : List TranscriptSignature
   merkleFacts : List TranscriptMerkle
   deriving DecidableEq, Repr
@@ -177,6 +203,58 @@ theorem identityGroupClosedB_iff (transcript : VerificationTranscript) :
     identityGroupClosedB transcript = true ↔ IdentityGroupClosed transcript := by
   simp [identityGroupClosedB, IdentityGroupClosed, and_assoc]
 
+def expectedApprovalSetEntries (transcript : VerificationTranscript) :
+    List (KeyId × Digest) :=
+  (transcript.signatures.filter fun item =>
+    decide (item.purpose = .authorApproval)).map fun item =>
+      (item.key, item.coseDigest)
+
+def TimeGroupClosed (transcript : VerificationTranscript) : Prop :=
+  match transcript.timeFacts with
+  | [fact] =>
+      fact.approvalTargetDigest = transcript.targetDigest ∧
+      fact.authorApprovals = expectedApprovalSetEntries transcript ∧
+      fact.authorApprovals.map Prod.fst = transcript.approvalKeys ∧
+      fact.lineageAuthorizations = [] ∧
+      fact.notAfterUtc ≠ "" ∧
+      fact.authorityExternal = true ∧
+      fact.trustedAuthorityExternal = true ∧
+      fact.signerFingerprint = fact.trustedSignerFingerprint ∧
+      fact.certificateDigest = fact.trustedCertificateDigest ∧
+      transcript.approvalSetInputDigests = [fact.approvalSetInputDigest] ∧
+      transcript.timeRequestDigests = [fact.requestDigest] ∧
+      transcript.timeResponseDigests = [fact.responseDigest] ∧
+      transcript.tsaCertificateDigests = [fact.certificateDigest] ∧
+      transcript.timeReportDigests = [fact.reportDigest]
+  | _ => False
+
+def timeGroupClosedB (transcript : VerificationTranscript) : Bool :=
+  match transcript.timeFacts with
+  | [fact] =>
+      decide (fact.approvalTargetDigest = transcript.targetDigest) &&
+      decide (fact.authorApprovals = expectedApprovalSetEntries transcript) &&
+      decide (fact.authorApprovals.map Prod.fst = transcript.approvalKeys) &&
+      decide (fact.lineageAuthorizations = []) &&
+      decide (fact.notAfterUtc ≠ "") &&
+      fact.authorityExternal && fact.trustedAuthorityExternal &&
+      decide (fact.signerFingerprint = fact.trustedSignerFingerprint) &&
+      decide (fact.certificateDigest = fact.trustedCertificateDigest) &&
+      decide (transcript.approvalSetInputDigests = [fact.approvalSetInputDigest]) &&
+      decide (transcript.timeRequestDigests = [fact.requestDigest]) &&
+      decide (transcript.timeResponseDigests = [fact.responseDigest]) &&
+      decide (transcript.tsaCertificateDigests = [fact.certificateDigest]) &&
+      decide (transcript.timeReportDigests = [fact.reportDigest])
+  | _ => false
+
+theorem timeGroupClosedB_iff (transcript : VerificationTranscript) :
+    timeGroupClosedB transcript = true ↔ TimeGroupClosed transcript := by
+  cases h : transcript.timeFacts with
+  | nil => simp [timeGroupClosedB, TimeGroupClosed, h]
+  | cons head tail =>
+      cases tail with
+      | nil => simp [timeGroupClosedB, TimeGroupClosed, h, and_assoc]
+      | cons next rest => simp [timeGroupClosedB, TimeGroupClosed, h]
+
 def approvalTranscriptAtom
     (transcript : VerificationTranscript) (certificate : Digest) :
     AppraisedAtom := {
@@ -204,6 +282,13 @@ def identityTranscriptAtom
   certificateDigest := certificate
 }
 
+def timeTranscriptAtom
+    (fact : TranscriptTime) (certificate : Digest) : AppraisedAtom := {
+  kind := .approvalSetTimestamp
+  subject := .approvalSetTime fact.approvalSetDigest fact.notAfterUtc
+  certificateDigest := certificate
+}
+
 def checkApprovalGroup
     (transcript : VerificationTranscript) (certificate : Digest) :
     Option AppraisedAtom :=
@@ -225,12 +310,22 @@ def checkIdentityGroup
     transcript.identityFacts.map fun fact => identityTranscriptAtom fact certificate
   else []
 
+def checkTimeGroup
+    (transcript : VerificationTranscript) (certificate : Digest) :
+    Option AppraisedAtom :=
+  if timeGroupClosedB transcript = true then
+    match transcript.timeFacts with
+    | [fact] => some (timeTranscriptAtom fact certificate)
+    | _ => none
+  else none
+
 def transcriptAtoms
     (transcript : VerificationTranscript) (certificate : Digest) :
     List AppraisedAtom :=
   (checkApprovalGroup transcript certificate).toList ++
   (checkEventGroup transcript certificate).toList ++
-  checkIdentityGroup transcript certificate
+  checkIdentityGroup transcript certificate ++
+  (checkTimeGroup transcript certificate).toList
 
 def TranscriptPolicyBound (transcript : VerificationTranscript) : Prop :=
   transcript.policyPecDigest = transcript.approvalPecDigest ∧
@@ -270,11 +365,15 @@ def transcriptRequests (transcript : VerificationTranscript) :
         transcript.eventCommitmentDigest transcript.eventFirstIndex
         transcript.eventLastIndex
     }]
-  ++ transcript.identityFacts.map fun fact => {
+  ++ (transcript.identityFacts.map fun fact => {
     kind := .slotKeyIdentityAssent
     subject := .identityAssertion fact.releaseDigest fact.authorSlot
       fact.authorKey fact.assertionDigest
-  }
+  })
+  ++ (transcript.timeFacts.map fun fact => {
+    kind := .approvalSetExistedNotAfter
+    subject := .approvalSetTime fact.approvalSetDigest fact.notAfterUtc
+  })
 
 def transcriptClaims
     (transcript : VerificationTranscript) (certificate : Digest) :
@@ -295,6 +394,10 @@ inductive TranscriptSupports
       (fact : TranscriptIdentity) (member : fact ∈ transcript.identityFacts) :
       TranscriptSupports transcript certificate
         (identityTranscriptAtom fact certificate)
+  | time (closed : TimeGroupClosed transcript) (fact : TranscriptTime)
+      (exactFacts : transcript.timeFacts = [fact]) :
+      TranscriptSupports transcript certificate
+        (timeTranscriptAtom fact certificate)
 
 theorem checkApprovalGroup_sound
     {transcript : VerificationTranscript} {certificate : Digest}
@@ -335,29 +438,57 @@ theorem checkIdentityGroup_sound
     exact ⟨fact, closed, factMember, exactAtom.symm⟩
   · simp at member
 
+theorem checkTimeGroup_sound
+    {transcript : VerificationTranscript} {certificate : Digest}
+    {atom : AppraisedAtom}
+    (checked : checkTimeGroup transcript certificate = some atom) :
+    ∃ fact,
+      TimeGroupClosed transcript ∧
+      transcript.timeFacts = [fact] ∧
+      atom = timeTranscriptAtom fact certificate := by
+  unfold checkTimeGroup at checked
+  split at checked
+  · have closed := timeGroupClosedB_iff transcript |>.mp ‹_›
+    cases h : transcript.timeFacts with
+    | nil => simp [TimeGroupClosed, h] at closed
+    | cons head tail =>
+        cases tail with
+        | nil =>
+            simp [h] at checked
+            exact ⟨head, closed, rfl, checked.symm⟩
+        | cons next rest => simp [TimeGroupClosed, h] at closed
+  · contradiction
+
 theorem transcriptAtoms_sound
     {transcript : VerificationTranscript} {certificate : Digest}
     {atom : AppraisedAtom}
     (member : atom ∈ transcriptAtoms transcript certificate) :
     TranscriptSupports transcript certificate atom := by
   rw [transcriptAtoms, List.mem_append] at member
-  rcases member with baseMember | identityMember
+  rcases member with baseMember | timeMember
   · rw [List.mem_append] at baseMember
-    rcases baseMember with approvalMember | eventMember
-    · have checked : checkApprovalGroup transcript certificate = some atom := by
-        simpa using approvalMember
-      obtain ⟨closed, exactAtom⟩ := checkApprovalGroup_sound checked
+    rcases baseMember with baseMember | identityMember
+    · rw [List.mem_append] at baseMember
+      rcases baseMember with approvalMember | eventMember
+      · have checked : checkApprovalGroup transcript certificate = some atom := by
+          simpa using approvalMember
+        obtain ⟨closed, exactAtom⟩ := checkApprovalGroup_sound checked
+        rw [exactAtom]
+        exact .approval closed
+      · have checked : checkEventGroup transcript certificate = some atom := by
+          simpa using eventMember
+        obtain ⟨closed, exactAtom⟩ := checkEventGroup_sound checked
+        rw [exactAtom]
+        exact .event closed
+    · obtain ⟨fact, closed, factMember, exactAtom⟩ :=
+        checkIdentityGroup_sound identityMember
       rw [exactAtom]
-      exact .approval closed
-    · have checked : checkEventGroup transcript certificate = some atom := by
-        simpa using eventMember
-      obtain ⟨closed, exactAtom⟩ := checkEventGroup_sound checked
-      rw [exactAtom]
-      exact .event closed
-  · obtain ⟨fact, closed, factMember, exactAtom⟩ :=
-      checkIdentityGroup_sound identityMember
+      exact .identity closed fact factMember
+  · have checked : checkTimeGroup transcript certificate = some atom := by
+      simpa using timeMember
+    obtain ⟨fact, closed, exactFacts, exactAtom⟩ := checkTimeGroup_sound checked
     rw [exactAtom]
-    exact .identity closed fact factMember
+    exact .time closed fact exactFacts
 
 /-! Composition theorem: an accepted claim from a transcript has both a
 declarative appraisal rule and a transcript support derivation. -/
@@ -429,6 +560,12 @@ def weakTranscript : VerificationTranscript := {
   releaseSlots := []
   identityFacts := []
   identityCoseDigests := []
+  timeFacts := []
+  approvalSetInputDigests := []
+  timeRequestDigests := []
+  timeResponseDigests := []
+  tsaCertificateDigests := []
+  timeReportDigests := []
   signatures := [{
     purpose := .authorApproval
     key := weakKeyOne

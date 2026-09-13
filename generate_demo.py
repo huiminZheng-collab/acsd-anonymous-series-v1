@@ -7,6 +7,7 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 import cose
+import approval_set
 import identity_disclosure
 from acsd import build_approval_target
 from event_disclosure import DEFAULT_POLICY, key_id_of
@@ -155,6 +156,7 @@ def generate(out="demo"):
             "permitted_outcomes": [
                 "KEY_ASSENT", "GOVERNANCE_ASSENT", "COMMITTED_EVIDENCE_MATCH",
                 "SLOT_KEY_ASSENT_TO_IDENTITY_ASSERTION",
+                "APPROVAL_SET_EXISTED_NOT_AFTER",
             ],
             "required_capabilities": {
                 "APPROVAL_SET_EXISTED_NOT_AFTER": [
@@ -206,6 +208,7 @@ def generate(out="demo"):
     (out / "release-approvals").mkdir(exist_ok=True)
     (out / "disclosure-approvals").mkdir(exist_ok=True)
     (out / "identity").mkdir(exist_ok=True)
+    (out / "approval").mkdir(exist_ok=True)
     (out / "approval-target.json").write_bytes(canonical(approval_target) + b"\n")
     for key in DEMO_KEYS:
         key_id = key_id_of(key.public_key())
@@ -224,6 +227,17 @@ def generate(out="demo"):
     (out / "identity" / "slot-1.json").write_bytes(canonical(identity) + b"\n")
     (out / "identity" / "slot-1.cose").write_bytes(
         cose.cose_sign1(canonical(identity), DEMO_KEYS[0])
+    )
+    approval_set_obj = approval_set.build_from_signatures(
+        approval_target,
+        {
+            key_id: (out / "release-approvals" / f"{key_id}.cose").read_bytes()
+            for key_id in (AUTHOR_1, AUTHOR_2)
+        },
+        {},
+    )
+    (out / "approval" / "approval-set.json").write_bytes(
+        canonical(approval_set_obj) + b"\n"
     )
     write_manifest(out)
     return root, digest(pec)
