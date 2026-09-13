@@ -88,10 +88,14 @@ function verify(targetPath, approvalPath, publicKeyPath, expectedKid) {
   return {valid: true, key_id: kid, payload_sha256: crypto.createHash("sha256").update(payload).digest("hex")};
 }
 
-try {
-  if (process.argv.length !== 6) throw new Error("usage: node verify_approval.cjs TARGET APPROVAL PUBLIC_KEY EXPECTED_KID");
-  console.log(JSON.stringify(verify(...process.argv.slice(2))));
-} catch (error) {
-  console.error(String(error && error.message ? error.message : error));
-  process.exit(1);
+if (require.main === module) {
+  try {
+    if (process.argv.length !== 6) throw new Error("usage: node verify_approval.cjs TARGET APPROVAL PUBLIC_KEY EXPECTED_KID");
+    console.log(JSON.stringify(verify(...process.argv.slice(2))));
+  } catch (error) {
+    console.error(String(error && error.message ? error.message : error));
+    process.exit(1);
+  }
 }
+
+module.exports = {Reader, sigStructure, verify};

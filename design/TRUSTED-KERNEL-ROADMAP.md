@@ -69,6 +69,11 @@ the frozen v3.1.0-rc1 package is intentionally untouched.
 4. Keep RFC 3161 CMS/PKIX verification as an explicit oracle initially, but
    bind the receipt, subject, signer fingerprint, and external pin exactly.
 
+Current status: `attempted`. Python and Node now emit identical canonical
+certificates for the two-author approval and event-window fixture, and the pure
+structural checker enforces signer/payload/input/Merkle closure. Identity,
+approval-set time, lineage, and the Lean transcript decoder remain open.
+
 ### P1 — structural simplification
 
 1. Merge `pec_core.validate_pec` and `acsd.check_bindings` behind one pure
@@ -119,7 +124,7 @@ checks should the project describe itself as cross-domain.
 | Continue adding independent verifier-specific grants | Existing paths had manual string grants and vocabulary drift | None; this directly violates the single-kernel objective | ruled out |
 | Typed exact-subject unary kernel | ACSD evidence families already have distinct safe unary claims | Production integration and full matrix | attempted |
 | General-purpose recursive trust language | Mature systems such as SecPAL and RATS already occupy this space | No ACSD requirement justifies the complexity | ruled out for P0 |
-| Finite multi-premise rules with proof certificates | Needed for quorum and a real second-domain instance | Independent checker and one standards-based adapter | unexplored |
+| Finite multi-premise rules with proof certificates | Needed for quorum and a real second-domain instance | Approval/event transcript and pure checker now exist; Lean refinement and second adapter remain | attempted |
 | Full parser/crypto verification in Lean | Would maximize assurance but dominates current project cost | First establish a narrow transcript and refinement boundary | unexplored P2 |
 
 ## Smallest next experiment

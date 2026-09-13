@@ -14,6 +14,8 @@
 | Claim-policy non-amplification | forbidden outcome gate, attack corpus | PASS |
 | Typed evidence/claim non-confusion | `claim_derivation.py`, complete 6-by-10 unit matrix, selected 4-by-4 checked-in challenge | PASS; no undeclared conversion |
 | Single production claim path | architecture gate plus release, time, event, identity, and demo adapters | PASS; no manual string grant append |
+| Adapter transcript agreement | independent Python/Node adapters over exact approval, disclosure, key, and Merkle inputs | PASS; canonical certificate bytes identical |
+| Critical-evidence deletion | remove one author/event signature or substitute Merkle scope | PASS; only dependent claims disappear |
 | Dialogue Merkle commitment | `dialogue_root`, `dialogue_proof`, `verify_dialogue_window` | PASS |
 | Selective contiguous dialogue opening | `test_dialogue_merkle.py`, `test_demo.py` | PASS |
 | External sidecar subject/capability binding | `verify_sidecar_subject`, `test_sidecar.py` | PASS |

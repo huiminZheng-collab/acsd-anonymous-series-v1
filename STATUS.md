@@ -38,10 +38,13 @@ work toward a later candidate, not a public deployment or venue submission.
 - a pure typed appraisal kernel used by every public granting path, with
   domain-separated approval-target, approval-set, event-window, identity-slot,
   and registration subjects and exact supporting-certificate digests.
+- an experimental claim-free verification certificate produced independently
+  by Python and Node, plus a pure structural checker that grants evidence atoms
+  only after exact signer, payload, input-digest, and Merkle-fact closure.
 
 ## Acceptance evidence
 
-- Python: 101 tests pass locally; the live TSA test and two unavailable Windows
+- Python: 108 tests pass locally; the live TSA test and two unavailable Windows
   capability cases are skipped.
 - Canonical JSON: 64 fixed vectors have no unexpected divergence; 1,000/1,000
   seeded generated cases agree between Python and Node on bytes and text-layer
@@ -55,6 +58,10 @@ work toward a later candidate, not a public deployment or venue submission.
 - Typed derivation: the complete 6-by-10 unary compatibility test has no
   undeclared conversion; the checked-in 4-by-4 challenge retains all 16
   expected decisions, and three unsupported social claims have no rule.
+- Verification transcript: Python and Node produce byte-identical canonical
+  certificates for the two-author approval/event fixture; corrupt or missing
+  COSE produces no certificate, and deleting one fact removes only its dependent
+  claims in the pure checker.
 - Lean 4.33.1: build succeeds; 50 PEC/lineage/scoped-appraisal theorems; no
   `sorry` or `admit` in the formal sources. The separately published v1 core's
   53 release/team/series theorems remain a distinct inherited model and are not
@@ -101,5 +108,5 @@ identity rule. Adapter correctness is still an explicit boundary assumption.
 - deployed transparency/gossip services and cross-series federation.
 - precommitted recovery authorities or hardware-backed recovery workflows;
   without one, loss of the predecessor threshold safely freezes the lineage.
-- a canonical Python/Node verification transcript and its refinement into the
-  Lean appraisal checker.
+- extend the current approval/event Python-Node transcript to identity,
+  approval-set time, and lineage, then refine it into the Lean appraisal checker.

@@ -81,6 +81,26 @@ and are automated in `test_cli_signing.py`, `test_cose.py`,
 | substitute any of four accepted evidence kinds for another claim kind | all 12 off-diagonal combinations denied |
 | add evidence sets whose components support no requested claim | union grants no claim without one matching verified atom |
 
+## Verification-certificate differential matrix
+
+`acsd-verification-certificate/v1` contains appraised byte-level facts, not a
+verdict. Python and Node independently read canonical JSON, bind public-key
+identifiers, verify every author/event COSE, verify the dialogue Merkle window,
+and emit the same canonical transcript.
+
+| Mutation | Adapter result | Pure checker result |
+|---|---|---|
+| unchanged two-author demo | byte-identical Python/Node certificate | approval and exact event evidence atoms |
+| corrupt one event COSE byte | both adapters reject; no stdout certificate | not reached |
+| remove one required approval COSE | both adapters reject; no partial certificate | not reached |
+| delete one author signature fact from an already issued transcript | transcript remains parseable | approval claims disappear; event claim remains |
+| delete one event signature fact | transcript remains parseable | event claim disappears; approval claims remain |
+| substitute the Merkle fact window | transcript remains parseable | exact event claim disappears |
+
+The final three cases test dependency precision, not adapter authenticity: a
+standalone transcript is meaningful only when its exact digest is bound to the
+raw adapter output being evaluated.
+
 ## Acceptance gates
 
 1. Every valid case has a byte-stable manifest and a stable claim set.
@@ -90,10 +110,11 @@ and are automated in `test_cli_signing.py`, `test_cose.py`,
 4. A displayed result must carry both granted outcomes and explicit
    non-claims/residual evidence gaps.
 5. The Lean model must prove policy non-amplification, exact target reuse
-   resistance, unanimous-approval gating, and external-time preconditions over
-   the abstract fields used by the executable boundary.
+   resistance, unanimous-approval gating, external-time preconditions, and the
+   correspondence between its executable appraisal checker and independent
+   declarative rules over parameterized subjects.
 
-## Out-of-scope tests for v0.2
+## Out-of-scope tests for the deterministic local suite
 
 No offline corpus case asserts real TSA independence, real model-provider attestation,
 anonymity against repository metadata, legal authorship, or the truth of a

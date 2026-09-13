@@ -44,5 +44,9 @@ function evaluate(text) {
   }
 }
 
-const inputs = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
-process.stdout.write(JSON.stringify(inputs.map(evaluate)));
+if (require.main === module) {
+  const inputs = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+  process.stdout.write(JSON.stringify(inputs.map(evaluate)));
+}
+
+module.exports = {canonicalJson, evaluate};

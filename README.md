@@ -219,12 +219,15 @@ Linux/macOS:
 The authoritative `check.py` gate is read-only and finishes by comparing all
 source-tree file hashes with its starting snapshot. It contains:
 
-- 101 Python tests passing, with the live-network and two unavailable Windows
+- 108 Python tests passing, with the live-network and two unavailable Windows
   capability cases skipped locally;
 - 64 fixed Python-Node canonical-JSON vectors with no unexpected divergence;
 - 1,000 seeded generated differential cases with 1,000 byte and verdict
   agreements;
 - independent Node verification of Python-produced approval COSE;
+- byte-identical Python/Node `acsd-verification-certificate/v1` output for the
+  two-author approval and event-disclosure fixture, with no embedded verdict;
+- a pure structural transcript checker with critical-evidence deletion tests;
 - a complete 6-by-10 typed unary compatibility test plus a checked-in selected
   4-by-4 semantic-confusion challenge with all 12 off-diagonal substitutions
   denied and a key-compromise timeline;

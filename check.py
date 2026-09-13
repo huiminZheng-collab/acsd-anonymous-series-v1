@@ -19,7 +19,7 @@ ROOT = pathlib.Path(__file__).resolve().parent
 WHEEL_INPUTS = (
     "pyproject.toml", "README.md", "LICENSE", "acsd.py", "acsd_version.py", "approval_set.py",
     "claim_derivation.py", "cose.py", "event_disclosure.py", "identity_disclosure.py",
-    "package_manifest.py", "pec_core.py", "tsa.py",
+    "package_manifest.py", "pec_core.py", "tsa.py", "verification_transcript.py",
 )
 
 
@@ -111,6 +111,10 @@ def _common_checks(checks, temp, env):
     checks.append(_run("canonical-differential", [sys.executable, "design/canonical_diff_runner.py"], env=env))
     checks.append(_run("canonical-fuzz", [sys.executable, "design/canonical_fuzz_runner.py"], env=env))
     checks.append(_run("semantic-confusion", [sys.executable, "design/semantic_confusion_runner.py"], env=env))
+    checks.append(_run(
+        "verification-certificate-differential",
+        [sys.executable, "design/verification_certificate_diff.py"], env=env,
+    ))
     checks.append(_run("scaling-smoke", [sys.executable, "design/benchmark_core.py"], env=env))
     checks.append(_run("v1-fixture", [sys.executable, "verify_v1_fixture.py"], env=env))
     demo = temp / "demo"

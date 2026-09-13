@@ -3,6 +3,7 @@ import pathlib
 import unittest
 
 import claim_derivation
+import verification_transcript
 
 
 ROOT = pathlib.Path(__file__).resolve().parent
@@ -11,6 +12,7 @@ PRODUCTION_GRANTERS = (
     "event_disclosure.py",
     "identity_disclosure.py",
     "verify_pec.py",
+    "verification_transcript.py",
 )
 
 
@@ -27,6 +29,20 @@ class TestTrustedKernelArchitecture(unittest.TestCase):
         self.assertEqual(
             imported_roots,
             {"__future__", "dataclasses", "enum", "re", "typing"},
+        )
+
+    def test_transcript_checker_is_pure_and_depends_only_on_claim_core(self):
+        source = pathlib.Path(verification_transcript.__file__).read_text(encoding="utf-8")
+        tree = ast.parse(source)
+        imported_roots = set()
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                imported_roots.update(alias.name.split(".")[0] for alias in node.names)
+            elif isinstance(node, ast.ImportFrom) and node.module:
+                imported_roots.add(node.module.split(".")[0])
+        self.assertEqual(
+            imported_roots,
+            {"__future__", "re", "typing", "claim_derivation"},
         )
 
     def test_every_public_granting_path_depends_on_decision_core(self):
