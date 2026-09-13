@@ -77,6 +77,10 @@ class TestLineageAuthorization(unittest.TestCase):
                 json.loads(verified.stdout)["data"]["lineage_status"],
                 "AUTHORIZED_CONTINUATION",
             )
+            self.assertIn(
+                "AUTHORIZED_SUCCESSOR",
+                json.loads(verified.stdout)["data"]["granted_outcomes"],
+            )
             parent_release_id = json.loads(
                 (child / "release" / "release.json").read_text(encoding="utf-8")
             )["parent_release_id"]
@@ -139,6 +143,10 @@ class TestLineageAuthorization(unittest.TestCase):
             self.assertEqual(
                 json.loads(verified.stdout)["data"]["lineage_status"],
                 "AUTHORIZED_TRANSITION",
+            )
+            self.assertIn(
+                "AUTHORIZED_SUCCESSOR",
+                json.loads(verified.stdout)["data"]["granted_outcomes"],
             )
             node = shutil.which("node")
             if node is None:

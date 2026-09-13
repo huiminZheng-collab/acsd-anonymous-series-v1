@@ -71,6 +71,7 @@ ALLOWED_OUTCOMES = {
     "EXTERNALLY_NOT_AFTER",
     "APPROVAL_SET_EXISTED_NOT_AFTER",
     "SLOT_KEY_ASSENT_TO_IDENTITY_ASSERTION",
+    "AUTHORIZED_SUCCESSOR",
 }
 DEFAULT_AI_USE = {
     "used": False,
@@ -347,11 +348,15 @@ def build_pec(work_id, adapted, gov_digest, content_sha256, ai_digest, key_ids,
                 "KEY_ASSENT",
                 "GOVERNANCE_ASSENT",
                 "APPROVAL_SET_EXISTED_NOT_AFTER",
+                "AUTHORIZED_SUCCESSOR",
             ],
             "global_non_claims": list(NON_CLAIMS),
             "required_capabilities": {
                 "APPROVAL_SET_EXISTED_NOT_AFTER": [
                     "rfc3161-exact-approval-set-imprint"
+                ],
+                "AUTHORIZED_SUCCESSOR": [
+                    "predecessor-authority-exact-transition"
                 ],
             },
         },
@@ -509,6 +514,12 @@ def check_bindings(pec, adapted, governance, release=None):
             == ["rfc3161-exact-approval-set-imprint"],
             "CLAIM_POLICY_CAPABILITY_MISMATCH",
         )
+        if "AUTHORIZED_SUCCESSOR" in outcomes:
+            require(
+                required_caps.get("AUTHORIZED_SUCCESSOR")
+                == ["predecessor-authority-exact-transition"],
+                "CLAIM_POLICY_CAPABILITY_MISMATCH",
+            )
     else:
         require(
             required_caps.get("EXTERNALLY_NOT_AFTER")
@@ -586,6 +597,26 @@ def verify_lineage_authorization(root, lineage, valid_child_approvals):
         valid.append(kid)
     require(len(valid) >= old["threshold"], "UNAUTHORIZED_SUCCESSOR")
     return {"status": "AUTHORIZED_TRANSITION", "required": old["threshold"], "valid": valid}
+
+
+def lineage_claim_subject(lineage):
+    """Project one validated exact transition into the typed claim subject."""
+    transition = lineage["transition"]
+    parent = transition["parent"]
+    child = transition["child"]
+    text_digest = lambda value: hashlib.sha256(value.encode("utf-8")).hexdigest()
+    return claim_core.LineageSubject(
+        text_digest(transition["work_id"]),
+        parent["release_digest"],
+        parent["pec_digest"],
+        text_digest(parent["line"]),
+        parent["version"],
+        child["release_digest"],
+        child["pec_digest"],
+        text_digest(child["line"]),
+        child["version"],
+        digest(transition),
+    )
 
 
 def manifest_entries(root: pathlib.Path) -> str:
@@ -1192,6 +1223,12 @@ def verify_release_dir(root: pathlib.Path, trusted_tsa_cert_der: bytes = None,
         claim_core.ApprovalTargetSubject(digest(target)),
         approval_support_digest,
     ))
+    if lineage is not None and approval_set_obj is not None:
+        appraised_evidence.append(claim_core.AppraisedEvidence(
+            claim_core.EvidenceKind.LINEAGE_AUTHORIZATION,
+            lineage_claim_subject(lineage),
+            digest(approval_set_obj),
+        ))
 
     def refresh_granted_outcomes() -> None:
         derivations = claim_core.derive(appraised_evidence, permitted_claim_kinds)

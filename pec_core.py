@@ -12,6 +12,7 @@ ALLOWED_OUTCOMES = {
     "EXTERNALLY_NOT_AFTER",
     "APPROVAL_SET_EXISTED_NOT_AFTER",
     "SLOT_KEY_ASSENT_TO_IDENTITY_ASSERTION",
+    "AUTHORIZED_SUCCESSOR",
 }
 REQUIRED_NON_CLAIMS = {
     "natural_person_authorship", "contribution_truth", "originality_truth",
@@ -133,6 +134,12 @@ def validate_pec(pec, approvals, release, governance, predecessor_pec=None):
             capabilities == ["rfc3161-exact-approval-set-imprint"],
             "CLAIM_POLICY_CAPABILITY_MISMATCH",
         )
+        if "AUTHORIZED_SUCCESSOR" in outcomes:
+            require(
+                policy.get("required_capabilities", {}).get("AUTHORIZED_SUCCESSOR")
+                == ["predecessor-authority-exact-transition"],
+                "CLAIM_POLICY_CAPABILITY_MISMATCH",
+            )
     elif "EXTERNALLY_NOT_AFTER" in outcomes:
         capabilities = policy.get("required_capabilities", {}).get("EXTERNALLY_NOT_AFTER")
         require(capabilities == ["rfc3161-exact-approval-target-imprint"], "CLAIM_POLICY_CAPABILITY_MISMATCH")

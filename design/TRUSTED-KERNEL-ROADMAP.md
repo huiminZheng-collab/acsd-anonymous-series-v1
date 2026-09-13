@@ -80,7 +80,10 @@ approval/event certificate, v2 identity extension, and v3 approval-set-time
 extension. Identity has exact release/slot/key/assertion/signature/input
 closure. Time has exact approval-set, author-approval, request, response,
 certificate, report, signer-pin, authority-class, and UTC-subject closure.
-Lineage and a second-domain instance remain open.
+The separate lineage profile now has byte-identical Python/Node certificates,
+strict Python/Lean closure checkers, and 15/15 complete differential cases over
+exact parent/child/transition/signature/input/approval-set scope. Only a
+second-domain instance remains open.
 
 ### P1 — structural simplification
 
@@ -115,7 +118,7 @@ checks should the project describe itself as cross-domain.
 
 - existing Python, Node, canonicalization, lineage, disclosure, TSA, manifest,
   wheel, and artifact tests remain green;
-- the complete 6-by-10 unary compatibility table has no undeclared grant;
+- the complete 7-by-11 unary compatibility table has no undeclared grant;
 - wrong subject type, digest, event window, missing signer, forbidden policy,
   and unsupported social claims are rejected;
 - old/new differential fixtures preserve successful outputs, exit codes, and
@@ -132,13 +135,13 @@ checks should the project describe itself as cross-domain.
 | Continue adding independent verifier-specific grants | Existing paths had manual string grants and vocabulary drift | None; this directly violates the single-kernel objective | ruled out |
 | Typed exact-subject unary kernel | ACSD evidence families already have distinct safe unary claims | Production integration and full matrix | attempted |
 | General-purpose recursive trust language | Mature systems such as SecPAL and RATS already occupy this space | No ACSD requirement justifies the complexity | ruled out for P0 |
-| Finite multi-premise rules with proof certificates | Needed for quorum and a real second-domain instance | Approval/event/identity/time JSON-to-Lean refinement exists; lineage and a second domain remain | attempted |
+| Finite multi-premise rules with proof certificates | Needed for quorum and a real second-domain instance | Approval/event/identity/time and authorized-lineage JSON-to-Lean refinement exist; a second domain remains | attempted |
 | Full parser/crypto verification in Lean | Would maximize assurance but dominates current project cost | First establish a narrow transcript and refinement boundary | unexplored P2 |
 
 ## Smallest next experiment
 
-Extend the same two-author release with one authorized lineage edge. Python and Node
-must emit byte-identical verification transcripts; Lean must emit the same
-parameterized claims. Removing any single required support digest must remove
-the corresponding exact claim. This is an empirical/refinement check; the Lean
-soundness theorem is the proof result.
+Instantiate the same typed appraisal discipline in one standards-based second
+domain, preferably a compact RATS/EAT appraisal. The experiment must retain a
+claim-free transcript, an independently stated multi-premise rule, critical
+premise deletion tests, and Python/Lean agreement. This is a generalization
+gate, not permission to add a general policy language.

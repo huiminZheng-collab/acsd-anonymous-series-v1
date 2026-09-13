@@ -41,10 +41,16 @@ work toward a later candidate, not a public deployment or venue submission.
 - an experimental claim-free verification certificate produced independently
   by Python and Node, plus a pure structural checker that grants evidence atoms
   only after exact signer, payload, input-digest, and Merkle-fact closure.
+- a separate claim-free authorized-lineage certificate, independently produced
+  by Python and Node, whose pure Python and Lean checkers require structural
+  succession, exact transition binding, child approval, predecessor quorum,
+  input closure, approval-set closure, and policy permission.
 
 ## Acceptance evidence
 
-- Python: 122 tests pass locally; the live TSA test and two unavailable Windows
+- Authoritative read-only gate: 23/23 source, package, installed-wheel,
+  differential, formal, and workspace-byte-identity checks pass.
+- Python: 127 tests pass locally; the live TSA test and two unavailable Windows
   capability cases are skipped.
 - Canonical JSON: 64 fixed vectors have no unexpected divergence; 1,000/1,000
   seeded generated cases agree between Python and Node on bytes and text-layer
@@ -57,7 +63,7 @@ work toward a later candidate, not a public deployment or venue submission.
   interoperability existence check, not a service-reliability study.
 - Inherited v1: 8 releases, 18 endorsements, 7 signed series objects, 13
   scenarios, 30/30 profile checks, and 113/113 manifest entries.
-- Typed derivation: the complete 6-by-10 unary compatibility test has no
+- Typed derivation: the complete 7-by-11 unary compatibility test has no
   undeclared conversion; the checked-in 4-by-4 challenge retains all 16
   expected decisions, and three unsupported social claims have no rule.
 - Verification transcript: Python and Node produce byte-identical canonical
@@ -68,7 +74,10 @@ work toward a later candidate, not a public deployment or venue submission.
 - JSON-to-Lean refinement: Lean directly and strictly decodes all three canonical
   schemas and independently emits the same complete scoped derivations as
   Python in 35/35 positive and adverse cases.
-- Lean 4.33.1: build succeeds; 67 PEC/lineage/scoped-appraisal/transcript
+- Authorized-lineage refinement: Python and Node emit byte-identical canonical
+  certificates; Python and Lean agree on all 15 valid, deletion, substitution,
+  policy, and structural cases.
+- Lean 4.33.1: build succeeds; 73 PEC/lineage/scoped-appraisal/transcript
   theorems; no
   `sorry` or `admit` in the formal sources. The separately published v1 core's
   53 release/team/series theorems remain a distinct inherited model and are not
@@ -113,6 +122,13 @@ theorem traces every accepted claim to both a closed transcript group and an
 explicit appraisal rule. A concrete two-key countermodel proves that the weak
 "any approval signature" rule accepts a missing signer while closure rejects it.
 
+The modular lineage-transcript layer performs the corresponding check for one
+edge without importing timestamp or disclosure facts. Its soundness chain runs
+from strict canonical JSON decoding through exact input/signature/approval-set
+closure to a parameterized `AUTHORIZED_SUCCESSOR` claim. This closes the
+previous gap between the executable n+1 authorization mechanism and the
+claim-free/Lean appraisal path; adapter refinement remains an explicit boundary.
+
 ## Remaining product hardening
 
 - encrypted or OS-backed private-key storage (generated keys are presently
@@ -124,5 +140,5 @@ explicit appraisal rule. A concrete two-key countermodel proves that the weak
 - deployed transparency/gossip services and cross-series federation.
 - precommitted recovery authorities or hardware-backed recovery workflows;
   without one, loss of the predecessor threshold safely freezes the lineage.
-- extend the now-connected JSON/Lean approval-event-identity-time profile to
-  authorized lineage without weakening any closed schema.
+- a second standards-based domain instance for testing how far the appraisal
+  kernel generalizes beyond scholarly provenance.

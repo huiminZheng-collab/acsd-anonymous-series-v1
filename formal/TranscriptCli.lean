@@ -21,6 +21,7 @@ private def claimName : ScopedClaim → String
   | .naturalPersonIdentityVerified => "NATURAL_PERSON_IDENTITY_VERIFIED"
   | .originalityVerified => "ORIGINALITY_VERIFIED"
   | .signersUncompromisedAtTime => "SIGNERS_UNCOMPROMISED_AT_TIME"
+  | .authorizedSuccessor => "AUTHORIZED_SUCCESSOR"
 
 private def subjectJson : ScopedSubject → Json
   | .approvalTarget target => Json.mkObj [
@@ -43,6 +44,18 @@ private def subjectJson : ScopedSubject → Json
   | .registeredStatement statement => Json.mkObj [
       ("kind", "registered-statement"),
       ("statement_digest_nat", digestJson statement)]
+  | .lineageEdge work parentRelease parentPec parentLine parentVersion
+      childRelease childPec childLine childVersion transition => Json.mkObj [
+      ("kind", "lineage-edge"), ("work_id_digest_nat", digestJson work),
+      ("parent_release_digest_nat", digestJson parentRelease),
+      ("parent_pec_digest_nat", digestJson parentPec),
+      ("parent_line_digest_nat", digestJson parentLine),
+      ("parent_version", parentVersion),
+      ("child_release_digest_nat", digestJson childRelease),
+      ("child_pec_digest_nat", digestJson childPec),
+      ("child_line_digest_nat", digestJson childLine),
+      ("child_version", childVersion),
+      ("transition_digest_nat", digestJson transition)]
 
 private def requestJson (certificate : Digest) (request : AppraisalRequest) : Json :=
   Json.mkObj [
@@ -63,19 +76,30 @@ def main (args : List String) : IO UInt32 := do
   match args with
   | [path, certificateText] =>
       let text ← IO.FS.readFile path
-      match decodeCertificateText text, decodeDigestText certificateText with
-      | .ok raw, .ok certificate =>
-          let transcript := refineCertificate raw
-          if transcriptPolicyBoundB transcript then
-            IO.println <| (resultJson certificate
-              (deriveCertificate raw certificate)).compress
-            pure 0
-          else
-            IO.eprintln <| (errorJson "TRANSCRIPT_POLICY_SCOPE").compress
-            pure 2
-      | .error message, _ | _, .error message =>
+      match decodeDigestText certificateText with
+      | .error message =>
           IO.eprintln <| (errorJson message).compress
           pure 2
+      | .ok certificate =>
+          match decodeCertificateText text with
+          | .ok raw =>
+              let transcript := refineCertificate raw
+              if transcriptPolicyBoundB transcript then
+                IO.println <| (resultJson certificate
+                  (deriveCertificate raw certificate)).compress
+                pure 0
+              else
+                IO.eprintln <| (errorJson "TRANSCRIPT_POLICY_SCOPE").compress
+                pure 2
+          | .error standardError =>
+              match decodeLineageCertificateText text with
+              | .ok raw =>
+                  IO.println <| (resultJson certificate
+                    (deriveLineageCertificate raw certificate)).compress
+                  pure 0
+              | .error _ =>
+                  IO.eprintln <| (errorJson standardError).compress
+                  pure 2
   | _ =>
       IO.eprintln <| (errorJson "USAGE: TranscriptCli <certificate> <sha256>").compress
       pure 2

@@ -102,6 +102,12 @@ normalized UTC time. Python performs the DER/CMS verification as an explicit
 cryptographic oracle for both high-level adapters; Python and Node still
 independently reconstruct and agree on the surrounding canonical transcript.
 
+`acsd-lineage-verification-certificate/v1` is intentionally a separate profile
+rather than a cumulative v4. It binds one exact parent-to-child edge, both
+authorities, child approvals, any predecessor transition authorizations, the
+complete approval set, and every relevant input digest. This keeps the checked
+surface proportional to the requested service.
+
 | Mutation | Adapter result | Pure checker result |
 |---|---|---|
 | unchanged two-author demo | byte-identical Python/Node certificate | approval and exact event evidence atoms |
@@ -127,6 +133,11 @@ independently reconstruct and agree on the surrounding canonical transcript.
 | mark the pinned TSA as local rather than external | transcript remains parseable | approval-set time claim disappears |
 | change the approval target under an otherwise intact v3 set | strict decoder rejects | no cross-target time projection |
 | omit the timestamp policy fact | transcript remains parseable | verified receipt grants no time claim |
+| remove one predecessor authorization in the lineage profile | transcript remains parseable | no authorized-successor claim |
+| substitute predecessor payload, COSE input, or public-key input | transcript remains parseable | no authorized-successor claim |
+| remove one child approval or alter the approval-set projection | transcript remains parseable | no authorized-successor claim |
+| substitute transition binding, mode, kind, or version | transcript remains parseable | no authorized-successor claim |
+| omit lineage policy permission | transcript remains parseable | closed evidence grants no claim |
 
 The dependency-substitution cases test precision, not adapter authenticity: a
 standalone transcript is meaningful only when its exact digest is bound to the
@@ -156,6 +167,10 @@ raw adapter output being evaluated.
 9. V3 approval-set time claims must depend on the complete exact author
    approval projection, receipt inputs, nonce, signer pin, external-authority
    policy, and exact `(approval_set_digest, not_after_utc)` subject.
+10. A lineage claim must depend on one structural n+1/branch edge, the exact
+    transition and target, complete child approval, predecessor-threshold
+    authorization when authority changes, exact input roles, exact approval-set
+    projection, and explicit child-policy permission.
 
 ## Out-of-scope tests for the deterministic local suite
 

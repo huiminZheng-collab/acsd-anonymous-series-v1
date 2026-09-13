@@ -18,6 +18,9 @@ inductive ScopedSubject where
   | identityAssertion (release : Digest) (slot : Nat) (key : KeyId)
       (assertion : Digest)
   | registeredStatement (statement : Digest)
+  | lineageEdge (work parentRelease parentPec parentLine : Digest)
+      (parentVersion : Nat) (childRelease childPec childLine : Digest)
+      (childVersion : Nat) (transition : Digest)
   deriving DecidableEq, Repr
 
 structure AppraisedAtom where
@@ -45,6 +48,7 @@ inductive AppraisalRule : EvidenceKind → ScopedClaim → Prop where
   | targetTime : AppraisalRule .approvalTargetTimestamp .approvalTargetExistedNotAfter
   | approvalTime : AppraisalRule .approvalSetTimestamp .approvalSetExistedNotAfter
   | registration : AppraisalRule .scittInclusion .statementRegistered
+  | lineage : AppraisalRule .lineageAuthorization .authorizedSuccessor
 
 def compatibleB : EvidenceKind → ScopedClaim → Bool
   | .unanimousApproval, .keyAssent => true
@@ -54,6 +58,7 @@ def compatibleB : EvidenceKind → ScopedClaim → Bool
   | .approvalTargetTimestamp, .approvalTargetExistedNotAfter => true
   | .approvalSetTimestamp, .approvalSetExistedNotAfter => true
   | .scittInclusion, .statementRegistered => true
+  | .lineageAuthorization, .authorizedSuccessor => true
   | _, _ => false
 
 def evidenceSubjectB : EvidenceKind → ScopedSubject → Bool
@@ -63,6 +68,8 @@ def evidenceSubjectB : EvidenceKind → ScopedSubject → Bool
   | .eventDisclosure, .eventWindow _ _ _ _ first last => decide (first ≤ last)
   | .identityDisclosure, .identityAssertion _ _ _ _ => true
   | .scittInclusion, .registeredStatement _ => true
+  | .lineageAuthorization, .lineageEdge _ _ _ _ parentVersion _ _ _ childVersion _ =>
+      decide (0 < parentVersion ∧ 0 < childVersion)
   | _, _ => false
 
 def claimSubjectB : ScopedClaim → ScopedSubject → Bool
@@ -73,6 +80,9 @@ def claimSubjectB : ScopedClaim → ScopedSubject → Bool
   | .approvalTargetExistedNotAfter, .approvalTargetTime _ time => !time.isEmpty
   | .approvalSetExistedNotAfter, .approvalSetTime _ time => !time.isEmpty
   | .statementRegistered, .registeredStatement _ => true
+  | .authorizedSuccessor,
+      .lineageEdge _ _ _ _ parentVersion _ _ _ childVersion _ =>
+      decide (0 < parentVersion ∧ 0 < childVersion)
   | .naturalPersonIdentityVerified, .identityAssertion _ _ _ _ => true
   | .originalityVerified, .approvalTarget _ => true
   | .signersUncompromisedAtTime, .approvalSetTime _ time => !time.isEmpty

@@ -35,3 +35,9 @@ import ACSD
 #print axioms ACSD.decodedCertificateV1Claims_sound
 #print axioms ACSD.decodedCertificateV2Claims_sound
 #print axioms ACSD.decodedCertificateV3Claims_sound
+#print axioms ACSD.authorizedSuccessorB_sound
+#print axioms ACSD.lineageGroupClosedB_sound
+#print axioms ACSD.closed_lineage_is_authorized_successor
+#print axioms ACSD.checkLineageGroup_sound
+#print axioms ACSD.lineageTranscriptClaim_sound
+#print axioms ACSD.decodedLineageCertificateClaims_sound

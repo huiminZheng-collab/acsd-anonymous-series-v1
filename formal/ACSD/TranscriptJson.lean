@@ -1,4 +1,5 @@
 import ACSD.Transcript
+import ACSD.LineageTranscript
 import Lean.Data.Json.Parser
 import Lean.Data.Json.Printer
 
@@ -85,6 +86,7 @@ private def decodeClaim (json : Json) : Except String ScopedClaim := do
   | "COMMITTED_EVIDENCE_MATCH" => pure .committedEvidenceMatch
   | "SLOT_KEY_ASSENT_TO_IDENTITY_ASSERTION" => pure .slotKeyIdentityAssent
   | "APPROVAL_SET_EXISTED_NOT_AFTER" => pure .approvalSetExistedNotAfter
+  | "AUTHORIZED_SUCCESSOR" => pure .authorizedSuccessor
   | _ => throw "TRANSCRIPT_POLICY_CLAIM"
 
 private def allowedInputRole (role : String) : Bool :=
@@ -494,5 +496,239 @@ theorem decodedCertificateV3Claims_sound
         TranscriptSupports transcript certificate atom ∧
         atom.subject = request.subject ∧ AppraisalRule atom.kind request.kind := by
   exact ⟨refineCertificate raw, decoded, rfl, transcriptClaims_sound member⟩
+
+/-! A separate closed profile carries an authorized lineage edge without
+forcing identity, event, or time facts into the same certificate. -/
+
+structure RawLineageCertificate where
+  transcript : LineageVerificationTranscript
+  deriving DecidableEq, Repr
+
+private def allowedLineageInputRole (role : String) : Bool :=
+  ["parent-release", "parent-pec", "child-release", "child-governance",
+    "child-pec", "child-approval-target", "lineage-transition",
+    "approval-set", "child-public-key", "child-approval-cose",
+    "parent-public-key", "predecessor-authorization-cose"].contains role
+
+private def decodeLineageInput (json : Json) : Except String RawTranscriptInput := do
+  expectFields json ["role", "path", "sha256"] "LINEAGE_TRANSCRIPT_INPUT"
+  let role ← stringField json "role" "LINEAGE_TRANSCRIPT_INPUT_ROLE"
+  requireB (allowedLineageInputRole role) "LINEAGE_TRANSCRIPT_INPUT_ROLE"
+  let path ← stringField json "path" "LINEAGE_TRANSCRIPT_INPUT_PATH"
+  requireB (!path.isEmpty) "LINEAGE_TRANSCRIPT_INPUT_PATH"
+  pure {
+    role := role
+    path := path
+    digest := ← digestField json "sha256" "LINEAGE_TRANSCRIPT_INPUT_DIGEST"
+  }
+
+private def decodeLineageAuthority (json : Json) : Except String LineageAuthority := do
+  expectFields json ["key_ids", "threshold"] "LINEAGE_TRANSCRIPT_AUTHORITY"
+  let keys ← keyArrayField json "key_ids" "LINEAGE_TRANSCRIPT_AUTHORITY_KEYS"
+  let threshold ← natField json "threshold" "LINEAGE_TRANSCRIPT_AUTHORITY_THRESHOLD"
+  requireB (decide (0 < threshold ∧ threshold ≤ keys.length))
+    "LINEAGE_TRANSCRIPT_AUTHORITY_THRESHOLD"
+  pure { keys := keys, threshold := threshold }
+
+private def decodeLineagePurpose (json : Json) :
+    Except String LineageSignaturePurpose := do
+  match ← remap "LINEAGE_TRANSCRIPT_SIGNATURE_PURPOSE" json.getStr? with
+  | "child-approval" => pure .childApproval
+  | "predecessor-authorization" => pure .predecessorAuthorization
+  | _ => throw "LINEAGE_TRANSCRIPT_SIGNATURE_PURPOSE"
+
+private def decodeLineageSignature (json : Json) :
+    Except String LineageSignatureFact := do
+  expectFields json ["purpose", "key_id", "payload_digest", "cose_digest",
+    "public_key_digest"] "LINEAGE_TRANSCRIPT_SIGNATURE"
+  pure {
+    purpose := ← decodeLineagePurpose
+      (← field json "purpose" "LINEAGE_TRANSCRIPT_SIGNATURE_PURPOSE")
+    key := ← keyValue (← field json "key_id" "LINEAGE_TRANSCRIPT_SIGNATURE_KEY")
+      "LINEAGE_TRANSCRIPT_SIGNATURE_KEY"
+    payloadDigest := ← digestField json "payload_digest"
+      "LINEAGE_TRANSCRIPT_SIGNATURE_PAYLOAD"
+    coseDigest := ← digestField json "cose_digest"
+      "LINEAGE_TRANSCRIPT_SIGNATURE_COSE"
+    publicKeyDigest := ← digestField json "public_key_digest"
+      "LINEAGE_TRANSCRIPT_SIGNATURE_PUBLIC_KEY"
+  }
+
+def refineLineageCertificate (raw : RawLineageCertificate) :
+    LineageVerificationTranscript := raw.transcript
+
+def decodeLineageCertificateJson (json : Json) :
+    Except String RawLineageCertificate := do
+  expectFields json ["schema", "inputs", "policy", "lineage_edge",
+    "approval_set", "signature_facts"] "LINEAGE_TRANSCRIPT_FIELDS"
+  requireB ((← stringField json "schema" "LINEAGE_TRANSCRIPT_SCHEMA") ==
+    "acsd-lineage-verification-certificate/v1") "LINEAGE_TRANSCRIPT_SCHEMA"
+
+  let inputs ← (← arrayField json "inputs" "LINEAGE_TRANSCRIPT_INPUTS").toList.mapM
+    decodeLineageInput
+  requireB (decide ((inputs.map (·.path)).Nodup))
+    "LINEAGE_TRANSCRIPT_DUPLICATE_INPUT"
+
+  let policy ← field json "policy" "LINEAGE_TRANSCRIPT_POLICY"
+  expectFields policy ["pec_digest", "permitted_outcomes"]
+    "LINEAGE_TRANSCRIPT_POLICY"
+  let policyClaims ← (← arrayField policy "permitted_outcomes"
+    "LINEAGE_TRANSCRIPT_POLICY_CLAIMS").toList.mapM decodeClaim
+  requireB (decide policyClaims.Nodup) "LINEAGE_TRANSCRIPT_POLICY_CLAIMS"
+
+  let edge ← field json "lineage_edge" "LINEAGE_TRANSCRIPT_EDGE"
+  expectFields edge ["work_id_digest", "transition_digest",
+    "transition_input_digest", "transition_kind", "authorization_mode",
+    "parent", "child"] "LINEAGE_TRANSCRIPT_EDGE"
+  let work ← digestField edge "work_id_digest" "LINEAGE_TRANSCRIPT_WORK"
+  let transitionDigest ← digestField edge "transition_digest"
+    "LINEAGE_TRANSCRIPT_TRANSITION"
+  let transitionKind ← stringField edge "transition_kind"
+    "LINEAGE_TRANSCRIPT_TRANSITION_KIND"
+  requireB (["continuation", "branch", "team-change", "threshold-change"].contains
+    transitionKind) "LINEAGE_TRANSCRIPT_TRANSITION_KIND"
+  let mode ← match ← stringField edge "authorization_mode"
+      "LINEAGE_TRANSCRIPT_MODE" with
+    | "continuity" => pure LineageAuthorizationMode.continuity
+    | "transition" => pure LineageAuthorizationMode.transition
+    | _ => throw "LINEAGE_TRANSCRIPT_MODE"
+
+  let parentJson ← field edge "parent" "LINEAGE_TRANSCRIPT_PARENT"
+  expectFields parentJson ["release_digest", "pec_digest", "line_digest",
+    "version", "authority", "release_input_digest", "pec_input_digest"]
+    "LINEAGE_TRANSCRIPT_PARENT"
+  let parentLine ← digestField parentJson "line_digest" "LINEAGE_TRANSCRIPT_PARENT_LINE"
+  let parentVersion ← natField parentJson "version" "LINEAGE_TRANSCRIPT_PARENT_VERSION"
+  requireB (decide (0 < parentVersion)) "LINEAGE_TRANSCRIPT_PARENT_VERSION"
+  let parentAuthority ← decodeLineageAuthority
+    (← field parentJson "authority" "LINEAGE_TRANSCRIPT_PARENT_AUTHORITY")
+  let parent : VersionedRelease := {
+    work := work.value
+    line := parentLine.value
+    version := parentVersion
+    releaseDigest := ← digestField parentJson "release_digest"
+      "LINEAGE_TRANSCRIPT_PARENT_RELEASE"
+    pecDigest := ← digestField parentJson "pec_digest"
+      "LINEAGE_TRANSCRIPT_PARENT_PEC"
+    authority := parentAuthority
+  }
+
+  let childJson ← field edge "child" "LINEAGE_TRANSCRIPT_CHILD"
+  expectFields childJson ["release_digest", "pec_digest",
+    "line_digest", "version", "authority", "approval_target_digest",
+    "bound_transition_digest", "release_input_digest",
+    "governance_input_digest", "pec_input_digest",
+    "approval_target_input_digest"] "LINEAGE_TRANSCRIPT_CHILD"
+  let childLine ← digestField childJson "line_digest" "LINEAGE_TRANSCRIPT_CHILD_LINE"
+  let childVersion ← natField childJson "version" "LINEAGE_TRANSCRIPT_CHILD_VERSION"
+  requireB (decide (0 < childVersion)) "LINEAGE_TRANSCRIPT_CHILD_VERSION"
+  let childAuthority ← decodeLineageAuthority
+    (← field childJson "authority" "LINEAGE_TRANSCRIPT_CHILD_AUTHORITY")
+  let child : VersionedRelease := {
+    work := work.value
+    line := childLine.value
+    version := childVersion
+    releaseDigest := ← digestField childJson "release_digest"
+      "LINEAGE_TRANSCRIPT_CHILD_RELEASE"
+    pecDigest := ← digestField childJson "pec_digest"
+      "LINEAGE_TRANSCRIPT_CHILD_PEC"
+    authority := childAuthority
+  }
+
+  let approvalSet ← field json "approval_set" "LINEAGE_TRANSCRIPT_APPROVAL_SET"
+  expectFields approvalSet ["approval_target_digest",
+    "author_approvals", "lineage_authorizations", "input_digest"]
+    "LINEAGE_TRANSCRIPT_APPROVAL_SET"
+  let authorEntries ← (← arrayField approvalSet "author_approvals"
+    "LINEAGE_TRANSCRIPT_APPROVAL_SET_AUTHORS").toList.mapM decodeApprovalEntry
+  let lineageEntries ← (← arrayField approvalSet "lineage_authorizations"
+    "LINEAGE_TRANSCRIPT_APPROVAL_SET_LINEAGE").toList.mapM decodeApprovalEntry
+  requireB (decide (authorEntries.Nodup ∧ lineageEntries.Nodup))
+    "LINEAGE_TRANSCRIPT_APPROVAL_SET_ENTRIES"
+
+  let signatures ← (← arrayField json "signature_facts"
+    "LINEAGE_TRANSCRIPT_SIGNATURES").toList.mapM decodeLineageSignature
+
+  let transcript : LineageVerificationTranscript := {
+    work := work
+    transitionDigest := transitionDigest
+    transitionInputDigest := ← digestField edge "transition_input_digest"
+      "LINEAGE_TRANSCRIPT_TRANSITION_INPUT"
+    transitionKind := transitionKind
+    mode := mode
+    parent := parent
+    child := child
+    childTargetDigest := ← digestField childJson "approval_target_digest"
+      "LINEAGE_TRANSCRIPT_CHILD_TARGET"
+    boundTransitionDigest := ← digestField childJson "bound_transition_digest"
+      "LINEAGE_TRANSCRIPT_BOUND_TRANSITION"
+    policyPecDigest := ← digestField policy "pec_digest" "LINEAGE_TRANSCRIPT_POLICY_PEC"
+    policyClaims := policyClaims
+    approvalSetTargetDigest := ← digestField approvalSet "approval_target_digest"
+      "LINEAGE_TRANSCRIPT_APPROVAL_SET_TARGET"
+    approvalSetAuthorEntries := authorEntries
+    approvalSetLineageEntries := lineageEntries
+    approvalSetInputDigest := ← digestField approvalSet "input_digest"
+      "LINEAGE_TRANSCRIPT_APPROVAL_SET_INPUT"
+    parentReleaseInputDigests := inputDigests "parent-release" inputs
+    parentPecInputDigests := inputDigests "parent-pec" inputs
+    childReleaseInputDigests := inputDigests "child-release" inputs
+    childGovernanceInputDigests := inputDigests "child-governance" inputs
+    childPecInputDigests := inputDigests "child-pec" inputs
+    childTargetInputDigests := inputDigests "child-approval-target" inputs
+    transitionInputDigests := inputDigests "lineage-transition" inputs
+    approvalSetInputDigests := inputDigests "approval-set" inputs
+    childApprovalCoseDigests := inputDigests "child-approval-cose" inputs
+    childPublicKeyDigests := inputDigests "child-public-key" inputs
+    predecessorCoseDigests := inputDigests "predecessor-authorization-cose" inputs
+    predecessorPublicKeyDigests := inputDigests "parent-public-key" inputs
+    parentReleaseInputDigest := ← digestField parentJson "release_input_digest"
+      "LINEAGE_TRANSCRIPT_PARENT_RELEASE_INPUT"
+    parentPecInputDigest := ← digestField parentJson "pec_input_digest"
+      "LINEAGE_TRANSCRIPT_PARENT_PEC_INPUT"
+    childReleaseInputDigest := ← digestField childJson "release_input_digest"
+      "LINEAGE_TRANSCRIPT_CHILD_RELEASE_INPUT"
+    childGovernanceInputDigest := ← digestField childJson "governance_input_digest"
+      "LINEAGE_TRANSCRIPT_CHILD_GOVERNANCE_INPUT"
+    childPecInputDigest := ← digestField childJson "pec_input_digest"
+      "LINEAGE_TRANSCRIPT_CHILD_PEC_INPUT"
+    childTargetInputDigest := ← digestField childJson "approval_target_input_digest"
+      "LINEAGE_TRANSCRIPT_CHILD_TARGET_INPUT"
+    signatures := signatures
+  }
+  pure { transcript := transcript }
+
+def decodeLineageCertificateText (text : String) :
+    Except String RawLineageCertificate := do
+  let json ← remap "LINEAGE_TRANSCRIPT_JSON_INVALID" (Json.parse text)
+  let compressed := json.compress
+  requireB (text == compressed || text == compressed ++ "\n")
+    "LINEAGE_TRANSCRIPT_JSON_NONCANONICAL"
+  decodeLineageCertificateJson json
+
+def deriveLineageCertificate
+    (raw : RawLineageCertificate) (certificate : Digest) : List AppraisalRequest :=
+  let transcript := refineLineageCertificate raw
+  if lineageTranscriptClaim transcript certificate then
+    [lineageTranscriptRequest transcript]
+  else []
+
+theorem decodedLineageCertificateClaims_sound
+    {json : Json} {raw : RawLineageCertificate} {certificate : Digest}
+    {request : AppraisalRequest}
+    (_decoded : decodeLineageCertificateJson json = .ok raw)
+    (member : request ∈ deriveLineageCertificate raw certificate) :
+    LineageGroupClosed (refineLineageCertificate raw) ∧
+    AppraisalDerives
+      (lineageTranscriptPolicy (refineLineageCertificate raw))
+      [lineageTranscriptAtom (refineLineageCertificate raw) certificate]
+      request := by
+  simp only [deriveLineageCertificate] at member
+  split at member
+  · have sound := lineageTranscriptClaim_sound ‹_›
+    simp only [List.mem_singleton] at member
+    subst request
+    exact sound
+  · simp at member
 
 end ACSD

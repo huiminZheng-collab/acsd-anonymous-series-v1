@@ -20,6 +20,7 @@ WHEEL_INPUTS = (
     "pyproject.toml", "README.md", "LICENSE", "acsd.py", "acsd_version.py", "approval_set.py",
     "claim_derivation.py", "cose.py", "event_disclosure.py", "identity_disclosure.py",
     "package_manifest.py", "pec_core.py", "tsa.py", "verification_transcript.py",
+    "lineage_verification_transcript.py",
 )
 
 
@@ -115,11 +116,24 @@ def _common_checks(checks, temp, env):
         "verification-certificate-differential",
         [sys.executable, "design/verification_certificate_diff.py"], env=env,
     ))
+    checks.append(_run(
+        "lineage-verification-certificate-differential",
+        [sys.executable, "design/lineage_verification_certificate_diff.py"], env=env,
+    ))
     checks.append(_run("scaling-smoke", [sys.executable, "design/benchmark_core.py"], env=env))
     checks.append(_run("v1-fixture", [sys.executable, "verify_v1_fixture.py"], env=env))
     demo = temp / "demo"
     checks.append(_run("demo-generate", [sys.executable, "generate_demo.py", str(demo)], env=env))
     checks.append(_run("demo-verify", [sys.executable, "verify_pec.py", str(demo)], env=env))
+    lineage_demo = temp / "lineage-demo"
+    checks.append(_run(
+        "lineage-demo-generate",
+        [sys.executable, "generate_lineage_demo.py", str(lineage_demo)], env=env,
+    ))
+    checks.append(_run(
+        "lineage-demo-verify",
+        [sys.executable, "acsd.py", "verify", str(lineage_demo)], env=env,
+    ))
 
 
 def _formal_checks(checks, temp, env):
@@ -138,6 +152,12 @@ def _formal_checks(checks, temp, env):
     checks.append(_run(
         "lean-transcript-differential",
         [sys.executable, str(ROOT / "design/lean_transcript_diff.py"),
+         "--checker", str(checker)],
+        cwd=ROOT, env=lean_env,
+    ))
+    checks.append(_run(
+        "lean-lineage-transcript-differential",
+        [sys.executable, str(ROOT / "design/lean_lineage_transcript_diff.py"),
          "--checker", str(checker)],
         cwd=ROOT, env=lean_env,
     ))

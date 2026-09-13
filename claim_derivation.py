@@ -44,6 +44,7 @@ class EvidenceKind(str, Enum):
     APPROVAL_SET_TIMESTAMP = "APPROVAL_SET_TIMESTAMP"
     SCITT_INCLUSION = "SCITT_INCLUSION"
     SLOT_IDENTITY_ASSENT = "SLOT_IDENTITY_ASSENT"
+    LINEAGE_AUTHORIZATION = "LINEAGE_AUTHORIZATION"
 
 
 class ClaimKind(str, Enum):
@@ -54,6 +55,7 @@ class ClaimKind(str, Enum):
     APPROVAL_SET_IMPRINT_EXISTED_NOT_AFTER = "APPROVAL_SET_IMPRINT_EXISTED_NOT_AFTER"
     STATEMENT_REGISTERED = "STATEMENT_REGISTERED"
     SLOT_KEY_ASSENT_TO_IDENTITY_ASSERTION = "SLOT_KEY_ASSENT_TO_IDENTITY_ASSERTION"
+    AUTHORIZED_SUCCESSOR = "AUTHORIZED_SUCCESSOR"
     NATURAL_PERSON_IDENTITY_VERIFIED = "NATURAL_PERSON_IDENTITY_VERIFIED"
     ORIGINALITY_VERIFIED = "ORIGINALITY_VERIFIED"
     SIGNERS_UNCOMPROMISED_AT_TIME = "SIGNERS_UNCOMPROMISED_AT_TIME"
@@ -130,6 +132,32 @@ class StatementSubject:
         _require_digest(self.statement_digest, "statement_digest")
 
 
+@dataclass(frozen=True)
+class LineageSubject:
+    work_id_digest: str
+    parent_release_digest: str
+    parent_pec_digest: str
+    parent_line_digest: str
+    parent_version: int
+    child_release_digest: str
+    child_pec_digest: str
+    child_line_digest: str
+    child_version: int
+    transition_digest: str
+
+    def __post_init__(self) -> None:
+        for field in (
+            "work_id_digest", "parent_release_digest", "parent_pec_digest",
+            "parent_line_digest", "child_release_digest", "child_pec_digest",
+            "child_line_digest", "transition_digest",
+        ):
+            _require_digest(getattr(self, field), field)
+        _require_nonnegative(self.parent_version, "parent_version")
+        _require_nonnegative(self.child_version, "child_version")
+        if self.parent_version == 0 or self.child_version == 0:
+            raise ValueError("INVALID_LINEAGE_VERSION")
+
+
 Subject = Union[
     ApprovalTargetSubject,
     ApprovalTargetTimeSubject,
@@ -137,6 +165,7 @@ Subject = Union[
     EventSubject,
     IdentitySubject,
     StatementSubject,
+    LineageSubject,
 ]
 
 
@@ -147,6 +176,7 @@ SUBJECT_TYPES = {
     EvidenceKind.APPROVAL_SET_TIMESTAMP: ApprovalSetTimeSubject,
     EvidenceKind.SCITT_INCLUSION: StatementSubject,
     EvidenceKind.SLOT_IDENTITY_ASSENT: IdentitySubject,
+    EvidenceKind.LINEAGE_AUTHORIZATION: LineageSubject,
 }
 
 
@@ -166,6 +196,9 @@ GRANTS = {
     EvidenceKind.SLOT_IDENTITY_ASSENT: frozenset({
         ClaimKind.SLOT_KEY_ASSENT_TO_IDENTITY_ASSERTION
     }),
+    EvidenceKind.LINEAGE_AUTHORIZATION: frozenset({
+        ClaimKind.AUTHORIZED_SUCCESSOR
+    }),
 }
 
 
@@ -179,6 +212,7 @@ WIRE_TO_CLAIM = {
     "SLOT_KEY_ASSENT_TO_IDENTITY_ASSERTION": (
         ClaimKind.SLOT_KEY_ASSENT_TO_IDENTITY_ASSERTION
     ),
+    "AUTHORIZED_SUCCESSOR": ClaimKind.AUTHORIZED_SUCCESSOR,
 }
 
 CLAIM_TO_WIRE = {value: key for key, value in WIRE_TO_CLAIM.items()}
@@ -190,6 +224,7 @@ WIRE_ORDER = (
     "APPROVAL_SET_EXISTED_NOT_AFTER",
     "STATEMENT_REGISTERED",
     "SLOT_KEY_ASSENT_TO_IDENTITY_ASSERTION",
+    "AUTHORIZED_SUCCESSOR",
 )
 
 
@@ -231,6 +266,7 @@ class Claim:
             ClaimKind.APPROVAL_SET_IMPRINT_EXISTED_NOT_AFTER: ApprovalSetTimeSubject,
             ClaimKind.STATEMENT_REGISTERED: StatementSubject,
             ClaimKind.SLOT_KEY_ASSENT_TO_IDENTITY_ASSERTION: IdentitySubject,
+            ClaimKind.AUTHORIZED_SUCCESSOR: LineageSubject,
             ClaimKind.NATURAL_PERSON_IDENTITY_VERIFIED: IdentitySubject,
             ClaimKind.ORIGINALITY_VERIFIED: ApprovalTargetSubject,
             ClaimKind.SIGNERS_UNCOMPROMISED_AT_TIME: ApprovalSetTimeSubject,

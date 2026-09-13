@@ -4,4 +4,5 @@ import ACSD.Lineage
 import ACSD.ScopedClaims
 import ACSD.Appraisal
 import ACSD.Transcript
+import ACSD.LineageTranscript
 import ACSD.TranscriptJson

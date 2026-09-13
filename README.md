@@ -219,7 +219,9 @@ Linux/macOS:
 The authoritative `check.py` gate is read-only and finishes by comparing all
 source-tree file hashes with its starting snapshot. It contains:
 
-- 122 Python tests passing, with the live-network and two unavailable Windows
+- 23/23 source, package, installed-wheel, differential, formal, and byte-identity
+  checks passing as one command;
+- 127 Python tests passing, with the live-network and two unavailable Windows
   capability cases skipped locally;
 - 64 fixed Python-Node canonical-JSON vectors with no unexpected divergence;
 - 1,000 seeded generated differential cases with 1,000 byte and verdict
@@ -228,11 +230,17 @@ source-tree file hashes with its starting snapshot. It contains:
 - byte-identical Python/Node `acsd-verification-certificate/v1` approval/event,
   v2 release-slot identity, and v3 exact approval-set time output, with no
   embedded verdict;
+- a separate byte-identical Python/Node
+  `acsd-lineage-verification-certificate/v1` for one exact authorized edge,
+  avoiding a cumulative certificate that forces unrelated evidence into every
+  verification;
 - a pure structural transcript checker with critical-evidence deletion tests;
 - a strict Lean decoder and executable checker over all three canonical schemas,
   with 35/35 complete scoped-derivation differential cases across all three
   certificate schemas;
-- a complete 6-by-10 typed unary compatibility test plus a checked-in selected
+- a strict Lean decoder and executable checker for the lineage profile, with
+  15/15 complete derivation/rejection differential cases;
+- a complete 7-by-11 typed unary compatibility test plus a checked-in selected
   4-by-4 semantic-confusion challenge with all 12 off-diagonal substitutions
   denied and a key-compromise timeline;
 - the frozen v1 corpus: 8 releases, 18 endorsements, 7 series objects, 13
@@ -242,7 +250,7 @@ source-tree file hashes with its starting snapshot. It contains:
 - an offline-verified freeTSA fixture over the demo's complete approval set,
   binding its exact request, response, signer certificate, nonce, policy OID,
   serial number, and `2026-09-13T11:37:22+00:00` time;
-- a Lean 4.33.1 build with 67 theorems covering PEC, lineage, scoped claims,
+- a Lean 4.33.1 build with 73 theorems covering PEC, lineage, scoped claims,
   parameterized appraisal/checker correspondence, transcript-group closure,
   selective identity, atomic event disclosure, and typed time subjects with no
   `sorry`/`admit`; the separately published v1 formal core's 53
@@ -268,6 +276,8 @@ remain opt-in because CI must not depend on network availability.
   decisions;
 - `design/canonical_*`, `design/semantic_confusion_*`, and
   `design/verify_approval.cjs`: independent tests and checked-in reports;
+- `design/LINEAGE-VERIFICATION-CERTIFICATE-V1.md`: the modular authorized-edge
+  transcript, closure rule, and trust boundary;
 - `formal/`: the Lean model, strict transcript decoder, executable checker, and proofs;
 - `v1-fixture/`: frozen standalone/series/cyclic-citation reference corpus;
 - `paper/acsd-v3.tex`: content-anonymous manuscript source;

@@ -11,6 +11,7 @@ from claim_derivation import (
     EvidenceKind,
     GRANTS,
     IdentitySubject,
+    LineageSubject,
     StatementSubject,
     decision,
     derive,
@@ -31,6 +32,10 @@ SET_SUBJECT = ApprovalSetTimeSubject(
 EVENT_SUBJECT = EventSubject(DIGESTS[2], "event-1", 0, DIGESTS[3], 2, 4)
 IDENTITY_SUBJECT = IdentitySubject(DIGESTS[4], 1, DIGESTS[5], DIGESTS[6])
 STATEMENT_SUBJECT = StatementSubject(DIGESTS[7])
+LINEAGE_SUBJECT = LineageSubject(
+    DIGESTS[0], DIGESTS[1], DIGESTS[2], DIGESTS[3], 1,
+    DIGESTS[4], DIGESTS[5], DIGESTS[6], 2, DIGESTS[7],
+)
 
 
 def subject_for(kind):
@@ -44,6 +49,8 @@ def subject_for(kind):
         return EVENT_SUBJECT
     if kind == EvidenceKind.SLOT_IDENTITY_ASSENT:
         return IDENTITY_SUBJECT
+    if kind == EvidenceKind.LINEAGE_AUTHORIZATION:
+        return LINEAGE_SUBJECT
     return STATEMENT_SUBJECT
 
 
@@ -68,6 +75,8 @@ def claim_subject_for(kind):
         ClaimKind.NATURAL_PERSON_IDENTITY_VERIFIED,
     ):
         return IDENTITY_SUBJECT
+    if kind == ClaimKind.AUTHORIZED_SUCCESSOR:
+        return LINEAGE_SUBJECT
     return STATEMENT_SUBJECT
 
 
@@ -75,7 +84,7 @@ class TestClaimDerivation(unittest.TestCase):
     def evidence(self, kind, certificate=8):
         return AppraisedEvidence(kind, subject_for(kind), DIGESTS[certificate])
 
-    def test_complete_six_by_ten_matrix_matches_only_declared_rules(self):
+    def test_complete_seven_by_eleven_matrix_matches_only_declared_rules(self):
         permitted = list(ClaimKind)
         for evidence_kind in EvidenceKind:
             evidence = self.evidence(evidence_kind)

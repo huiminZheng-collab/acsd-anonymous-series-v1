@@ -17,6 +17,7 @@ inductive EvidenceKind where
   | approvalTargetTimestamp
   | approvalSetTimestamp
   | scittInclusion
+  | lineageAuthorization
   deriving DecidableEq, Repr
 
 inductive ScopedClaim where
@@ -27,6 +28,7 @@ inductive ScopedClaim where
   | approvalTargetExistedNotAfter
   | approvalSetExistedNotAfter
   | statementRegistered
+  | authorizedSuccessor
   | naturalPersonIdentityVerified
   | originalityVerified
   | signersUncompromisedAtTime
@@ -40,6 +42,7 @@ inductive Compatible : EvidenceKind → ScopedClaim → Prop where
   | targetTime : Compatible .approvalTargetTimestamp .approvalTargetExistedNotAfter
   | approvalTime : Compatible .approvalSetTimestamp .approvalSetExistedNotAfter
   | registration : Compatible .scittInclusion .statementRegistered
+  | lineage : Compatible .lineageAuthorization .authorizedSuccessor
 
 structure ScopedEvidence where
   kind : EvidenceKind

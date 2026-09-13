@@ -21,6 +21,7 @@ from claim_derivation import (  # noqa: E402
     EventSubject,
     EvidenceKind,
     IdentitySubject,
+    LineageSubject,
     StatementSubject,
     decision,
     derive,
@@ -39,6 +40,10 @@ SET_SUBJECT = ApprovalSetTimeSubject(
 EVENT_SUBJECT = EventSubject(SUBJECT, "event-1", 0, SUBJECT, 0, 1)
 IDENTITY_SUBJECT = IdentitySubject(SUBJECT, 0, SUBJECT, SUBJECT)
 STATEMENT_SUBJECT = StatementSubject(SUBJECT)
+LINEAGE_SUBJECT = LineageSubject(
+    SUBJECT, SUBJECT, SUBJECT, SUBJECT, 1,
+    SUBJECT, SUBJECT, SUBJECT, 2, SUBJECT,
+)
 ROWS = [
     EvidenceKind.APPROVAL_TARGET_TIMESTAMP,
     EvidenceKind.APPROVAL_SET_TIMESTAMP,
@@ -58,6 +63,7 @@ EVIDENCE_SUBJECTS = {
     EvidenceKind.SCITT_INCLUSION: STATEMENT_SUBJECT,
     EvidenceKind.SLOT_IDENTITY_ASSENT: IDENTITY_SUBJECT,
     EvidenceKind.UNANIMOUS_APPROVAL: TARGET_SUBJECT,
+    EvidenceKind.LINEAGE_AUTHORIZATION: LINEAGE_SUBJECT,
 }
 
 CLAIM_SUBJECTS = {
@@ -68,6 +74,7 @@ CLAIM_SUBJECTS = {
     ClaimKind.NATURAL_PERSON_IDENTITY_VERIFIED: IDENTITY_SUBJECT,
     ClaimKind.ORIGINALITY_VERIFIED: TARGET_SUBJECT,
     ClaimKind.SIGNERS_UNCOMPROMISED_AT_TIME: SET_SUBJECT,
+    ClaimKind.AUTHORIZED_SUCCESSOR: LINEAGE_SUBJECT,
 }
 
 
