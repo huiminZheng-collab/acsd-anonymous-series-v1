@@ -9,6 +9,8 @@
 \usepackage{booktabs}
 \usepackage{float}
 \usepackage{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning}
 \usepackage{hyperref}
 \hypersetup{
   colorlinks=true,
@@ -54,17 +56,59 @@ backlog or that ACSD should circumvent its rules.
 
 \begin{figure}[t]
 \centering
-\begin{verbatim}
- semantic citation graph:       P --cites--> Q
-                                 ^            |
-                                 |------------|
+\begin{minipage}[t]{0.39\linewidth}
+\centering
+\vspace{0pt}
+\begin{tikzpicture}[
+  work/.style={draw, circle, fill=gray!8, minimum size=1.05cm,
+               thick, font=\small},
+  semedge/.style={-{Latex[length=2.4mm]}, thick}
+]
+  \path[use as bounding box] (-0.65,-1.65) rectangle (3.05,1.65);
+  \node[work] (P) at (0,0) {$P$};
+  \node[work] (Q) at (2.4,0) {$Q$};
+  \draw[semedge] (P) to[bend left=25]
+    node[above, font=\scriptsize] {cites} (Q);
+  \draw[semedge] (Q) to[bend left=25]
+    node[below, font=\scriptsize] {cites} (P);
+\end{tikzpicture}
+\par\vspace{0.24cm}\smallskip
+{\small (a) Semantic graph: cycles allowed}\par
+\end{minipage}
+\hfill
+\begin{minipage}[t]{0.57\linewidth}
+\centering
+\vspace{0pt}
+\begin{tikzpicture}[
+  node distance=0.72cm and 1.05cm,
+  bundle/.style={draw, rounded corners, fill=gray!15,
+                 minimum height=0.72cm, minimum width=2.0cm,
+                 thick, font=\scriptsize},
+  release/.style={draw, rectangle, fill=white,
+                  minimum height=0.68cm, minimum width=1.35cm,
+                  thick, font=\scriptsize},
+  dep/.style={-{Latex[length=2.4mm]}, thick}
+]
+  \node[bundle] (B) {signed series bundle $B_k$};
+  \node[release] (P2) [below left=of B] {$P$-v2};
+  \node[release] (Q2) [below right=of B] {$Q$-v2};
+  \node[release] (P1) [below=of P2] {$P$-v1};
+  \node[release] (Q1) [below=of Q2] {$Q$-v1};
 
- commitment graph:        series anchor --> P-v1 --> P-v2
-                           series anchor --> Q-v1 --> Q-v2
-\end{verbatim}
-\caption{ACSD separates cyclic semantic citations from acyclic exact-byte
-commitments. Stable random WorkIDs support the first graph; release digests and
-predecessor links support the second.}
+  \draw[dep] (B) -- node[above left, font=\tiny] {resolves} (P2);
+  \draw[dep] (B) -- node[above right, font=\tiny] {resolves} (Q2);
+  \draw[dep] (P2) -- node[right, font=\tiny] {parent} (P1);
+  \draw[dep] (Q2) -- node[right, font=\tiny] {parent} (Q1);
+\end{tikzpicture}
+\par\smallskip
+{\small (b) Commitment graph: a DAG}\par
+\end{minipage}
+
+\caption{ACSD separates cyclic semantic citations over stable WorkIDs (a) from
+acyclic exact-byte commitments through release digests and predecessor links
+(b). Commitment arrows point toward the committed object and indicate neither
+chronology nor priority.}
+\label{fig:two-graphs}
 \end{figure}
 
 The first question is about key control and integrity. It is not, by itself, a proof that a particular natural person wrote the work. The second and third are data-model and verification questions. The fourth requires an external witness such as an RFC~3161 timestamp authority (TSA), not a local clock or a mutable Git field. Conflating these layers produces systems that overclaim.
