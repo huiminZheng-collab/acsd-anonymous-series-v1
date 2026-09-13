@@ -20,3 +20,10 @@ import ACSD
 #print axioms ACSD.derivation_over_append_has_component_support
 #print axioms ACSD.target_time_cannot_derive_approval_set_time
 #print axioms ACSD.unsupported_natural_identity_has_no_rule
+#print axioms ACSD.approvalGroupClosedB_iff
+#print axioms ACSD.eventGroupClosedB_iff
+#print axioms ACSD.checkApprovalGroup_sound
+#print axioms ACSD.checkEventGroup_sound
+#print axioms ACSD.transcriptAtoms_sound
+#print axioms ACSD.transcript_checkClaim_sound
+#print axioms ACSD.weak_any_approval_accepts_missing_required_signer

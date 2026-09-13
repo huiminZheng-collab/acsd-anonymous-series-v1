@@ -1,0 +1,282 @@
+import ACSD.Appraisal
+
+set_option autoImplicit false
+set_option warningAsError true
+
+namespace ACSD
+
+/-! A small formal counterpart of `acsd-verification-certificate/v1`.
+The raw JSON/COSE/Merkle adapters are outside Lean; this module independently
+checks closure of the exact typed facts they report before appraisal. -/
+
+inductive SignaturePurpose where
+  | authorApproval
+  | eventDisclosure
+  deriving DecidableEq, Repr
+
+structure TranscriptSignature where
+  purpose : SignaturePurpose
+  key : KeyId
+  payloadDigest : Digest
+  coseDigest : Digest
+  deriving DecidableEq, Repr
+
+structure TranscriptMerkle where
+  bodyDigest : Digest
+  commitmentDigest : Digest
+  firstIndex : Nat
+  lastIndex : Nat
+  openedLeafCount : Nat
+  deriving DecidableEq, Repr
+
+structure VerificationTranscript where
+  targetDigest : Digest
+  pecDigest : Digest
+  policyPecDigest : Digest
+  policyClaims : List ScopedClaim
+  approvalKeys : List KeyId
+  eventBodyDigest : Digest
+  eventId : Nat
+  eventSequence : Nat
+  eventCommitmentDigest : Digest
+  eventFirstIndex : Nat
+  eventLastIndex : Nat
+  eventKeys : List KeyId
+  signatures : List TranscriptSignature
+  merkleFacts : List TranscriptMerkle
+  deriving DecidableEq, Repr
+
+def signatureProjection
+    (purpose : SignaturePurpose) (facts : List TranscriptSignature) :
+    List (KeyId × Digest) :=
+  (facts.filter fun item => decide (item.purpose = purpose)).map
+    fun item => (item.key, item.payloadDigest)
+
+def expectedSignatures (keys : List KeyId) (payload : Digest) :
+    List (KeyId × Digest) := keys.map fun key => (key, payload)
+
+def ApprovalGroupClosed (transcript : VerificationTranscript) : Prop :=
+  transcript.approvalKeys.Nodup ∧
+  signatureProjection .authorApproval transcript.signatures =
+    expectedSignatures transcript.approvalKeys transcript.targetDigest
+
+def approvalGroupClosedB (transcript : VerificationTranscript) : Bool :=
+  decide (transcript.approvalKeys.Nodup) &&
+  decide (
+    signatureProjection .authorApproval transcript.signatures =
+      expectedSignatures transcript.approvalKeys transcript.targetDigest)
+
+def expectedMerkle (transcript : VerificationTranscript) : TranscriptMerkle := {
+  bodyDigest := transcript.eventBodyDigest
+  commitmentDigest := transcript.eventCommitmentDigest
+  firstIndex := transcript.eventFirstIndex
+  lastIndex := transcript.eventLastIndex
+  openedLeafCount := transcript.eventLastIndex - transcript.eventFirstIndex + 1
+}
+
+def EventGroupClosed (transcript : VerificationTranscript) : Prop :=
+  transcript.eventKeys.Nodup ∧
+  transcript.eventFirstIndex ≤ transcript.eventLastIndex ∧
+  signatureProjection .eventDisclosure transcript.signatures =
+    expectedSignatures transcript.eventKeys transcript.eventBodyDigest ∧
+  transcript.merkleFacts = [expectedMerkle transcript]
+
+def eventGroupClosedB (transcript : VerificationTranscript) : Bool :=
+  decide (transcript.eventKeys.Nodup) &&
+  decide (transcript.eventFirstIndex ≤ transcript.eventLastIndex) &&
+  decide (
+    signatureProjection .eventDisclosure transcript.signatures =
+      expectedSignatures transcript.eventKeys transcript.eventBodyDigest) &&
+  decide (transcript.merkleFacts = [expectedMerkle transcript])
+
+theorem approvalGroupClosedB_iff (transcript : VerificationTranscript) :
+    approvalGroupClosedB transcript = true ↔ ApprovalGroupClosed transcript := by
+  simp [approvalGroupClosedB, ApprovalGroupClosed]
+
+theorem eventGroupClosedB_iff (transcript : VerificationTranscript) :
+    eventGroupClosedB transcript = true ↔ EventGroupClosed transcript := by
+  simp [eventGroupClosedB, EventGroupClosed, and_assoc]
+
+def approvalTranscriptAtom
+    (transcript : VerificationTranscript) (certificate : Digest) :
+    AppraisedAtom := {
+  kind := .unanimousApproval
+  subject := .approvalTarget transcript.targetDigest
+  certificateDigest := certificate
+}
+
+def eventTranscriptAtom
+    (transcript : VerificationTranscript) (certificate : Digest) :
+    AppraisedAtom := {
+  kind := .eventDisclosure
+  subject := .eventWindow
+    transcript.pecDigest transcript.eventId transcript.eventSequence
+    transcript.eventCommitmentDigest transcript.eventFirstIndex
+    transcript.eventLastIndex
+  certificateDigest := certificate
+}
+
+def checkApprovalGroup
+    (transcript : VerificationTranscript) (certificate : Digest) :
+    Option AppraisedAtom :=
+  if approvalGroupClosedB transcript = true then
+    some (approvalTranscriptAtom transcript certificate)
+  else none
+
+def checkEventGroup
+    (transcript : VerificationTranscript) (certificate : Digest) :
+    Option AppraisedAtom :=
+  if eventGroupClosedB transcript = true then
+    some (eventTranscriptAtom transcript certificate)
+  else none
+
+def transcriptAtoms
+    (transcript : VerificationTranscript) (certificate : Digest) :
+    List AppraisedAtom :=
+  (checkApprovalGroup transcript certificate).toList ++
+  (checkEventGroup transcript certificate).toList
+
+def TranscriptPolicyBound (transcript : VerificationTranscript) : Prop :=
+  transcript.policyPecDigest = transcript.pecDigest
+
+def transcriptPolicyBoundB (transcript : VerificationTranscript) : Bool :=
+  decide (transcript.policyPecDigest = transcript.pecDigest)
+
+def transcriptPolicy (transcript : VerificationTranscript) : AppraisalPolicy := {
+  permittedClaims := transcript.policyClaims
+}
+
+def transcriptCheckClaim
+    (transcript : VerificationTranscript) (certificate : Digest)
+    (request : AppraisalRequest) : Bool :=
+  transcriptPolicyBoundB transcript &&
+  checkClaim (transcriptPolicy transcript)
+    (transcriptAtoms transcript certificate) request
+
+theorem transcriptPolicyBoundB_iff (transcript : VerificationTranscript) :
+    transcriptPolicyBoundB transcript = true ↔
+      TranscriptPolicyBound transcript := by
+  simp [transcriptPolicyBoundB, TranscriptPolicyBound]
+
+inductive TranscriptSupports
+    (transcript : VerificationTranscript) (certificate : Digest) :
+    AppraisedAtom → Prop where
+  | approval (closed : ApprovalGroupClosed transcript) :
+      TranscriptSupports transcript certificate
+        (approvalTranscriptAtom transcript certificate)
+  | event (closed : EventGroupClosed transcript) :
+      TranscriptSupports transcript certificate
+        (eventTranscriptAtom transcript certificate)
+
+theorem checkApprovalGroup_sound
+    {transcript : VerificationTranscript} {certificate : Digest}
+    {atom : AppraisedAtom}
+    (checked : checkApprovalGroup transcript certificate = some atom) :
+    ApprovalGroupClosed transcript ∧
+      atom = approvalTranscriptAtom transcript certificate := by
+  unfold checkApprovalGroup at checked
+  split at checked
+  · simp only [Option.some.injEq] at checked
+    exact ⟨approvalGroupClosedB_iff transcript |>.mp ‹_›, checked.symm⟩
+  · contradiction
+
+theorem checkEventGroup_sound
+    {transcript : VerificationTranscript} {certificate : Digest}
+    {atom : AppraisedAtom}
+    (checked : checkEventGroup transcript certificate = some atom) :
+    EventGroupClosed transcript ∧
+      atom = eventTranscriptAtom transcript certificate := by
+  unfold checkEventGroup at checked
+  split at checked
+  · simp only [Option.some.injEq] at checked
+    exact ⟨eventGroupClosedB_iff transcript |>.mp ‹_›, checked.symm⟩
+  · contradiction
+
+theorem transcriptAtoms_sound
+    {transcript : VerificationTranscript} {certificate : Digest}
+    {atom : AppraisedAtom}
+    (member : atom ∈ transcriptAtoms transcript certificate) :
+    TranscriptSupports transcript certificate atom := by
+  rw [transcriptAtoms, List.mem_append] at member
+  rcases member with approvalMember | eventMember
+  · have checked : checkApprovalGroup transcript certificate = some atom := by
+      simpa using approvalMember
+    obtain ⟨closed, exactAtom⟩ := checkApprovalGroup_sound checked
+    rw [exactAtom]
+    exact .approval closed
+  · have checked : checkEventGroup transcript certificate = some atom := by
+      simpa using eventMember
+    obtain ⟨closed, exactAtom⟩ := checkEventGroup_sound checked
+    rw [exactAtom]
+    exact .event closed
+
+/-! Composition theorem: an accepted claim from a transcript has both a
+declarative appraisal rule and a transcript support derivation. -/
+theorem transcript_atoms_checkClaim_sound
+    {policy : AppraisalPolicy} {transcript : VerificationTranscript}
+    {certificate : Digest} {request : AppraisalRequest}
+    (accepted :
+      checkClaim policy (transcriptAtoms transcript certificate) request = true) :
+    ∃ atom,
+      TranscriptSupports transcript certificate atom ∧
+      atom.subject = request.subject ∧ AppraisalRule atom.kind request.kind := by
+  have derived := checkClaim_sound accepted
+  obtain ⟨atom, member, exactSubject, rule⟩ := derives_has_exact_support derived
+  exact ⟨atom, transcriptAtoms_sound member, exactSubject, rule⟩
+
+theorem transcript_checkClaim_sound
+    {transcript : VerificationTranscript} {certificate : Digest}
+    {request : AppraisalRequest}
+    (accepted : transcriptCheckClaim transcript certificate request = true) :
+    TranscriptPolicyBound transcript ∧
+    ∃ atom,
+      TranscriptSupports transcript certificate atom ∧
+      atom.subject = request.subject ∧ AppraisalRule atom.kind request.kind := by
+  have parts :
+      transcriptPolicyBoundB transcript = true ∧
+      checkClaim (transcriptPolicy transcript)
+        (transcriptAtoms transcript certificate) request = true := by
+    simpa [transcriptCheckClaim] using accepted
+  exact ⟨transcriptPolicyBoundB_iff transcript |>.mp parts.1,
+    transcript_atoms_checkClaim_sound parts.2⟩
+
+/-! A concrete countermodel for the tempting weak rule “one approval signature
+is enough”. The predecessor-selected two-key set is not closed. -/
+def weakKeyOne : KeyId := { value := 1 }
+def weakKeyTwo : KeyId := { value := 2 }
+def weakDigestOne : Digest := { value := 1 }
+def weakDigestTwo : Digest := { value := 2 }
+
+def weakTranscript : VerificationTranscript := {
+  targetDigest := weakDigestOne
+  pecDigest := weakDigestTwo
+  policyPecDigest := weakDigestTwo
+  policyClaims := [.keyAssent]
+  approvalKeys := [weakKeyOne, weakKeyTwo]
+  eventBodyDigest := weakDigestOne
+  eventId := 0
+  eventSequence := 0
+  eventCommitmentDigest := weakDigestTwo
+  eventFirstIndex := 0
+  eventLastIndex := 0
+  eventKeys := []
+  signatures := [{
+    purpose := .authorApproval
+    key := weakKeyOne
+    payloadDigest := weakDigestOne
+    coseDigest := weakDigestTwo
+  }]
+  merkleFacts := []
+}
+
+def weakAnyApprovalB (transcript : VerificationTranscript) : Bool :=
+  transcript.signatures.any fun item =>
+    decide (item.purpose = .authorApproval) &&
+    decide (item.payloadDigest = transcript.targetDigest)
+
+theorem weak_any_approval_accepts_missing_required_signer :
+    weakAnyApprovalB weakTranscript = true ∧
+      approvalGroupClosedB weakTranscript = false := by
+  decide
+
+end ACSD

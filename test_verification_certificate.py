@@ -131,6 +131,16 @@ class TestVerificationCertificate(unittest.TestCase):
             ("KEY_ASSENT", "GOVERNANCE_ASSENT"),
         )
 
+    def test_extra_merkle_fact_is_not_silently_ignored(self):
+        certificate, certificate_digest = self.checked()
+        certificate["merkle_facts"].append(copy.deepcopy(certificate["merkle_facts"][0]))
+        self.assertEqual(
+            claim_derivation.wire_outcomes(
+                verification_transcript.derive(certificate, certificate_digest)
+            ),
+            ("KEY_ASSENT", "GOVERNANCE_ASSENT"),
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

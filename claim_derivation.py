@@ -70,6 +70,7 @@ class ApprovalSetSubject:
 class EventSubject:
     pec_digest: str
     event_id: str
+    event_sequence: int
     commitment_digest: str
     first_index: int
     last_index: int
@@ -79,6 +80,7 @@ class EventSubject:
         _require_digest(self.commitment_digest, "commitment_digest")
         if not isinstance(self.event_id, str) or not self.event_id:
             raise ValueError("INVALID_EVENT_ID")
+        _require_nonnegative(self.event_sequence, "event_sequence")
         _require_nonnegative(self.first_index, "first_index")
         _require_nonnegative(self.last_index, "last_index")
         if self.first_index > self.last_index:

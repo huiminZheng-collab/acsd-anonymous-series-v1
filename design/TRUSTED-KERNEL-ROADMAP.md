@@ -71,8 +71,10 @@ the frozen v3.1.0-rc1 package is intentionally untouched.
 
 Current status: `attempted`. Python and Node now emit identical canonical
 certificates for the two-author approval and event-window fixture, and the pure
-structural checker enforces signer/payload/input/Merkle closure. Identity,
-approval-set time, lineage, and the Lean transcript decoder remain open.
+structural checker enforces signer/payload/input/Merkle closure. Lean now has an
+independent transcript closure checker and a composed soundness theorem from a
+checked transcript group to a parameterized claim. Exact JSON-to-Lean decoding,
+identity, approval-set time, and lineage remain open.
 
 ### P1 — structural simplification
 

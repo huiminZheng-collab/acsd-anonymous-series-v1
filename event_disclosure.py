@@ -149,6 +149,7 @@ def verify_event_disclosure(
     subject = claim_core.EventSubject(
         accepted_pec_digest,
         event["event_id"],
+        event["sequence"],
         commitment["digest"],
         window[0]["index"],
         window[-1]["index"],

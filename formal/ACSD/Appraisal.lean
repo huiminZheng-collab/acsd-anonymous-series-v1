@@ -12,8 +12,8 @@ digests, and timestamp subjects are part of the claim itself. -/
 inductive ScopedSubject where
   | approvalTarget (target : Digest)
   | approvalSet (set : Digest)
-  | eventWindow (pec : Digest) (eventId : Nat) (commitment : Digest)
-      (firstIndex lastIndex : Nat)
+  | eventWindow (pec : Digest) (eventId eventSequence : Nat)
+      (commitment : Digest) (firstIndex lastIndex : Nat)
   | identityAssertion (release : Digest) (slot : Nat) (key : KeyId)
       (assertion : Digest)
   | registeredStatement (statement : Digest)
@@ -59,7 +59,7 @@ def evidenceSubjectB : EvidenceKind → ScopedSubject → Bool
   | .unanimousApproval, .approvalTarget _ => true
   | .approvalTargetTimestamp, .approvalTarget _ => true
   | .approvalSetTimestamp, .approvalSet _ => true
-  | .eventDisclosure, .eventWindow _ _ _ first last => decide (first ≤ last)
+  | .eventDisclosure, .eventWindow _ _ _ _ first last => decide (first ≤ last)
   | .identityDisclosure, .identityAssertion _ _ _ _ => true
   | .scittInclusion, .registeredStatement _ => true
   | _, _ => false
@@ -67,7 +67,7 @@ def evidenceSubjectB : EvidenceKind → ScopedSubject → Bool
 def claimSubjectB : ScopedClaim → ScopedSubject → Bool
   | .keyAssent, .approvalTarget _ => true
   | .governanceAssent, .approvalTarget _ => true
-  | .committedEvidenceMatch, .eventWindow _ _ _ first last => decide (first ≤ last)
+  | .committedEvidenceMatch, .eventWindow _ _ _ _ first last => decide (first ≤ last)
   | .slotKeyIdentityAssent, .identityAssertion _ _ _ _ => true
   | .approvalTargetExistedNotAfter, .approvalTarget _ => true
   | .approvalSetExistedNotAfter, .approvalSet _ => true

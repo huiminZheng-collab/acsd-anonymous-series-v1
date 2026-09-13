@@ -103,6 +103,7 @@ FILES = (
     "formal/ACSD/Lineage.lean",
     "formal/ACSD/ScopedClaims.lean",
     "formal/ACSD/Appraisal.lean",
+    "formal/ACSD/Transcript.lean",
     "formal/lake-manifest.json",
     "formal/lakefile.toml",
     "formal/lean-toolchain",

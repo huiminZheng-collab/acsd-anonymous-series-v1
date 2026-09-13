@@ -129,20 +129,21 @@ def appraised_evidence(certificate: dict, certificate_digest: str) -> Tuple[clai
     subject = claims.EventSubject(
         pec_digest,
         event["event_id"],
+        event["event_sequence"],
         _digest(event["commitment_digest"], "TRANSCRIPT_EVENT_COMMITMENT"),
         event["first_index"],
         event["last_index"],
     )
     merkle = certificate["merkle_facts"]
     _require(isinstance(merkle, list), "TRANSCRIPT_MERKLE_FACTS")
-    exact_merkle = [item for item in merkle if isinstance(item, dict) and item == {
+    expected_merkle = {
         "body_digest": body_digest,
         "commitment_digest": subject.commitment_digest,
         "first_index": subject.first_index,
         "last_index": subject.last_index,
         "opened_leaf_count": subject.last_index - subject.first_index + 1,
-    }]
-    if (len(exact_merkle) == 1 and
+    }
+    if (merkle == [expected_merkle] and
             _closed_signatures(
                 facts, "event-disclosure", event_keys, body_digest, input_digests
             )):

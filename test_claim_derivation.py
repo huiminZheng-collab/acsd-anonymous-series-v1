@@ -22,7 +22,7 @@ from claim_derivation import (
 DIGESTS = [format(index, "064x") for index in range(1, 12)]
 TARGET_SUBJECT = ApprovalTargetSubject(DIGESTS[0])
 SET_SUBJECT = ApprovalSetSubject(DIGESTS[1])
-EVENT_SUBJECT = EventSubject(DIGESTS[2], "event-1", DIGESTS[3], 2, 4)
+EVENT_SUBJECT = EventSubject(DIGESTS[2], "event-1", 0, DIGESTS[3], 2, 4)
 IDENTITY_SUBJECT = IdentitySubject(DIGESTS[4], 1, DIGESTS[5], DIGESTS[6])
 STATEMENT_SUBJECT = StatementSubject(DIGESTS[7])
 
@@ -127,7 +127,7 @@ class TestClaimDerivation(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "INVALID_TARGET_DIGEST"):
             ApprovalTargetSubject("not-a-digest")
         with self.assertRaisesRegex(ValueError, "INVALID_EVENT_WINDOW"):
-            EventSubject(DIGESTS[0], "event", DIGESTS[1], 4, 3)
+            EventSubject(DIGESTS[0], "event", 0, DIGESTS[1], 4, 3)
 
     def test_derivation_retains_exact_support_certificate(self):
         evidence = self.evidence(EvidenceKind.UNANIMOUS_APPROVAL)

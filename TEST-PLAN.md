@@ -96,6 +96,7 @@ and emit the same canonical transcript.
 | delete one author signature fact from an already issued transcript | transcript remains parseable | approval claims disappear; event claim remains |
 | delete one event signature fact | transcript remains parseable | event claim disappears; approval claims remain |
 | substitute the Merkle fact window | transcript remains parseable | exact event claim disappears |
+| append an extra Merkle fact | transcript remains parseable | event claim disappears; exact-set closure forbids ambiguity |
 
 The final three cases test dependency precision, not adapter authenticity: a
 standalone transcript is meaningful only when its exact digest is bound to the
@@ -113,6 +114,9 @@ raw adapter output being evaluated.
    resistance, unanimous-approval gating, external-time preconditions, and the
    correspondence between its executable appraisal checker and independent
    declarative rules over parameterized subjects.
+6. The Lean transcript checker must require exact signer projections and one
+   exact Merkle fact, and every accepted claim must have both transcript support
+   and an explicit appraisal rule.
 
 ## Out-of-scope tests for the deterministic local suite
 
