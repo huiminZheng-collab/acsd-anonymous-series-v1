@@ -1,6 +1,6 @@
 # Trusted-kernel roadmap
 
-Checked against the live source tree on 2026-09-13. This roadmap concerns
+Checked against the live source tree on 2026-09-14. This roadmap concerns
 the live source tree. Immutable `release-*` snapshots are evidence, not code to
 deduplicate in place.
 
@@ -105,8 +105,11 @@ Thirteen shared adverse mutations compare the facades' first error codes.
 `release_adapter.py` is the live pure projection, while `legacy_adapter.py`
 contains the v1 filesystem, Node subprocess, and metadata-only paths behind
 lazy compatibility wrappers. `cli_output.py` owns the six exit codes and both
-output formats. Only the larger item 4 command-orchestration split remains
-open; it should proceed only in behavior-corpus-sized slices.
+output formats. Item 4 is now partly implemented: `protocol_objects.py` owns
+all live schemas plus release/governance/PEC/target/lineage construction and
+binding checks, while `acsd.py` re-exports the previous names and has fallen
+from 1373 to about 1142 lines in this slice. Verification I/O orchestration and
+command handlers remain; they should move only in behavior-corpus-sized slices.
 
 No dependency-injection framework, plugin framework, event bus, database, or
 general policy language is planned. Those additions would enlarge the decision

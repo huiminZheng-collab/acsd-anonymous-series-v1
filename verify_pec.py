@@ -7,9 +7,9 @@ from cryptography.hazmat.primitives import serialization
 
 import cose
 import claim_derivation as claim_core
-from acsd import check_approval_target, check_bindings
 from canonical_json import canonical, digest
 from event_disclosure import verify_event_disclosure
+from protocol_objects import check_approval_target, check_bindings
 from release_adapter import adapt_release
 from verify_demo import verify_demo
 

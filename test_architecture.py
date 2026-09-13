@@ -9,6 +9,7 @@ import claim_derivation
 import legacy_adapter
 import lineage_verification_transcript
 import pec_core
+import protocol_objects
 import release_adapter
 import verification_transcript
 
@@ -54,6 +55,45 @@ class TestTrustedKernelArchitecture(unittest.TestCase):
             self.imported_roots(release_adapter),
             {"canonical_json"},
         )
+
+    def test_protocol_object_layer_has_no_io_crypto_or_cli_dependencies(self):
+        roots = self.imported_roots(protocol_objects)
+        self.assertEqual(
+            roots,
+            {
+                "bundle_validation",
+                "canonical_json",
+                "claim_derivation",
+                "hashlib",
+                "key_identity",
+                "release_adapter",
+                "uuid",
+            },
+        )
+        self.assertTrue(
+            {
+                "acsd",
+                "cose",
+                "cryptography",
+                "json",
+                "pathlib",
+                "subprocess",
+                "tsa",
+            }.isdisjoint(roots)
+        )
+        cli_source = (ROOT / "acsd.py").read_text(encoding="utf-8")
+        for name in (
+            "build_release",
+            "build_governance",
+            "build_pec",
+            "build_lineage_transition",
+            "build_approval_target",
+            "check_approval_target",
+            "check_bindings",
+            "lineage_authority_of",
+            "lineage_claim_subject",
+        ):
+            self.assertNotIn(f"def {name}(", cli_source)
 
     def test_legacy_io_is_confined_to_the_named_adapter(self):
         self.assertEqual(
@@ -151,11 +191,14 @@ class TestTrustedKernelArchitecture(unittest.TestCase):
                 self.assertIn("claim_derivation", source)
 
     def test_pec_facades_delegate_to_one_bundle_validator(self):
-        for name in ("acsd.py", "pec_core.py"):
+        for name in ("protocol_objects.py", "pec_core.py"):
             with self.subTest(module=name):
                 source = (ROOT / name).read_text(encoding="utf-8")
                 self.assertIn("validate_pec_bundle(", source)
                 self.assertNotIn("CLAIM_POLICY_DUPLICATE", source)
+        cli_source = (ROOT / "acsd.py").read_text(encoding="utf-8")
+        self.assertIn("from protocol_objects import (", cli_source)
+        self.assertNotIn("CLAIM_POLICY_DUPLICATE", cli_source)
 
     def test_production_code_does_not_append_grants_by_string(self):
         wire_claims = set(claim_derivation.WIRE_TO_CLAIM)

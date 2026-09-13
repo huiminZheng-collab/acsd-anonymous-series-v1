@@ -12,6 +12,14 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 import approval_set
 import cose
 from acsd import (
+    load_lineage_structure,
+    verify_lineage_authorization,
+    write_canonical,
+)
+from event_disclosure import key_id_of
+from package_manifest import write_manifest
+from canonical_json import canonical, digest
+from protocol_objects import (
     build_approval_target,
     build_governance,
     build_lineage_transition,
@@ -20,13 +28,7 @@ from acsd import (
     check_approval_target,
     check_bindings,
     lineage_authority_of,
-    load_lineage_structure,
-    verify_lineage_authorization,
-    write_canonical,
 )
-from event_disclosure import key_id_of
-from package_manifest import write_manifest
-from canonical_json import canonical, digest
 from release_adapter import adapt_release
 
 

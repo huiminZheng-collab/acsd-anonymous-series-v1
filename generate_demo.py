@@ -9,7 +9,6 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 import cose
 import approval_set
 import identity_disclosure
-from acsd import build_approval_target
 from canonical_json import canonical, digest
 from event_disclosure import DEFAULT_POLICY, key_id_of
 from package_manifest import write_manifest
@@ -18,6 +17,7 @@ from pec_core import (
     dialogue_root,
     validate_pec,
 )
+from protocol_objects import build_approval_target
 from release_adapter import adapt_release
 
 # Deterministic demo identity: a stable WorkID keeps the generated fixture

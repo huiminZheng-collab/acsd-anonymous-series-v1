@@ -16,6 +16,8 @@
 | Single production claim path | architecture gate plus release, time, event, identity, and demo adapters | PASS; no manual string grant append |
 | Single PEC/policy validation path | CLI and legacy facade delegate to `bundle_validation.py`; 13 common adverse mutations compare first error codes | PASS |
 | Single public-key identifier definition | CLI, event, identity, and certificate adapters import `key_identity.py` | PASS |
+| I/O-free protocol-object boundary | `protocol_objects.py` owns live schemas/builders/binding checks; `acsd.py` only re-exports the compatibility names | PASS; import-graph and identity tests |
+| Fresh nested defaults | separate builds cannot share mutable AI-use or contribution lists | PASS |
 | Confined legacy I/O and stable CLI output | architecture tests reject filesystem/subprocess imports in `pec_core.py`; `cli_output.py` owns exit codes and serialization | PASS |
 | Adapter transcript agreement | independent Python/Node adapters over exact approval, disclosure, key, and Merkle inputs | PASS; canonical certificate bytes identical |
 | Critical-evidence deletion | remove one author/event signature or substitute Merkle scope | PASS; only dependent claims disappear |

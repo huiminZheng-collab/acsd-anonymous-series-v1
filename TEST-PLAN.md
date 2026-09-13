@@ -180,6 +180,11 @@ raw adapter output being evaluated.
     confined to the named legacy adapter. Exit codes and human/JSON formatting
     must come from one application-independent output module and retain the
     published process contract.
+13. Release, governance, PEC, approval-target, and lineage object construction
+    and binding checks must remain in one I/O-free protocol-object layer. The
+    CLI may re-export old names but must not copy their implementations, and
+    independently built objects must not share mutable AI-use or contribution
+    lists.
 
 ## Out-of-scope tests for the deterministic local suite
 

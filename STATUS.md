@@ -51,13 +51,16 @@ work toward a later candidate, not a public deployment or venue submission.
   identifiers likewise each have one implementation;
 - a pure `release_adapter.py` projection used by the live application, an
   explicit `legacy_adapter.py` boundary containing all v1 filesystem/Node and
-  metadata-only paths, and a standalone `cli_output.py` process contract.
+  metadata-only paths, and a standalone `cli_output.py` process contract;
+- an I/O-free `protocol_objects.py` layer owning release, governance, PEC,
+  approval-target, and lineage schemas/builders/validators. `acsd.py` re-exports
+  the old public names while retaining only command and adapter orchestration.
 
 ## Acceptance evidence
 
 - Authoritative read-only gate: 23/23 source, package, installed-wheel,
   differential, formal, and workspace-byte-identity checks pass.
-- Python: 141 tests pass locally; the live TSA test and two unavailable Windows
+- Python: 144 tests pass locally; the live TSA test and two unavailable Windows
   capability cases are skipped.
 - Canonical JSON: 64 fixed vectors have no unexpected divergence; 1,000/1,000
   seeded generated cases agree between Python and Node on bytes and text-layer

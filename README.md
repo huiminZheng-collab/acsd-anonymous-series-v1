@@ -221,7 +221,7 @@ source-tree file hashes with its starting snapshot. It contains:
 
 - 23/23 source, package, installed-wheel, differential, formal, and byte-identity
   checks passing as one command;
-- 141 Python tests passing, with the live-network and two unavailable Windows
+- 144 Python tests passing, with the live-network and two unavailable Windows
   capability cases skipped locally;
 - 64 fixed Python-Node canonical-JSON vectors with no unexpected divergence;
 - 1,000 seeded generated differential cases with 1,000 byte and verdict
@@ -268,9 +268,10 @@ remain opt-in because CI must not depend on network availability.
 ## Repository map
 
 - `acsd.py`: command routing and application orchestration;
-- `canonical_json.py`, `bundle_validation.py`, `release_adapter.py`, and
-  `claim_derivation.py`: the restricted byte format, single pure PEC/policy
-  validator, release projection, and typed granting kernel respectively;
+- `canonical_json.py`, `bundle_validation.py`, `release_adapter.py`,
+  `protocol_objects.py`, and `claim_derivation.py`: the restricted byte format,
+  single pure PEC/policy validator, release projection, I/O-free protocol
+  object layer, and typed granting kernel respectively;
 - `key_identity.py`, `cose.py`, and `tsa.py`: shared key identity and
   cryptographic adapter boundaries;
 - `legacy_adapter.py`: the only v1 filesystem and optional Node-subprocess

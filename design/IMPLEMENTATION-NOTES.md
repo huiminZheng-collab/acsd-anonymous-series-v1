@@ -3,23 +3,26 @@
 > 任务 B 交付物。给 GPT/作者"实际编码"阶段的参考。判断基于 2026-09-12
 > 对 v2 release 与 v1 代码库的实际核验。
 
-## 0. 2026-09-13 已落地的简化
+## 0. 2026-09-14 已落地的简化
 
 早期建议的完整 `acsd/` 包拆分没有机械照搬；当前体量不需要十几个包内
-模块。实际落地的是六个安全边界清楚的平面模块：
+模块。实际落地的是七个安全边界清楚的平面模块：
 
 - `canonical_json.py`：唯一的受限 JSON 字节规范；
 - `bundle_validation.py`：唯一的 PEC、governance、事件链和 policy 验证；
 - `release_adapter.py`：无 I/O 的 release 到 PEC binding 投影；
+- `protocol_objects.py`：统一的 schema、对象构造和跨对象 binding 检查；
 - `legacy_adapter.py`：v1 文件、Node 子进程和旧元数据检查的隔离边界；
 - `key_identity.py`：唯一的公钥标识定义；
 - `cli_output.py`：唯一的 CLI 退出码和输出序列化定义。
 
 `acsd.check_bindings` 与 `pec_core.validate_pec` 保留为兼容入口，但不再各自
-实现安全规则。`acsd.py` 因此减少约 105 行，`pec_core.py` 减少约 112 行；
+实现安全规则。相对 1478 行的整理起点，`acsd.py` 已减少约 336 行至约
+1142 行；`pec_core.py` 减少约 112 行至约 105 行。
 新增模块的目的不是追求仓库总行数下降，而是让每条安全规则只有一个权威
-实现。审批集合的文件收集和纯集合验证也已经分开。当前剩余的大块工作是
-按行为语料逐步拆分 CLI 命令编排，不再为了目录形式机械拆包。
+实现。审批集合的文件收集和纯集合验证也已经分开。对象层现已从 CLI 中
+移出；当前剩余的大块工作是按行为语料逐步拆分验证 I/O 与命令编排，不再
+为了目录形式机械拆包。
 
 ## 1. 建议的 Python 包结构
 
@@ -54,6 +57,7 @@ tests/               # 与模块一一对应；M-* 矩阵全部落位
 | `verify_legacy_disclosure_metadata` / dialogue Merkle | `legacy_adapter.py` / `pec_core.py` | 旧元数据入口已隔离且仅用于兼容；授权性事件揭示走 `event_disclosure.py` |
 | `verify_sidecar_subject` | `pec_core.py` | 平移，作为 `tsa.py` 的 scope 前置检查 |
 | release projection / v1 standalone package | `release_adapter.py` / `legacy_adapter.py` | 活跃路径只用纯投影；旧公开名称由 `pec_core.py` 延迟转发 |
+| release/governance/PEC/target/lineage 对象 | `protocol_objects.py` | schema、构造和 binding 检查无文件/网络/密码学依赖；`acsd.py` 兼容导出旧名称 |
 | `verify_demo.py` / `verify_release.py` 的 manifest 逻辑 | 根目录 | 平移至 `package.py`，加 symlink 拒绝 |
 | 错误码与输出格式 | `canonical_json.require` / `cli_output.py` | 条件错误码与进程退出/序列化边界分别单一定义 |
 | v1 Node verifier `verify-standalone.cjs` | v1 代码库 | **打包进 release**（或 pin 版本+校验和），作为交叉验证第二实现 |

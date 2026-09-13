@@ -5,7 +5,8 @@ Commands: keygen / init / authorize / approve / finalize / release / revise /
 verify / inspect.
 
 Signing uses Ed25519 via `cryptography` and a minimal COSE Sign1 encoding
-(cose.py). The canonical/digest/binding core (pec_core) stays dependency-free.
+(`cose.py`). Canonical bytes, protocol objects, and claim derivation live in
+separate I/O-free modules.
 """
 from __future__ import annotations
 
@@ -37,13 +38,6 @@ import tsa  # noqa: E402
 import approval_set  # noqa: E402
 import claim_derivation as claim_core  # noqa: E402
 import identity_disclosure  # noqa: E402
-from bundle_validation import (  # noqa: E402
-    CURRENT_PEC_SCHEMA as PEC_SCHEMA,
-    GLOBAL_NON_CLAIMS,
-    GOVERNANCE_SCHEMA,
-    new_disclosure_policy,
-    validate_pec_bundle,
-)
 from acsd_version import __version__  # noqa: E402
 from canonical_json import canonical, digest, require  # noqa: E402
 from cli_output import (  # noqa: E402
@@ -63,21 +57,26 @@ from package_manifest import (  # noqa: E402
     payload_path,
     verify_manifest,
 )
+from protocol_objects import (  # noqa: E402
+    APPROVAL_TARGET_SCHEMA,
+    LEGACY_APPROVAL_TARGET_SCHEMA,
+    LEGACY_RELEASE_SCHEMA,
+    LINEAGE_AUTHORITY_SCHEMA,
+    LINEAGE_TRANSITION_SCHEMA,
+    PEC_SCHEMA,
+    RELEASE_SCHEMA,
+    TEAM_SCHEMA,
+    build_approval_target,
+    build_governance,
+    build_lineage_transition,
+    build_pec,
+    build_release,
+    check_approval_target,
+    check_bindings,
+    lineage_authority_of,
+    lineage_claim_subject,
+)
 from release_adapter import adapt_release  # noqa: E402
-
-TEAM_SCHEMA = "acsd-team/v1"
-RELEASE_SCHEMA = "acsd-v3-paper-release/v1"
-LEGACY_RELEASE_SCHEMA = "acsd-v1.6.0-paper-release/v1"
-APPROVAL_TARGET_SCHEMA = "acsd-approval-target/v2"
-LEGACY_APPROVAL_TARGET_SCHEMA = "acsd-approval-target/v1"
-LINEAGE_AUTHORITY_SCHEMA = "acsd-lineage-authority/v1"
-LINEAGE_TRANSITION_SCHEMA = "acsd-lineage-transition/v1"
-DEFAULT_AI_USE = {
-    "used": False,
-    "purposes": [],
-    "tools": [],
-    "human_review_key_ids": [],
-}
 
 # --- key helpers -----------------------------------------------------------
 
@@ -160,32 +159,6 @@ def check_release_key_paths(release):
         )
 
 
-def lineage_authority_of(release):
-    """Return and validate the authority controlling the next lineage edge.
-
-    Published v1/v2 releases did not carry an explicit authority object.  They
-    migrate conservatively: every listed author key is required.
-    """
-    author_keys = sorted(validate_key_id(a["key_id"]) for a in release.get("authors", []))
-    require(author_keys and len(author_keys) == len(set(author_keys)), "LINEAGE_AUTHORITY_INVALID")
-    authority = release.get("lineage_authority")
-    if authority is None:
-        return {
-            "schema": LINEAGE_AUTHORITY_SCHEMA,
-            "key_ids": author_keys,
-            "threshold": len(author_keys),
-        }
-    require(authority.get("schema") == LINEAGE_AUTHORITY_SCHEMA, "LINEAGE_AUTHORITY_INVALID")
-    keys = authority.get("key_ids")
-    threshold = authority.get("threshold")
-    require(keys == sorted(keys or []) and len(keys) == len(set(keys or [])), "LINEAGE_AUTHORITY_INVALID")
-    require(all(isinstance(key, str) and KEY_ID_RE.fullmatch(key) for key in keys), "KEY_ID_INVALID")
-    require(keys == author_keys, "LINEAGE_AUTHORITY_KEY_SET_MISMATCH")
-    require(isinstance(threshold, int) and not isinstance(threshold, bool), "LINEAGE_THRESHOLD_INVALID")
-    require(1 <= threshold <= len(keys), "LINEAGE_THRESHOLD_INVALID")
-    return authority
-
-
 # --- canonical read --------------------------------------------------------
 
 
@@ -206,7 +179,7 @@ def write_canonical(path: pathlib.Path, obj):
     path.write_bytes(canonical(obj) + b"\n")
 
 
-# --- object builders -------------------------------------------------------
+# --- team input ------------------------------------------------------------
 
 
 def load_team(path):
@@ -224,210 +197,6 @@ def load_team(path):
     key_ids = [a["key_id"] for a in authors]
     require(len(set(key_ids)) == len(key_ids), "TEAM_DUPLICATE_KEY")
     return team
-
-
-def build_release(work_id, content_sha256, content_path, team, *, parent_release=None,
-                  line="main", lineage_threshold=None):
-    corresponding_key = next(
-        (a["key_id"] for a in team["authors"] if a.get("corresponding")),
-        team["authors"][0]["key_id"],
-    )
-    authors = []
-    for i, a in enumerate(team["authors"], 1):
-        authors.append({
-            "slot": i,
-            "key_id": a["key_id"],
-            "role": a.get("role", "co-first"),
-            "corresponding": a["key_id"] == corresponding_key,
-            "contributions": a.get("contributions", []),
-            "issuer": a.get("issuer", f"urn:acsd:pseudonym:{a['key_id'][:12]}"),
-            "kid_hex": a["key_id"][:16],
-            "public_key_path": f"public-keys/{a['key_id']}.pub",
-        })
-    key_ids = sorted(a["key_id"] for a in team["authors"])
-    threshold = len(key_ids) if lineage_threshold is None else lineage_threshold
-    require(isinstance(threshold, int) and not isinstance(threshold, bool), "LINEAGE_THRESHOLD_INVALID")
-    require(1 <= threshold <= len(key_ids), "LINEAGE_THRESHOLD_INVALID")
-    if parent_release is None:
-        version = 1
-        parent_release_id = None
-    else:
-        parent_slot = parent_release["slot"]
-        version = parent_slot["version"] + 1 if line == parent_slot["line"] else 1
-        parent_release_id = "urn:sha256:" + digest(parent_release)
-    release = {
-        "schema": RELEASE_SCHEMA,
-        "work_id": work_id,
-        "slot": {"line": line, "version": version, "work_id": work_id},
-        "content": {"path": content_path, "sha256": content_sha256},
-        "authors": authors,
-        "lineage_authority": {
-            "schema": LINEAGE_AUTHORITY_SCHEMA,
-            "key_ids": key_ids,
-            "threshold": threshold,
-        },
-        "citation_witnesses": [],
-        "reference_work_ids": [],
-        "ai_use": dict(DEFAULT_AI_USE),
-        "parent_release_id": parent_release_id,
-        "issued_at": 0,
-        "standalone_semantics": (
-            "Every listed author key endorses this exact release payload; "
-            "series membership is optional."
-        ),
-    }
-    lineage_authority_of(release)
-    return release
-
-
-def build_governance(work_id, content_sha256, team):
-    byline = [
-        {"key_id": a["key_id"], "slot": i, "role": a.get("role", "co-first")}
-        for i, a in enumerate(team["authors"], 1)
-    ]
-    corresponding = next(
-        (a["key_id"] for a in team["authors"] if a.get("corresponding")),
-        team["authors"][0]["key_id"],
-    )
-    return {
-        "schema": GOVERNANCE_SCHEMA,
-        "work_id": work_id,
-        "manuscript_sha256": content_sha256,
-        "byline": byline,
-        "corresponding_author": {"key_id": corresponding},
-        "ai_use_declaration": dict(DEFAULT_AI_USE),
-    }
-
-
-def build_pec(work_id, adapted, gov_digest, content_sha256, ai_digest, key_ids,
-              predecessor_pec=None):
-    return {
-        "schema": PEC_SCHEMA,
-        "pec_id": "pec-" + uuid.uuid4().hex[:8],
-        "subject": {
-            "work_id": work_id,
-            "release_digest": adapted["digest"],
-            "version": f"v{adapted['version']}",
-            "line": adapted["line"],
-            "predecessor_pec_digest": digest(predecessor_pec) if predecessor_pec is not None else None,
-            "series_package_digest": None,
-        },
-        "governance": {
-            "statement_digest": gov_digest,
-            "manuscript_sha256": content_sha256,
-            "required_pec_approval_key_ids": sorted(key_ids),
-            "ai_use_declaration_digest": ai_digest,
-        },
-        "events": [],
-        "disclosure_policy": new_disclosure_policy(),
-        "claim_policy": {
-            "permitted_outcomes": [
-                "KEY_ASSENT",
-                "GOVERNANCE_ASSENT",
-                "APPROVAL_SET_EXISTED_NOT_AFTER",
-                "AUTHORIZED_SUCCESSOR",
-            ],
-            "global_non_claims": list(GLOBAL_NON_CLAIMS),
-            "required_capabilities": {
-                "APPROVAL_SET_EXISTED_NOT_AFTER": [
-                    "rfc3161-exact-approval-set-imprint"
-                ],
-                "AUTHORIZED_SUCCESSOR": [
-                    "predecessor-authority-exact-transition"
-                ],
-            },
-        },
-        "issuer_key_id": key_ids[0],
-    }
-
-
-def build_lineage_transition(parent_release, parent_pec, release, governance, pec):
-    """Build the acyclic parent-to-child authorization body.
-
-    Old-authority signatures cover this body.  New-author approvals cover an
-    approval target which includes this body's digest, avoiding a hash cycle.
-    """
-    parent = adapt_release(parent_release)
-    child = adapt_release(release)
-    parent_authority = lineage_authority_of(parent_release)
-    child_authority = lineage_authority_of(release)
-    if parent["line"] != child["line"]:
-        kind = "branch"
-    elif parent_authority["key_ids"] != child_authority["key_ids"]:
-        kind = "team-change"
-    elif parent_authority["threshold"] != child_authority["threshold"]:
-        kind = "threshold-change"
-    else:
-        kind = "continuation"
-    return {
-        "schema": LINEAGE_TRANSITION_SCHEMA,
-        "kind": kind,
-        "work_id": child["work_id"],
-        "parent": {
-            "release_digest": parent["digest"],
-            "pec_digest": digest(parent_pec),
-            "line": parent["line"],
-            "version": parent["version"],
-            "authority": parent_authority,
-        },
-        "child": {
-            "release_digest": child["digest"],
-            "governance_digest": digest(governance),
-            "pec_digest": digest(pec),
-            "line": child["line"],
-            "version": child["version"],
-            "authority": child_authority,
-        },
-    }
-
-
-def build_approval_target(release, governance, pec, lineage_transition=None):
-    """Build the acyclic object jointly signed by every author key."""
-    return {
-        "schema": APPROVAL_TARGET_SCHEMA,
-        "work_id": release["work_id"],
-        "release_digest": digest(release),
-        "governance_digest": digest(governance),
-        "pec_digest": digest(pec),
-        "required_key_ids": sorted(a["key_id"] for a in release["authors"]),
-        "lineage_transition_digest": (
-            digest(lineage_transition) if lineage_transition is not None else None
-        ),
-    }
-
-
-def check_approval_target(target, release, governance, pec, adapted, lineage_transition=None):
-    schema = target.get("schema")
-    require(schema in {APPROVAL_TARGET_SCHEMA, LEGACY_APPROVAL_TARGET_SCHEMA}, "APPROVAL_TARGET_SCHEMA")
-    require(
-        schema != LEGACY_APPROVAL_TARGET_SCHEMA or lineage_transition is None,
-        "APPROVAL_TARGET_SCHEMA",
-    )
-    require(target.get("work_id") == adapted["work_id"], "APPROVAL_TARGET_BINDING_MISMATCH")
-    require(target.get("release_digest") == adapted["digest"], "APPROVAL_TARGET_BINDING_MISMATCH")
-    require(target.get("governance_digest") == digest(governance), "APPROVAL_TARGET_BINDING_MISMATCH")
-    require(target.get("pec_digest") == digest(pec), "APPROVAL_TARGET_BINDING_MISMATCH")
-    require(
-        target.get("required_key_ids") == sorted(adapted["author_key_ids"]),
-        "APPROVAL_TARGET_BINDING_MISMATCH",
-    )
-    require(
-        target.get("lineage_transition_digest") == (
-            digest(lineage_transition) if lineage_transition is not None else None
-        ),
-        "APPROVAL_TARGET_BINDING_MISMATCH",
-    )
-
-
-def check_bindings(pec, adapted, governance, release=None):
-    return validate_pec_bundle(
-        pec,
-        adapted,
-        digest(governance),
-        governance=governance,
-        release=release,
-        require_slot_bindings=True,
-    )
 
 
 def load_lineage_structure(root, release, governance, pec):
@@ -499,26 +268,6 @@ def verify_lineage_authorization(root, lineage, valid_child_approvals):
         valid.append(kid)
     require(len(valid) >= old["threshold"], "UNAUTHORIZED_SUCCESSOR")
     return {"status": "AUTHORIZED_TRANSITION", "required": old["threshold"], "valid": valid}
-
-
-def lineage_claim_subject(lineage):
-    """Project one validated exact transition into the typed claim subject."""
-    transition = lineage["transition"]
-    parent = transition["parent"]
-    child = transition["child"]
-    text_digest = lambda value: hashlib.sha256(value.encode("utf-8")).hexdigest()
-    return claim_core.LineageSubject(
-        text_digest(transition["work_id"]),
-        parent["release_digest"],
-        parent["pec_digest"],
-        text_digest(parent["line"]),
-        parent["version"],
-        child["release_digest"],
-        child["pec_digest"],
-        text_digest(child["line"]),
-        child["version"],
-        digest(transition),
-    )
 
 
 def manifest_entries(root: pathlib.Path) -> str:
