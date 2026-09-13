@@ -17,6 +17,7 @@
 | Adapter transcript agreement | independent Python/Node adapters over exact approval, disclosure, key, and Merkle inputs | PASS; canonical certificate bytes identical |
 | Critical-evidence deletion | remove one author/event signature or substitute Merkle scope | PASS; only dependent claims disappear |
 | Transcript-to-appraisal formal bridge | Lean executable closure checks plus independent support/appraisal relations | PASS; composed soundness theorem and weak-rule counterexample |
+| Canonical transcript to Lean refinement | strict Lean JSON decoder plus complete scoped-derivation differential | PASS; 16/16 positive/adverse cases agree |
 | Dialogue Merkle commitment | `dialogue_root`, `dialogue_proof`, `verify_dialogue_window` | PASS |
 | Selective contiguous dialogue opening | `test_dialogue_merkle.py`, `test_demo.py` | PASS |
 | External sidecar subject/capability binding | `verify_sidecar_subject`, `test_sidecar.py` | PASS |
@@ -26,8 +27,10 @@
 | Independent one-command gate | `run_all.ps1`, `run_all.sh` | PASS; reports formal status explicitly |
 | Lean formal compilation | PEC, lineage, scoped-claim, and parameterized appraisal modules; pinned 4.33.1 project | PASS |
 
-The formal row contains 59 PEC/composition/lineage/scoped-appraisal/transcript
-theorems; the explicit axiom audit checks 27 central boundary theorems. It does not claim parser
-refinement, cryptographic security, or natural-person truth. The separately
+The formal row contains 61 PEC/composition/lineage/scoped-appraisal/transcript
+theorems; the explicit axiom audit checks 29 central boundary theorems. It proves
+soundness after strict decoding and empirically checks the restricted JSON
+projection; it does not claim cryptographic implementation correctness or
+natural-person truth. The separately
 published v1 formal core's 53 release/team/series theorems are not recounted as
 new v3 theorems.

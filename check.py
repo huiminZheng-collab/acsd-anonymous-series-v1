@@ -132,6 +132,15 @@ def _formal_checks(checks, temp, env):
     if lake.parent.name == "bin" and lake.parent.parent.name == ".elan":
         lean_env.setdefault("ELAN_HOME", str(lake.parent.parent))
     checks.append(_run("lean-build", [str(lake), "build"], cwd=formal_copy, env=lean_env))
+    checker = formal_copy / ".lake" / "build" / "bin" / (
+        "acsd-transcript-checker.exe" if os.name == "nt" else "acsd-transcript-checker"
+    )
+    checks.append(_run(
+        "lean-transcript-differential",
+        [sys.executable, str(ROOT / "design/lean_transcript_diff.py"),
+         "--checker", str(checker)],
+        cwd=ROOT, env=lean_env,
+    ))
     checks.append(_run(
         "lean-axiom-audit", [str(lake), "env", "lean", "AxiomAudit.lean"],
         cwd=formal_copy, env=lean_env,

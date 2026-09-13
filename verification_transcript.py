@@ -15,7 +15,12 @@ import claim_derivation as claims
 
 
 HEX64 = re.compile(r"[0-9a-f]{64}")
+MAX_SAFE_INTEGER = 9_007_199_254_740_991
 SCHEMA = "acsd-verification-certificate/v1"
+INPUT_ROLES = {
+    "approval-target", "pec", "event-disclosure", "public-key",
+    "author-approval-cose", "event-disclosure-cose",
+}
 TOP_FIELDS = {
     "schema", "inputs", "approval_target", "policy", "event_disclosure",
     "signature_facts", "merkle_facts", "identity_assertions",
@@ -33,9 +38,19 @@ def _digest(value, code):
     return value
 
 
+def _nat(value, code):
+    _require(
+        isinstance(value, int) and not isinstance(value, bool)
+        and 0 <= value <= MAX_SAFE_INTEGER,
+        code,
+    )
+    return value
+
+
 def _keys(value, code):
     _require(
         isinstance(value, list)
+        and bool(value)
         and all(isinstance(item, str) and HEX64.fullmatch(item) for item in value)
         and value == sorted(set(value)),
         code,
@@ -51,12 +66,16 @@ def _input_digests(certificate):
     for item in inputs:
         _require(isinstance(item, dict) and set(item) == {"role", "path", "sha256"},
                  "TRANSCRIPT_INPUT")
-        _require(isinstance(item["role"], str) and item["role"], "TRANSCRIPT_INPUT")
+        _require(item["role"] in INPUT_ROLES, "TRANSCRIPT_INPUT_ROLE")
         _require(isinstance(item["path"], str) and item["path"], "TRANSCRIPT_INPUT")
         digest = _digest(item["sha256"], "TRANSCRIPT_INPUT")
         paths.append(item["path"])
-        by_role.setdefault(item["role"], set()).add(digest)
+        by_role.setdefault(item["role"], []).append(digest)
     _require(len(paths) == len(set(paths)), "TRANSCRIPT_DUPLICATE_INPUT")
+    _require(
+        inputs == sorted(inputs, key=lambda item: (item["path"], item["role"])),
+        "TRANSCRIPT_INPUT_ORDER",
+    )
     return by_role
 
 
@@ -65,10 +84,12 @@ def _closed_signatures(facts, purpose, required, payload, input_digests):
     if [item["key_id"] for item in selected] != required:
         return False
     input_role = purpose + "-cose"
-    available = input_digests.get(input_role, set())
-    return all(
-        item["payload_digest"] == payload and item["cose_digest"] in available
-        for item in selected
+    available = input_digests.get(input_role, [])
+    selected_cose = [item["cose_digest"] for item in selected]
+    return (
+        len(available) == len(set(available))
+        and selected_cose == available
+        and all(item["payload_digest"] == payload for item in selected)
     )
 
 
@@ -106,7 +127,10 @@ def appraised_evidence(certificate: dict, certificate_digest: str) -> Tuple[clai
         _digest(item["key_id"], "TRANSCRIPT_SIGNATURE_KEY")
         _digest(item["payload_digest"], "TRANSCRIPT_SIGNATURE_PAYLOAD")
         _digest(item["cose_digest"], "TRANSCRIPT_SIGNATURE_COSE")
-    facts = sorted(facts, key=lambda item: (item["purpose"], item["key_id"]))
+    _require(
+        facts == sorted(facts, key=lambda item: (item["purpose"], item["key_id"])),
+        "TRANSCRIPT_SIGNATURE_ORDER",
+    )
 
     evidence = []
     if _closed_signatures(
@@ -126,13 +150,15 @@ def appraised_evidence(certificate: dict, certificate_digest: str) -> Tuple[clai
     body_digest = _digest(event["body_digest"], "TRANSCRIPT_EVENT_BODY")
     _require(event["pec_digest"] == pec_digest, "TRANSCRIPT_EVENT_PEC")
     event_keys = _keys(event["required_key_ids"], "TRANSCRIPT_EVENT_KEYS")
+    event_id = event["event_id"]
+    _require(isinstance(event_id, str) and bool(event_id), "TRANSCRIPT_EVENT_ID")
     subject = claims.EventSubject(
         pec_digest,
-        event["event_id"],
-        event["event_sequence"],
+        event_id,
+        _nat(event["event_sequence"], "TRANSCRIPT_EVENT_SEQUENCE"),
         _digest(event["commitment_digest"], "TRANSCRIPT_EVENT_COMMITMENT"),
-        event["first_index"],
-        event["last_index"],
+        _nat(event["first_index"], "TRANSCRIPT_EVENT_FIRST_INDEX"),
+        _nat(event["last_index"], "TRANSCRIPT_EVENT_LAST_INDEX"),
     )
     merkle = certificate["merkle_facts"]
     _require(isinstance(merkle, list), "TRANSCRIPT_MERKLE_FACTS")
@@ -143,6 +169,14 @@ def appraised_evidence(certificate: dict, certificate_digest: str) -> Tuple[clai
         "last_index": subject.last_index,
         "opened_leaf_count": subject.last_index - subject.first_index + 1,
     }
+    for item in merkle:
+        _require(isinstance(item, dict) and set(item) == set(expected_merkle),
+                 "TRANSCRIPT_MERKLE_FACT")
+        _digest(item["body_digest"], "TRANSCRIPT_MERKLE_BODY")
+        _digest(item["commitment_digest"], "TRANSCRIPT_MERKLE_COMMITMENT")
+        _nat(item["first_index"], "TRANSCRIPT_MERKLE_FIRST_INDEX")
+        _nat(item["last_index"], "TRANSCRIPT_MERKLE_LAST_INDEX")
+        _nat(item["opened_leaf_count"], "TRANSCRIPT_MERKLE_LEAF_COUNT")
     if (merkle == [expected_merkle] and
             _closed_signatures(
                 facts, "event-disclosure", event_keys, body_digest, input_digests
@@ -154,7 +188,7 @@ def appraised_evidence(certificate: dict, certificate_digest: str) -> Tuple[clai
         ))
 
     for name in ("identity_assertions", "timestamp_facts", "trusted_inputs"):
-        _require(isinstance(certificate[name], list), "TRANSCRIPT_EXTENSION_FIELD")
+        _require(certificate[name] == [], "TRANSCRIPT_UNSUPPORTED_EXTENSION")
     return tuple(evidence)
 
 

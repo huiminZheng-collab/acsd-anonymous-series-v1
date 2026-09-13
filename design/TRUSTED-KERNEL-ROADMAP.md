@@ -1,6 +1,6 @@
 # Trusted-kernel roadmap
 
-Checked against source commit `932425c` on 2026-09-13. This roadmap concerns
+Checked against the live source tree on 2026-09-13. This roadmap concerns
 the live source tree. Immutable `release-*` snapshots are evidence, not code to
 deduplicate in place.
 
@@ -71,10 +71,13 @@ the frozen v3.1.0-rc1 package is intentionally untouched.
 
 Current status: `attempted`. Python and Node now emit identical canonical
 certificates for the two-author approval and event-window fixture, and the pure
-structural checker enforces signer/payload/input/Merkle closure. Lean now has an
-independent transcript closure checker and a composed soundness theorem from a
-checked transcript group to a parameterized claim. Exact JSON-to-Lean decoding,
-identity, approval-set time, and lineage remain open.
+structural checker enforces signer/payload/input/Merkle closure. Lean now
+strictly decodes that restricted canonical JSON, retains separate approval,
+event, and policy scopes plus COSE input digests, and has a composed soundness
+theorem from a decoded closed transcript group to a parameterized claim.
+Complete Python/Lean derivations agree on 16/16 cases. Identity,
+approval-set time, lineage, and cryptographic implementation refinement remain
+open.
 
 ### P1 — structural simplification
 
@@ -126,13 +129,13 @@ checks should the project describe itself as cross-domain.
 | Continue adding independent verifier-specific grants | Existing paths had manual string grants and vocabulary drift | None; this directly violates the single-kernel objective | ruled out |
 | Typed exact-subject unary kernel | ACSD evidence families already have distinct safe unary claims | Production integration and full matrix | attempted |
 | General-purpose recursive trust language | Mature systems such as SecPAL and RATS already occupy this space | No ACSD requirement justifies the complexity | ruled out for P0 |
-| Finite multi-premise rules with proof certificates | Needed for quorum and a real second-domain instance | Approval/event transcript and pure checker now exist; Lean refinement and second adapter remain | attempted |
+| Finite multi-premise rules with proof certificates | Needed for quorum and a real second-domain instance | Approval/event JSON-to-Lean refinement exists; identity/time/lineage and a second domain remain | attempted |
 | Full parser/crypto verification in Lean | Would maximize assurance but dominates current project cost | First establish a narrow transcript and refinement boundary | unexplored P2 |
 
 ## Smallest next experiment
 
-Use one two-author release containing one approval-set timestamp, one dialogue
-window, one identity sidecar, and one authorized lineage edge. Python and Node
+Extend one two-author release with one approval-set timestamp, one identity
+sidecar, and one authorized lineage edge. Python and Node
 must emit byte-identical verification transcripts; Lean must emit the same
 parameterized claims. Removing any single required support digest must remove
 the corresponding exact claim. This is an empirical/refinement check; the Lean

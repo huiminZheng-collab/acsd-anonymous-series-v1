@@ -12,7 +12,7 @@ digests, and timestamp subjects are part of the claim itself. -/
 inductive ScopedSubject where
   | approvalTarget (target : Digest)
   | approvalSet (set : Digest)
-  | eventWindow (pec : Digest) (eventId eventSequence : Nat)
+  | eventWindow (pec : Digest) (eventId : String) (eventSequence : Nat)
       (commitment : Digest) (firstIndex lastIndex : Nat)
   | identityAssertion (release : Digest) (slot : Nat) (key : KeyId)
       (assertion : Digest)

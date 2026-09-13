@@ -44,7 +44,7 @@ work toward a later candidate, not a public deployment or venue submission.
 
 ## Acceptance evidence
 
-- Python: 109 tests pass locally; the live TSA test and two unavailable Windows
+- Python: 113 tests pass locally; the live TSA test and two unavailable Windows
   capability cases are skipped.
 - Canonical JSON: 64 fixed vectors have no unexpected divergence; 1,000/1,000
   seeded generated cases agree between Python and Node on bytes and text-layer
@@ -62,7 +62,10 @@ work toward a later candidate, not a public deployment or venue submission.
   certificates for the two-author approval/event fixture; corrupt or missing
   COSE produces no certificate, and deleting one fact removes only its dependent
   claims in the pure checker.
-- Lean 4.33.1: build succeeds; 59 PEC/lineage/scoped-appraisal/transcript
+- JSON-to-Lean refinement: Lean directly and strictly decodes the canonical v1
+  certificate and independently emits the same complete scoped derivations as
+  Python in 16/16 positive and adverse cases.
+- Lean 4.33.1: build succeeds; 61 PEC/lineage/scoped-appraisal/transcript
   theorems; no
   `sorry` or `admit` in the formal sources. The separately published v1 core's
   53 release/team/series theorems remain a distinct inherited model and are not
@@ -99,8 +102,9 @@ append-component support, target/set separation, and absence of a natural-person
 identity rule. Adapter correctness is still an explicit boundary assumption.
 
 The transcript layer independently checks exact author/event signature
-projections, signer-set uniqueness, event sequence, window bounds, and one
-exact Merkle fact before constructing appraisal atoms. Its composed soundness
+projections, nonempty signer sets, COSE-input closure, three-way PEC scope,
+event sequence, window bounds, and one exact Merkle fact before constructing
+appraisal atoms. Its composed soundness
 theorem traces every accepted claim to both a closed transcript group and an
 explicit appraisal rule. A concrete two-key countermodel proves that the weak
 "any approval signature" rule accepts a missing signer while closure rejects it.
@@ -116,6 +120,5 @@ explicit appraisal rule. A concrete two-key countermodel proves that the weak
 - deployed transparency/gossip services and cross-series federation.
 - precommitted recovery authorities or hardware-backed recovery workflows;
   without one, loss of the predecessor threshold safely freezes the lineage.
-- connect exact JSON transcript bytes to the new Lean transcript structure,
-  then extend the approval/event profile to identity, approval-set time, and
-  lineage.
+- extend the now-connected JSON/Lean approval-event profile to identity,
+  approval-set time, and lineage without weakening the closed v1 schema.

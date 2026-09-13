@@ -31,17 +31,20 @@ structure TranscriptMerkle where
 
 structure VerificationTranscript where
   targetDigest : Digest
-  pecDigest : Digest
+  approvalPecDigest : Digest
+  eventPecDigest : Digest
   policyPecDigest : Digest
   policyClaims : List ScopedClaim
   approvalKeys : List KeyId
+  approvalCoseDigests : List Digest
   eventBodyDigest : Digest
-  eventId : Nat
+  eventId : String
   eventSequence : Nat
   eventCommitmentDigest : Digest
   eventFirstIndex : Nat
   eventLastIndex : Nat
   eventKeys : List KeyId
+  eventCoseDigests : List Digest
   signatures : List TranscriptSignature
   merkleFacts : List TranscriptMerkle
   deriving DecidableEq, Repr
@@ -56,15 +59,26 @@ def expectedSignatures (keys : List KeyId) (payload : Digest) :
     List (KeyId × Digest) := keys.map fun key => (key, payload)
 
 def ApprovalGroupClosed (transcript : VerificationTranscript) : Prop :=
+  transcript.approvalKeys ≠ [] ∧
   transcript.approvalKeys.Nodup ∧
   signatureProjection .authorApproval transcript.signatures =
-    expectedSignatures transcript.approvalKeys transcript.targetDigest
+    expectedSignatures transcript.approvalKeys transcript.targetDigest ∧
+  transcript.approvalCoseDigests.Nodup ∧
+  (transcript.signatures.filter fun item =>
+      decide (item.purpose = .authorApproval)).map (·.coseDigest) =
+    transcript.approvalCoseDigests
 
 def approvalGroupClosedB (transcript : VerificationTranscript) : Bool :=
+  decide (transcript.approvalKeys ≠ []) &&
   decide (transcript.approvalKeys.Nodup) &&
   decide (
     signatureProjection .authorApproval transcript.signatures =
-      expectedSignatures transcript.approvalKeys transcript.targetDigest)
+      expectedSignatures transcript.approvalKeys transcript.targetDigest) &&
+  decide (transcript.approvalCoseDigests.Nodup) &&
+  decide (
+    (transcript.signatures.filter fun item =>
+        decide (item.purpose = .authorApproval)).map (·.coseDigest) =
+      transcript.approvalCoseDigests)
 
 def expectedMerkle (transcript : VerificationTranscript) : TranscriptMerkle := {
   bodyDigest := transcript.eventBodyDigest
@@ -75,23 +89,36 @@ def expectedMerkle (transcript : VerificationTranscript) : TranscriptMerkle := {
 }
 
 def EventGroupClosed (transcript : VerificationTranscript) : Prop :=
+  transcript.eventPecDigest = transcript.approvalPecDigest ∧
+  transcript.eventKeys ≠ [] ∧
   transcript.eventKeys.Nodup ∧
   transcript.eventFirstIndex ≤ transcript.eventLastIndex ∧
   signatureProjection .eventDisclosure transcript.signatures =
     expectedSignatures transcript.eventKeys transcript.eventBodyDigest ∧
+  transcript.eventCoseDigests.Nodup ∧
+  (transcript.signatures.filter fun item =>
+      decide (item.purpose = .eventDisclosure)).map (·.coseDigest) =
+    transcript.eventCoseDigests ∧
   transcript.merkleFacts = [expectedMerkle transcript]
 
 def eventGroupClosedB (transcript : VerificationTranscript) : Bool :=
+  decide (transcript.eventPecDigest = transcript.approvalPecDigest) &&
+  decide (transcript.eventKeys ≠ []) &&
   decide (transcript.eventKeys.Nodup) &&
   decide (transcript.eventFirstIndex ≤ transcript.eventLastIndex) &&
   decide (
     signatureProjection .eventDisclosure transcript.signatures =
       expectedSignatures transcript.eventKeys transcript.eventBodyDigest) &&
+  decide (transcript.eventCoseDigests.Nodup) &&
+  decide (
+    (transcript.signatures.filter fun item =>
+        decide (item.purpose = .eventDisclosure)).map (·.coseDigest) =
+      transcript.eventCoseDigests) &&
   decide (transcript.merkleFacts = [expectedMerkle transcript])
 
 theorem approvalGroupClosedB_iff (transcript : VerificationTranscript) :
     approvalGroupClosedB transcript = true ↔ ApprovalGroupClosed transcript := by
-  simp [approvalGroupClosedB, ApprovalGroupClosed]
+  simp [approvalGroupClosedB, ApprovalGroupClosed, and_assoc]
 
 theorem eventGroupClosedB_iff (transcript : VerificationTranscript) :
     eventGroupClosedB transcript = true ↔ EventGroupClosed transcript := by
@@ -110,7 +137,7 @@ def eventTranscriptAtom
     AppraisedAtom := {
   kind := .eventDisclosure
   subject := .eventWindow
-    transcript.pecDigest transcript.eventId transcript.eventSequence
+    transcript.eventPecDigest transcript.eventId transcript.eventSequence
     transcript.eventCommitmentDigest transcript.eventFirstIndex
     transcript.eventLastIndex
   certificateDigest := certificate
@@ -137,10 +164,12 @@ def transcriptAtoms
   (checkEventGroup transcript certificate).toList
 
 def TranscriptPolicyBound (transcript : VerificationTranscript) : Prop :=
-  transcript.policyPecDigest = transcript.pecDigest
+  transcript.policyPecDigest = transcript.approvalPecDigest ∧
+  transcript.eventPecDigest = transcript.approvalPecDigest
 
 def transcriptPolicyBoundB (transcript : VerificationTranscript) : Bool :=
-  decide (transcript.policyPecDigest = transcript.pecDigest)
+  decide (transcript.policyPecDigest = transcript.approvalPecDigest) &&
+  decide (transcript.eventPecDigest = transcript.approvalPecDigest)
 
 def transcriptPolicy (transcript : VerificationTranscript) : AppraisalPolicy := {
   permittedClaims := transcript.policyClaims
@@ -157,6 +186,27 @@ theorem transcriptPolicyBoundB_iff (transcript : VerificationTranscript) :
     transcriptPolicyBoundB transcript = true ↔
       TranscriptPolicyBound transcript := by
   simp [transcriptPolicyBoundB, TranscriptPolicyBound]
+
+def transcriptRequests (transcript : VerificationTranscript) :
+    List AppraisalRequest := [{
+      kind := .keyAssent
+      subject := .approvalTarget transcript.targetDigest
+    }, {
+      kind := .governanceAssent
+      subject := .approvalTarget transcript.targetDigest
+    }, {
+      kind := .committedEvidenceMatch
+      subject := .eventWindow
+        transcript.eventPecDigest transcript.eventId transcript.eventSequence
+        transcript.eventCommitmentDigest transcript.eventFirstIndex
+        transcript.eventLastIndex
+    }]
+
+def transcriptClaims
+    (transcript : VerificationTranscript) (certificate : Digest) :
+    List AppraisalRequest :=
+  (transcriptRequests transcript).filter fun request =>
+    transcriptCheckClaim transcript certificate request
 
 inductive TranscriptSupports
     (transcript : VerificationTranscript) (certificate : Digest) :
@@ -240,6 +290,19 @@ theorem transcript_checkClaim_sound
   exact ⟨transcriptPolicyBoundB_iff transcript |>.mp parts.1,
     transcript_atoms_checkClaim_sound parts.2⟩
 
+theorem transcriptClaims_sound
+    {transcript : VerificationTranscript} {certificate : Digest}
+    {request : AppraisalRequest}
+    (member : request ∈ transcriptClaims transcript certificate) :
+    TranscriptPolicyBound transcript ∧
+    ∃ atom,
+      TranscriptSupports transcript certificate atom ∧
+      atom.subject = request.subject ∧ AppraisalRule atom.kind request.kind := by
+  have accepted :
+      transcriptCheckClaim transcript certificate request = true :=
+    (List.mem_filter.mp member).2
+  exact transcript_checkClaim_sound accepted
+
 /-! A concrete countermodel for the tempting weak rule “one approval signature
 is enough”. The predecessor-selected two-key set is not closed. -/
 def weakKeyOne : KeyId := { value := 1 }
@@ -249,17 +312,20 @@ def weakDigestTwo : Digest := { value := 2 }
 
 def weakTranscript : VerificationTranscript := {
   targetDigest := weakDigestOne
-  pecDigest := weakDigestTwo
+  approvalPecDigest := weakDigestTwo
+  eventPecDigest := weakDigestTwo
   policyPecDigest := weakDigestTwo
   policyClaims := [.keyAssent]
   approvalKeys := [weakKeyOne, weakKeyTwo]
+  approvalCoseDigests := [weakDigestTwo]
   eventBodyDigest := weakDigestOne
-  eventId := 0
+  eventId := "weak-event"
   eventSequence := 0
   eventCommitmentDigest := weakDigestTwo
   eventFirstIndex := 0
   eventLastIndex := 0
   eventKeys := []
+  eventCoseDigests := []
   signatures := [{
     purpose := .authorApproval
     key := weakKeyOne

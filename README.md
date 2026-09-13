@@ -219,7 +219,7 @@ Linux/macOS:
 The authoritative `check.py` gate is read-only and finishes by comparing all
 source-tree file hashes with its starting snapshot. It contains:
 
-- 109 Python tests passing, with the live-network and two unavailable Windows
+- 113 Python tests passing, with the live-network and two unavailable Windows
   capability cases skipped locally;
 - 64 fixed Python-Node canonical-JSON vectors with no unexpected divergence;
 - 1,000 seeded generated differential cases with 1,000 byte and verdict
@@ -228,6 +228,8 @@ source-tree file hashes with its starting snapshot. It contains:
 - byte-identical Python/Node `acsd-verification-certificate/v1` output for the
   two-author approval and event-disclosure fixture, with no embedded verdict;
 - a pure structural transcript checker with critical-evidence deletion tests;
+- a strict Lean decoder and executable checker over the same canonical
+  transcript, with 16/16 complete scoped-derivation differential cases;
 - a complete 6-by-10 typed unary compatibility test plus a checked-in selected
   4-by-4 semantic-confusion challenge with all 12 off-diagonal substitutions
   denied and a key-compromise timeline;
@@ -235,7 +237,7 @@ source-tree file hashes with its starting snapshot. It contains:
   scenarios, 30/30 profile checks, and 113/113 manifest entries;
 - a scaling sample from 10 to 5,000 in-memory objects, recorded in
   `design/performance_report.json`;
-- a Lean 4.33.1 build with 59 theorems covering PEC, lineage, scoped claims,
+- a Lean 4.33.1 build with 61 theorems covering PEC, lineage, scoped claims,
   parameterized appraisal/checker correspondence, transcript-group closure,
   selective identity, atomic event disclosure, and typed time subjects with no
   `sorry`/`admit`; the separately published v1 formal core's 53
@@ -260,7 +262,7 @@ ordinary CI must not depend on network availability.
   decisions;
 - `design/canonical_*`, `design/semantic_confusion_*`, and
   `design/verify_approval.cjs`: independent tests and checked-in reports;
-- `formal/`: the Lean model and proofs;
+- `formal/`: the Lean model, strict transcript decoder, executable checker, and proofs;
 - `v1-fixture/`: frozen standalone/series/cyclic-citation reference corpus;
 - `paper/acsd-v3.tex`: content-anonymous manuscript source;
 - `release-v3.1.0-rc1/`: self-contained deterministic release candidate;

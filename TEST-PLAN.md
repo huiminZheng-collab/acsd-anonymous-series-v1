@@ -97,6 +97,12 @@ and emit the same canonical transcript.
 | delete one event signature fact | transcript remains parseable | event claim disappears; approval claims remain |
 | substitute the Merkle fact window | transcript remains parseable | exact event claim disappears |
 | append an extra Merkle fact | transcript remains parseable | event claim disappears; exact-set closure forbids ambiguity |
+| substitute a COSE input digest | transcript remains parseable | only claims depending on that signature group disappear |
+| empty a required signer set | both structural decoders reject | no vacuous unanimous approval |
+| substitute event or policy PEC digest | both structural decoders reject | no cross-PEC claim projection |
+| exceed the JavaScript safe-integer bound | both structural decoders reject | Python/Node/Lean numeric semantics remain aligned |
+| populate an unimplemented extension array | both structural decoders reject | unsupported facts are never silently ignored |
+| add whitespace to canonical JSON | Lean decoder rejects | checked bytes have one representation |
 
 The final three cases test dependency precision, not adapter authenticity: a
 standalone transcript is meaningful only when its exact digest is bound to the
@@ -117,6 +123,9 @@ raw adapter output being evaluated.
 6. The Lean transcript checker must require exact signer projections and one
    exact Merkle fact, and every accepted claim must have both transcript support
    and an explicit appraisal rule.
+7. The executable Lean decoder must consume the canonical certificate itself;
+   Python and Lean must agree on complete scoped derivations, including support
+   digests, across the maintained mutation set.
 
 ## Out-of-scope tests for the deterministic local suite
 

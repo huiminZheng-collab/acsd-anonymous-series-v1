@@ -66,3 +66,5 @@ jobs:
           test: false
           axiom-audit: true
           axiom-audit-root: ACSD
+      - name: Lean transcript differential
+        run: python design/lean_transcript_diff.py --checker formal/.lake/build/bin/acsd-transcript-checker

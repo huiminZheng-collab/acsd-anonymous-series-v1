@@ -59,7 +59,7 @@ def AllApproved (target : ApprovalTarget) (approvals : List Approval) : Prop :=
 display identifier. -/
 structure Event where
   sequence : Nat
-  eventId : Nat
+  eventId : String
   eventDigest : Digest
   previousEventDigest : Option Digest
   deriving Repr

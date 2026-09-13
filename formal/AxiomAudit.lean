@@ -27,3 +27,5 @@ import ACSD
 #print axioms ACSD.transcriptAtoms_sound
 #print axioms ACSD.transcript_checkClaim_sound
 #print axioms ACSD.weak_any_approval_accepts_missing_required_signer
+#print axioms ACSD.transcriptClaims_sound
+#print axioms ACSD.decodedCertificateClaims_sound

@@ -141,6 +141,36 @@ class TestVerificationCertificate(unittest.TestCase):
             ("KEY_ASSENT", "GOVERNANCE_ASSENT"),
         )
 
+    def test_cose_input_substitution_removes_only_dependent_claims(self):
+        certificate, certificate_digest = self.checked()
+        item = next(entry for entry in certificate["inputs"]
+                    if entry["role"] == "author-approval-cose")
+        item["sha256"] = "0" * 64
+        self.assertEqual(
+            claim_derivation.wire_outcomes(
+                verification_transcript.derive(certificate, certificate_digest)
+            ),
+            ("COMMITTED_EVIDENCE_MATCH",),
+        )
+
+    def test_empty_required_key_set_is_rejected(self):
+        certificate, certificate_digest = self.checked()
+        certificate["approval_target"]["required_key_ids"] = []
+        with self.assertRaisesRegex(ValueError, "TRANSCRIPT_APPROVAL_KEYS"):
+            verification_transcript.derive(certificate, certificate_digest)
+
+    def test_unsafe_json_integer_is_rejected(self):
+        certificate, certificate_digest = self.checked()
+        certificate["event_disclosure"]["event_sequence"] = 9_007_199_254_740_992
+        with self.assertRaisesRegex(ValueError, "TRANSCRIPT_EVENT_SEQUENCE"):
+            verification_transcript.derive(certificate, certificate_digest)
+
+    def test_unimplemented_extension_is_rejected(self):
+        certificate, certificate_digest = self.checked()
+        certificate["identity_assertions"] = [{}]
+        with self.assertRaisesRegex(ValueError, "TRANSCRIPT_UNSUPPORTED_EXTENSION"):
+            verification_transcript.derive(certificate, certificate_digest)
+
 
 if __name__ == "__main__":
     unittest.main()
