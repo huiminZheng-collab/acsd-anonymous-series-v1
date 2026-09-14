@@ -1,0 +1,4 @@
+ACSD demonstration manuscript (v1).
+This exact content is byte-hashed; its SHA-256 digest is bound into the
+release object, the authorship governance statement, and the provenance
+evidence capsule. No authorship, originality, or time claim is implied.

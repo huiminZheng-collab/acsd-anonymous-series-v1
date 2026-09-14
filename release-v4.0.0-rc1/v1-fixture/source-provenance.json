@@ -1,0 +1,53 @@
+{
+  "schema": "acsd-v1.6.0-source-provenance/v1",
+  "checked_at": "2026-09-09",
+  "standards_and_prior_work": [
+    {
+      "name": "PROV-DM: The PROV Data Model",
+      "status": "W3C Recommendation",
+      "url": "https://www.w3.org/TR/prov-dm/",
+      "verified_points": ["provenance distinguishes entities, activities, agents, derivations and revisions", "bundles support provenance of provenance", "the model is domain-agnostic and does not itself determine whether a claimed derivation is true"]
+    },
+    {
+      "name": "SWHID Specification v1.2 Core Identifiers",
+      "status": "public specification",
+      "url": "https://www.swhid.org/specification/v1.2/5.Core_identifiers/",
+      "verified_points": ["content, directory, revision, release and snapshot objects receive intrinsic identifiers", "hierarchical identifiers are computed from referenced object identifiers"]
+    },
+    {
+      "name": "Trusty URIs: Verifiable, Immutable, and Permanent Digital Artifacts for Linked Data",
+      "status": "primary research paper",
+      "url": "https://arxiv.org/abs/1401.5775",
+      "verified_points": ["hash-bearing identifiers make immutable artifacts verifiable", "reference trees can be verified"]
+    },
+    {
+      "name": "RFC 9052 — CBOR Object Signing and Encryption",
+      "status": "IETF Internet Standard",
+      "url": "https://www.rfc-editor.org/rfc/rfc9052.html",
+      "verified_points": ["COSE Sign1 protected payload signatures"]
+    },
+    {
+      "name": "RFC 9943 — SCITT Architecture",
+      "status": "IETF Proposed Standard",
+      "url": "https://www.rfc-editor.org/rfc/rfc9943.html",
+      "verified_points": ["Signed Statements bind issuer, subject and payload", "transparency registration does not establish content truth"]
+    }
+  ],
+  "software": [
+    {
+      "name": "action-state-group/scitt-cose",
+      "release": "v0.1.1",
+      "url": "https://github.com/action-state-group/scitt-cose",
+      "archive": "vendor/scitt-cose-v0.1.1.zip",
+      "sha256": "6da5fc7098bf9d47df9aa96d9800a8bf3ade695b0b21239315067cd40cfd47e6"
+    },
+    {
+      "name": "cbor2",
+      "release": "6.1.4",
+      "url": "https://pypi.org/project/cbor2/",
+      "archive": "vendor/cbor2-6.1.4-cp312-cp312-win_amd64.whl",
+      "sha256": "cc8cd300e236e9797b2e1ce306109dc481fcccf78bfa2682bf36d99e6eab1ec6"
+    }
+  ],
+  "scope_limit": "W3C PROV, SWHID and Trusty URIs establish substantial prior work for provenance, intrinsic identifiers and verifiable reference trees. ACSD v1.6.0 claims only an application-specific executable profile and counterexamples for anonymous scholarly series; all keys, clocks, observations and identities are local fixtures."
+}

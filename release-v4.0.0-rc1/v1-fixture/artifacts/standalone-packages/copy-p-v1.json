@@ -1,0 +1,29 @@
+{
+  "schema": "acsd-v1.6.0-standalone-paper-package/v1",
+  "release_key": "copy-p-v1",
+  "release_id": "urn:sha256:7cf13b364e07c46b5fa391e38132e57c744db99fce8903598b2bf65e8b852887",
+  "release_path": "artifacts/releases/copy-p-v1.json",
+  "content_path": "artifacts/contents/p-v1.txt",
+  "endorsement_ids": [
+    "copy-p-v1--copy-p-slot-1",
+    "copy-p-v1--copy-p-slot-2"
+  ],
+  "endorsements": [
+    {
+      "id": "copy-p-v1--copy-p-slot-1",
+      "release_key": "copy-p-v1",
+      "author_key_id": "copy-p-slot-1",
+      "path": "artifacts/endorsements/copy-p-v1--copy-p-slot-1.scitt",
+      "sha256": "6dc7e63c63d3d591cb32de3e7eab8d41bc36da971eb156fd4372a681af242f25"
+    },
+    {
+      "id": "copy-p-v1--copy-p-slot-2",
+      "release_key": "copy-p-v1",
+      "author_key_id": "copy-p-slot-2",
+      "path": "artifacts/endorsements/copy-p-v1--copy-p-slot-2.scitt",
+      "sha256": "7e9397798966dd3f2c555eaa3d334ccf342b6d422271192ca2c09830a29163a6"
+    }
+  ],
+  "content_type": "application/vnd.acsd.paper-release+json",
+  "series_required_for_verification": false
+}

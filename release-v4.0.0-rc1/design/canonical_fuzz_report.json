@@ -1,0 +1,7 @@
+{
+  "seed": 20260912,
+  "samples": 1000,
+  "byte_agreements": 1000,
+  "text_verdict_agreements": 1000,
+  "failure_indices": []
+}

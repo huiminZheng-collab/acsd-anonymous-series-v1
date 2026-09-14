@@ -1,0 +1,29 @@
+{
+  "schema": "acsd-v1.6.0-standalone-paper-package/v1",
+  "release_key": "p-v1",
+  "release_id": "urn:sha256:399f6992ac0e7af13eaf5d3b3de153ef78439f1219b88eeaceab73faea7b02f8",
+  "release_path": "artifacts/releases/p-v1.json",
+  "content_path": "artifacts/contents/p-v1.txt",
+  "endorsement_ids": [
+    "p-v1--p-slot-1",
+    "p-v1--p-slot-2"
+  ],
+  "endorsements": [
+    {
+      "id": "p-v1--p-slot-1",
+      "release_key": "p-v1",
+      "author_key_id": "p-slot-1",
+      "path": "artifacts/endorsements/p-v1--p-slot-1.scitt",
+      "sha256": "b3e1f0f22d868dff456fea3e17022094adec355911f4476704e99501ec614ad4"
+    },
+    {
+      "id": "p-v1--p-slot-2",
+      "release_key": "p-v1",
+      "author_key_id": "p-slot-2",
+      "path": "artifacts/endorsements/p-v1--p-slot-2.scitt",
+      "sha256": "2a159f5fd90a72e7914821445b6afaffe1218341c47964355e2b22d43d4b10c4"
+    }
+  ],
+  "content_type": "application/vnd.acsd.paper-release+json",
+  "series_required_for_verification": false
+}

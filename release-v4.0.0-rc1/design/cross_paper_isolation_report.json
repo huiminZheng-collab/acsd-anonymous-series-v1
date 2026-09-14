@@ -1,0 +1,22 @@
+{
+  "boundary": {
+    "exact_release_scope_formally_modeled": true,
+    "recommended_default": "independent-key-per-unrelated-lineage",
+    "unlinkability_with_reused_public_key_claimed": false
+  },
+  "independent_public_keys": {
+    "cli_audit_status": "NO_CROSS_WORK_KEY_REUSE",
+    "key_id_equal": false,
+    "public_key_equality_link": false
+  },
+  "same_public_key": {
+    "cli_audit_status": "CROSS_WORK_KEY_REUSE_DETECTED",
+    "key_id_equal": true,
+    "publicly_linkable_by_key_id": true,
+    "release_a_identity_assent": "SLOT_KEY_ASSENT_TO_IDENTITY_ASSERTION",
+    "release_b_identity_assent_derived": false,
+    "release_b_scope_replay": "IDENTITY_RELEASE_MISMATCH",
+    "strict_cli_message": "CROSS_WORK_KEY_REUSE_DETECTED"
+  },
+  "schema": "acsd-cross-paper-isolation-evaluation/v1"
+}
