@@ -184,8 +184,15 @@ revision, and explicit per-slot publication crosswalks. It intentionally keeps
 venue acceptance outside the derived claim vocabulary and rejects cross-release
 replay or mutation of a signed publication reference.
 
-The post-candidate source gate passes 25/25 checks. A fresh 283-file evidence
-package built from this branch passes all 21 artifact-mode checks, including
+The post-candidate source gate passes 26/26 checks. A fresh 286-file evidence
+package built from this branch passes all 22 artifact-mode checks, including
 Lean compilation, the three formal differential bridges, manifest stability,
 and source/package byte identity. These results qualify the workflow mechanics;
 they do not establish that a venue accepted, rejected, or received a paper.
+
+The same post-candidate branch now also exercises the cross-paper key-reuse
+boundary. Exact release binding prevents a disclosure sidecar from granting an
+identity-assent result for another release, but equal public key IDs remain an
+observable link. The recommended privacy default is therefore one independent
+key per unrelated lineage; this is an operational policy, not a universal
+unlinkability guarantee.

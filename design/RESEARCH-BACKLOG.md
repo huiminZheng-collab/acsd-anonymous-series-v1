@@ -118,7 +118,7 @@ transparency service.
 
 ### D-03 — Cross-paper isolation and the public-key reuse boundary
 
-- **Priority / route status:** P0 / `unexplored`.
+- **Priority / route status:** P0 / `attempted`.
 - **Problem:** if several public releases reuse one key, revealing the identity
   behind that key links every occurrence. No later disclosure scheme can undo
   linkability already present in public data.
@@ -133,9 +133,18 @@ transparency service.
 - **Smallest experiment:** publish two model releases under either one reused
   key or two independent keys, disclose only work A, and compute the exact
   protocol-level links available in each case.
-- **Missing checks:** precise observational model, key-generation/backup UX,
-  static reuse warning, and literature audit of pseudonym rotation and
-  unlinkable credentials.
+- **Implemented evidence:** `design/CROSS-PAPER-ISOLATION.md` distinguishes
+  exact verifier scope from observer linkability;
+  `design/cross_paper_isolation_runner.py` shows that a release-A sidecar is
+  rejected against release B even when both expose the same key ID, while also
+  recording that the releases remain publicly linkable by that equality. The
+  existing Lean theorem `slot_assent_requires_exact_release` covers the exact-
+  release grant boundary.
+- **Missing checks:** primary-literature comparison with anonymous credential
+  and key-evolving pseudonym systems, recovery without a common public link,
+  and a user-facing key-policy lint before release creation. The current
+  experiment does not claim stylometric, timing, network, or repository
+  unlinkability.
 
 ### D-04 — Multi-author partial and full unblinding
 

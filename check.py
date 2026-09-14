@@ -130,6 +130,16 @@ def _common_checks(checks, temp, env):
         ],
         env=env,
     ))
+    checks.append(_run(
+        "cross-paper-isolation",
+        [
+            sys.executable,
+            "design/cross_paper_isolation_runner.py",
+            "--check-report",
+            "design/cross_paper_isolation_report.json",
+        ],
+        env=env,
+    ))
     checks.append(_run("scaling-smoke", [sys.executable, "design/benchmark_core.py"], env=env))
     checks.append(_run("v1-fixture", [sys.executable, "verify_v1_fixture.py"], env=env))
     demo = temp / "demo"
