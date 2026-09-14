@@ -18,6 +18,7 @@
 | Single public-key identifier definition | CLI, event, identity, and certificate adapters import `key_identity.py` | PASS |
 | Cross-paper public-key reuse audit | I/O-free grouping plus `audit-key-reuse`; same-WorkID continuity separated from cross-WorkID warning | PASS; optional fail-closed exit 1 |
 | Partial/full multi-author unblinding | `verify-identity-set` delegates to exact per-slot verification and requires every slot for full status | PASS; partial/full and duplicate-slot CLI tests |
+| Same-primitive adjacent baseline | Bare detached Ed25519 and ACSD both reject byte mutation; a manual exact transition and ACSD both separate authorized rotation from replay onto a fresh-key child | PASS; fixed executable report avoids a strawman baseline and states ACSD's added profile surface |
 | I/O-free protocol-object boundary | `protocol_objects.py` owns live schemas/builders/binding checks; `acsd.py` only re-exports the compatibility names | PASS; import-graph and identity tests |
 | Fresh nested defaults | separate builds cannot share mutable AI-use or contribution lists | PASS |
 | CLI-independent offline verifier | artifact/key/lineage adapters feed `release_verifier.py`; no adapter or verifier imports `acsd.py` | PASS; compatibility identity and full CLI/lineage/TSA corpus |
@@ -38,7 +39,7 @@
 | Self-contained evidence package | artifact-mode `check.py`, strict manifest pre/post check, deterministic rebuild | PASS |
 | Installed wheel execution | temporary venv exercises keygen, release, verify, identity-set verification, and key-reuse audit outside source | PASS |
 | Independent one-command gate | `run_all.ps1`, `run_all.sh` | PASS; reports formal status explicitly |
-| Complete live-source gate | `check.py` source mode | PASS; 27/27 checks including artifact self-check and workspace byte identity |
+| Complete live-source gate | `check.py` source mode | PASS; 28/28 checks including artifact self-check and workspace byte identity |
 | Lean formal compilation | PEC, lineage, scoped-claim, and parameterized appraisal modules; pinned 4.33.1 project | PASS |
 
 The formal row contains 81 PEC/composition/lineage/scoped-appraisal/transcript

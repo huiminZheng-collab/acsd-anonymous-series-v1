@@ -185,12 +185,21 @@ revision, and explicit per-slot publication crosswalks. It intentionally keeps
 venue acceptance outside the derived claim vocabulary and rejects cross-release
 replay or mutation of a signed publication reference.
 
-The post-candidate source gate passes 27/27 checks, including 163 Python tests.
-A fresh 291-file evidence package built from this branch passes all 23
+The post-candidate source gate passes 28/28 checks, including 163 Python tests.
+A fresh 294-file evidence package built from this branch passes all 24
 artifact-mode checks, including
 Lean compilation, the three formal differential bridges, manifest stability,
 and source/package byte identity. These results qualify the workflow mechanics;
 they do not establish that a venue accepted, rejected, or received a paper.
+
+The branch also contains a controlled adjacent-baseline experiment. With the
+same Ed25519 primitive, both ACSD and detached signatures reject byte mutation.
+The two tested bare-signature policies either accept both authorized rotation
+and fresh-key capture, or reject both. A third manual predecessor-signed
+transition distinguishes them too; ACSD's measured addition is the maintained
+canonical, threshold, approval-closure, governance, and typed-claim profile.
+This is a mechanism comparison, not a GnuPG/OpenTimestamps/archival-service
+benchmark, user study, or deployment.
 
 The same post-candidate branch now also exercises the cross-paper key-reuse
 boundary. Exact release binding prevents a disclosure sidecar from granting an

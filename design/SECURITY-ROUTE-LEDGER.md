@@ -121,3 +121,12 @@ implication from accepted succession to predecessor quorum under typed inputs.
 |---|---|---|---|---|---|
 | Treat any nonempty identity-sidecar subset as a complete byline | Lets one cooperating slot amplify its assent into claims about silent coauthors | `identity_disclosure.verify_set` quantifies over every release slot; CLI partial-set fixture returns only `PARTIAL_BYLINE_KEY_ASSENT` | None; completeness requires every slot | low | ruled out |
 | Verify one exact sidecar per slot and optionally require full coverage | Preserves voluntary partial disclosure while giving publication workflows a fail-incomplete mode | `verify-identity-set`, duplicate-slot rejection, partial exit 0, `--require-full-byline` exit 5, installed-wheel check, and reproducible 1/3–3/3 experiment | Real-team usability and a separately typed contribution-disclosure design | low | attempted |
+
+## 2026-09-14 adjacent-baseline decisions
+
+| Approach | Target or obstruction | Evidence | Missing check | Cost | Status |
+|---|---|---|---|---|---|
+| Treat a valid signature under a child-declared key as lineage authority | A fresh attacker key and an authorized rotation both produce valid self-signatures | Controlled same-primitive runner accepts both at the signature layer | None for this tested policy; it lacks predecessor authorization by definition | low | ruled out |
+| Pin every successor to the predecessor key | Rejects fresh-key capture but also rejects legitimate key rotation | Controlled runner rejects both changed-key children | None for this tested policy; rotation requires additional authorization evidence | low | ruled out |
+| Add a manual predecessor signature over exact parent, child, and successor-key bytes | Tests whether a minimal composed-signature baseline can close the n+1 gap without ACSD | It accepts the authorized rotation and rejects transition replay onto the attacker child | It lacks standardized objects, threshold governance, approval-set closure, and typed claim semantics | low | attempted |
+| Compare ACSD against all three same-primitive policies | Isolates the maintained profile surface rather than signature-algorithm differences or a deliberately weak baseline | ACSD matches the manual transition's core decision and additionally exercises canonical closure, thresholds, governance, and typed outputs; fixed report is in the full gate | Installed upstream clients, human task study, timing/variance, and independent replication | low | attempted |

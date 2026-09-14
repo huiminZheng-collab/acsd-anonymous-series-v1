@@ -315,19 +315,23 @@ transparency service.
 
 ### D-12 — Comparative and human evaluation
 
-- **Priority / route status:** P2 / `unexplored`.
+- **Priority / route status:** P2 / `attempted`.
 - **Problem:** current results establish correctness checks and smoke-test scale,
   not whether authors can use ACSD correctly or whether the extra machinery is
   justified against simpler alternatives.
 - **Candidate studies:** task-based comparison with detached signatures,
   OpenTimestamps, Software Heritage, and Zenodo; coauthor approval usability;
   citation-witness editing; recovery drills; verifier interpretation tests.
-- **Smallest experiment:** five scripted tasks performed by maintainers first,
-  measuring commands, artifacts, time, mistakes, and claims each system can
-  actually establish. A later user study requires appropriate consent and
-  research governance.
-- **Missing checks:** protocol parity, current tool versions, study design,
-  participants, variance, and independent replication.
+- **Smallest experiment:** `design/adjacent_baseline_runner.py` now fixes the
+  signature primitive and compares child-declared-key, predecessor-key-pin,
+  and manual exact-transition policies against ACSD on exact-byte mutation,
+  same-key continuation, authorized rotation, and fresh-key n+1 capture. The
+  manual transition succeeds, preventing a strawman claim; the checked report
+  exposes artifact counts and explicit non-claims.
+- **Missing checks:** installed upstream-client task study, protocol parity,
+  current tool versions, timing/variance, participants, consent/governance,
+  and independent replication. The controlled runner is not human or
+  production-deployment evidence.
 
 ## Writing and positioning questions
 

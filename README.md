@@ -259,7 +259,7 @@ Linux/macOS:
 The authoritative `check.py` gate is read-only and finishes by comparing all
 source-tree file hashes with its starting snapshot. It contains:
 
-- 27/27 source, package, installed-wheel, differential, formal, and byte-identity
+- 28/28 source, package, installed-wheel, differential, formal, and byte-identity
   checks passing as one command;
 - 163 Python tests passing, with the live-network and two unavailable Windows
   capability cases skipped locally;
@@ -292,6 +292,11 @@ source-tree file hashes with its starting snapshot. It contains:
   scenarios, 30/30 profile checks, and 113/113 manifest entries;
 - a scaling sample from 10 to 5,000 in-memory objects, recorded in
   `design/performance_report.json`;
+- a controlled same-primitive comparison in which both ACSD and bare detached
+  Ed25519 signatures preserve exact bytes; an explicit predecessor-signed
+  transition, whether manual or ACSD, distinguishes authorized key rotation
+  from fresh-key n+1 capture, while ACSD supplies the maintained closure,
+  threshold, governance, and typed-claim profile;
 - an offline-verified freeTSA fixture over the demo's complete approval set,
   binding its exact request, response, signer certificate, nonce, policy OID,
   serial number, and `2026-09-13T11:37:22+00:00` time;
@@ -341,6 +346,8 @@ remain opt-in because CI must not depend on network availability.
   transcript, closure rule, and trust boundary;
 - `design/APPRAISAL-TRANSCRIPT-V1.md`: the live verifier-to-kernel wire
   boundary and its formal trust statement;
+- `design/ADJACENT-BASELINE-EVALUATION.md`: scope-limited executable comparison
+  with bare detached Ed25519 policies and an explicit external-validity gap;
 - `formal/`: the Lean model, strict transcript decoder, executable checker, and proofs;
 - `v1-fixture/`: frozen standalone/series/cyclic-citation reference corpus;
 - `paper/acsd-v3.tex`: content-anonymous manuscript source;
