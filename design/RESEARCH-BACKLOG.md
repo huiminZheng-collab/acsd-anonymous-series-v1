@@ -180,17 +180,24 @@ transparency service.
   quorum can no longer be met.
 - **Open problem:** warn verifiers not to trust new statements after compromise,
   and recover availability without enabling post-hoc identity takeover.
-- **Candidate approaches:** precommitted offline recovery keys; hardware-backed
-  recovery; threshold guardians; prospective key-rotation statements; an
-  external transparency policy for ordering competing notices.
+- **Selected smallest route:** a predecessor-bound, disjoint recovery key set
+  and threshold may sign one exact authority-changing lineage transition. The
+  child author set must still approve the exact child target. Ordinary and
+  recovery authorization files cannot be mixed on one edge.
+- **Deferred service route:** hardware-backed custody and an external
+  transparency/pinning policy for ordering or discovering competing notices.
 - **Ruled-out subroute:** unconditional retroactive deletion of a once-valid
   transition, because it contradicts immutable historical evidence.
 - **Smallest experiment:** a parent precommits a recovery threshold, loses its
   online keys, and authorizes one exact successor. Test stolen-key races,
   recovery replay, guardian substitution, and non-precommitted takeover.
-- **Missing checks:** privacy-preserving policy, compromise-time semantics,
-  transparency assumptions, fixtures, formal model, and comparison with TUF,
-  in-toto, key-transparency, and certificate-revocation designs.
+- **Implemented design evidence:** `design/PRECOMMITTED-RECOVERY.md` separates
+  exact alternate authorization from retroactive revocation and global-head
+  selection; `design/SECURITY-ROUTE-LEDGER.md` records TUF, OpenPGP, CT, and
+  Key Transparency boundaries.
+- **Missing checks:** executable fixtures, formal model, public-key privacy and
+  custody review, and a transparency/pinning deployment profile. The current
+  design does not choose a global winner between withheld or competing edges.
 
 ### D-06 — One selective-disclosure calculus for identity and evidence
 

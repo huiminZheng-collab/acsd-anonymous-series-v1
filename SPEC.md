@@ -158,6 +158,27 @@ predecessor's signed threshold and MUST NOT accept a lower threshold supplied
 only by the child. Legacy v1/v2 releases without this object migrate as if they
 had listed every author key with a unanimous threshold.
 
+An opt-in recovery commitment uses a versioned authority object so an older
+verifier fails closed instead of ignoring the extension:
+
+```json
+{
+  "schema": "acsd-lineage-authority/v2",
+  "key_ids": ["sorted author key ids"],
+  "threshold": 2,
+  "recovery": {
+    "schema": "acsd-recovery-authority/v1",
+    "key_ids": ["sorted recovery key ids"],
+    "threshold": 2
+  }
+}
+```
+
+Recovery keys MUST be nonempty, unique, sorted, and disjoint from the online
+author keys. Their exact public-key bytes are stored under
+`recovery-public-keys/<key-id>.pub`. Reusing one recovery key across unrelated
+WorkIDs creates the same public linkability boundary as reusing an author key.
+
 ### 5.2 Exact transition
 
 Every non-genesis release carries an `acsd-lineage-transition/v1` body binding:
@@ -165,7 +186,7 @@ Every non-genesis release carries an `acsd-lineage-transition/v1` body binding:
 ```json
 {
   "schema": "acsd-lineage-transition/v1",
-  "kind": "continuation | threshold-change | team-change | branch",
+  "kind": "continuation | threshold-change | team-change | recovery-change | branch",
   "work_id": "urn:uuid:...",
   "parent": {
     "release_digest": "sha256 hex",
@@ -196,6 +217,16 @@ that binds the transition. When the key set or threshold changes, a predecessor-
 set MUST separately sign the canonical transition body, and every new child
 author MUST sign the child approval target. This is old-authority authorization
 plus new-team acceptance, not an indefinite delegation to an unscoped key.
+
+If the predecessor committed a v1 recovery authority, a recovery-threshold set
+MAY sign that same canonical transition body instead of the online predecessor
+set, but only when the child authority object changes. Every new child author
+still signs the normal child approval target. Ordinary predecessor signatures
+live in `lineage/authorizations/`; recovery signatures live in
+`lineage/recovery-authorizations/`. A verifier MUST reject an edge for which
+both directories are nonempty, because one accepted edge has one declared
+authorization method. Recovery signatures are included in the closed approval
+set exactly as ordinary lineage signatures are.
 
 ### 5.3 Structural and conflict rules
 
@@ -234,12 +265,19 @@ an unconditional transfer the old authority cannot unilaterally revoke the new
 authority. Concurrent authorized children produce a detectable fork whose
 ordering requires an external transparency or governance policy.
 
-If fewer than the predecessor threshold keys remain available, this profile
-safely freezes the lineage. It has no post-hoc identity recovery rule: such a
-rule would reopen the unauthorized-successor attack. A future profile may bind
-a recovery authority in advance. Without that prior commitment, community or
-institutional recognition creates a visibly separate social fork rather than
-an automatically verified continuation.
+If fewer than the predecessor threshold keys remain available and no recovery
+authority was precommitted, this profile safely freezes the lineage. It has no
+post-hoc identity recovery rule: such a rule would reopen the unauthorized-
+successor attack. When a recovery authority was committed in the predecessor,
+its threshold can authorize one exact authority-changing successor and the
+verifier reports `RECOVERY_AUTHORIZED_TRANSITION`.
+
+This alternate path is not global revocation. A stolen online threshold may
+still authorize a competing same-slot child. If both children are presented,
+the verifier preserves both historical authorization facts and reports an
+unranked equivocation. If one is withheld, an offline verifier cannot infer
+its existence. Choosing or discovering a unique public head therefore remains
+a separate pinning, transparency, gossip, or governance service decision.
 
 ## 6. Evidence events
 
@@ -424,8 +462,11 @@ cannot establish when the author or predecessor signatures were added.
    order, manuscript-hash, corresponding-author, and AI-use bindings.
 3. For a non-genesis release, recompute the exact lineage transition. Enforce
    the predecessor's signed authority threshold, same-line increment or branch
-   rule, old-authority transition signatures when keys change, and new-team
-   approval signatures.
+   rule, and new-team approval signatures. For an authority-changing edge,
+   accept exactly one of: the online predecessor threshold, or a recovery
+   threshold that was committed in the predecessor release. Reject mixed
+   authorization methods, uncommitted recovery keys, insufficient thresholds,
+   and recovery use on an unchanged authority.
 4. Recompute every event digest and enforce the event sequence and predecessor
    chain.
 5. Recompute the approval set from the exact verified signature byte strings.
@@ -450,6 +491,10 @@ Stable rejection codes for the first corpus include:
 `CLAIM_POLICY_UNKNOWN_OUTCOME`, `PUBLIC_KEY_ID_MISMATCH`, and
 `APPROVAL_TARGET_BINDING_MISMATCH`, `LINEAGE_TRANSITION_MISMATCH`,
 `UNAUTHORIZED_SUCCESSOR`, and `LINEAGE_AUTHORIZATION_SIGNATURE_INVALID`.
+Recovery-specific codes include `RECOVERY_AUTHORITY_NOT_PRECOMMITTED`,
+`RECOVERY_AUTHORIZATION_UNKNOWN_KEY`,
+`RECOVERY_REQUIRES_ONLINE_AUTHORITY_CHANGE`, and
+`LINEAGE_AUTHORIZATION_METHOD_AMBIGUOUS`.
 
 ## 11. Formalization boundary
 
@@ -468,6 +513,14 @@ fresh authority cannot use the continuity path, and an authorization for one
 child digest cannot be reused for a different child. Threshold counting and
 COSE verification are executable-boundary inputs, not parser-refinement
 theorems.
+
+The recovery extension models an optional authority committed in the parent.
+It proves that recovery acceptance implies such a precommitment, requires an
+online-authority change, binds the exact transition, and cannot reuse that
+transition for a different child digest. It also preserves the deliberately
+separate fact that additional recovery evidence does not erase an ordinary
+authorization already established by the model. It does not formalize global
+view completeness or a transparency-log implementation.
 
 The formal theorem is therefore: *under these authentication and policy
 assumptions, acceptance does not produce an unauthorized claim*.  It is not a

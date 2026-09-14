@@ -117,7 +117,96 @@ theorem authorized_successor_preserves_work
     {model : LineageAuthModel} {parent child : VersionedRelease}
     {proof : SuccessionProof}
     (accepted : AuthorizedSuccessor model parent child proof) :
-    child.work = parent.work :=
+  child.work = parent.work :=
   accepted.1.1
+
+/-!
+Recovery is modeled as a separately precommitted authority, not as a mutation
+of the online predecessor authority and not as retroactive invalidation of an
+already accepted edge. The executable boundary supplies recovery-quorum facts
+after exact key-id and COSE verification.
+-/
+
+structure RecoveryAuthority where
+  keys : List KeyId
+  threshold : Nat
+  deriving DecidableEq, Repr
+
+structure RecoverableRelease where
+  base : VersionedRelease
+  recovery : Option RecoveryAuthority
+  deriving DecidableEq, Repr
+
+structure RecoveryAuthModel where
+  quorum : RecoveryAuthority → LineageApprovalEvidence → Prop
+
+def RecoveryAuthorizedSuccessor
+    (model : RecoveryAuthModel) (parent child : RecoverableRelease)
+    (body : LineageTransition) (evidence : LineageApprovalEvidence) : Prop :=
+  StructuralSuccessor parent.base child.base ∧
+  ∃ authority,
+    parent.recovery = some authority ∧
+    model.quorum authority evidence ∧
+    child.base.authority ≠ parent.base.authority ∧
+    ExactTransition body parent.base child.base
+
+theorem recovery_successor_has_precommitted_authority
+    {model : RecoveryAuthModel} {parent child : RecoverableRelease}
+    {body : LineageTransition} {evidence : LineageApprovalEvidence}
+    (accepted : RecoveryAuthorizedSuccessor model parent child body evidence) :
+    ∃ authority, parent.recovery = some authority := by
+  rcases accepted.2 with ⟨authority, precommitted, _⟩
+  exact ⟨authority, precommitted⟩
+
+theorem no_recovery_without_precommit
+    {model : RecoveryAuthModel} {parent child : RecoverableRelease}
+    {body : LineageTransition} {evidence : LineageApprovalEvidence}
+    (absent : parent.recovery = none) :
+    ¬ RecoveryAuthorizedSuccessor model parent child body evidence := by
+  intro accepted
+  rcases accepted.2 with ⟨authority, precommitted, _⟩
+  rw [absent] at precommitted
+  contradiction
+
+theorem recovery_successor_rotates_online_authority
+    {model : RecoveryAuthModel} {parent child : RecoverableRelease}
+    {body : LineageTransition} {evidence : LineageApprovalEvidence}
+    (accepted : RecoveryAuthorizedSuccessor model parent child body evidence) :
+    child.base.authority ≠ parent.base.authority := by
+  rcases accepted.2 with ⟨_, _, _, changed, _⟩
+  exact changed
+
+theorem recovery_successor_binds_exact_transition
+    {model : RecoveryAuthModel} {parent child : RecoverableRelease}
+    {body : LineageTransition} {evidence : LineageApprovalEvidence}
+    (accepted : RecoveryAuthorizedSuccessor model parent child body evidence) :
+    ExactTransition body parent.base child.base := by
+  rcases accepted.2 with ⟨_, _, _, _, exact⟩
+  exact exact
+
+theorem recovery_authorization_not_reusable_for_other_child
+    {model : RecoveryAuthModel}
+    {parent child other : RecoverableRelease}
+    {body : LineageTransition} {evidence : LineageApprovalEvidence}
+    (accepted : RecoveryAuthorizedSuccessor model parent child body evidence)
+    (differentChild : child.base.releaseDigest ≠ other.base.releaseDigest) :
+    ¬ ExactTransition body parent.base other.base := by
+  exact transition_authorization_not_reusable_for_other_child
+    (recovery_successor_binds_exact_transition accepted) differentChild
+
+theorem recovery_evidence_does_not_erase_ordinary_authorization
+    {lineageModel : LineageAuthModel} {recoveryModel : RecoveryAuthModel}
+    {parentBase childBase : VersionedRelease}
+    {parentRecovery childRecovery : Option RecoveryAuthority}
+    {ordinaryProof : SuccessionProof}
+    {recoveryBody : LineageTransition}
+    {recoveryEvidence : LineageApprovalEvidence}
+    (ordinaryAccepted :
+      AuthorizedSuccessor lineageModel parentBase childBase ordinaryProof)
+    (_recoveryAccepted : RecoveryAuthorizedSuccessor recoveryModel
+      ⟨parentBase, parentRecovery⟩ ⟨childBase, childRecovery⟩
+      recoveryBody recoveryEvidence) :
+    AuthorizedSuccessor lineageModel parentBase childBase ordinaryProof :=
+  ordinaryAccepted
 
 end ACSD

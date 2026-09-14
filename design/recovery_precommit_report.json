@@ -1,0 +1,32 @@
+{
+  "cross_child_replay": "COSE_PAYLOAD_MISMATCH",
+  "evidence_classification": "empirical-executable-protocol-test",
+  "insufficient_quorum": {
+    "message": "LINEAGE_AUTHORIZATION_INCOMPLETE",
+    "method": "recovery",
+    "required_threshold": 2
+  },
+  "mixed_methods": "LINEAGE_AUTHORIZATION_METHOD_AMBIGUOUS",
+  "no_precommit_parent": "RECOVERY_AUTHORITY_NOT_PRECOMMITTED",
+  "non_claims": [
+    "does not erase an earlier valid signature or transition",
+    "does not prove that an offline verifier has every competing edge",
+    "does not select a global head without a transparency or pinning policy",
+    "does not establish recovery-key custody or guardian honesty"
+  ],
+  "recovery_only_change": "RECOVERY_REQUIRES_ONLINE_AUTHORITY_CHANGE",
+  "recovery_quorum": {
+    "authorized_successor": true,
+    "configured": "2-of-2",
+    "lineage_status": "RECOVERY_AUTHORIZED_TRANSITION",
+    "method": "recovery"
+  },
+  "residual_same_slot_fork": {
+    "conflict": true,
+    "ordinary_status": "AUTHORIZED_TRANSITION",
+    "recovery_status": "RECOVERY_AUTHORIZED_TRANSITION",
+    "winner": null
+  },
+  "schema": "acsd-precommitted-recovery-evaluation/v1",
+  "uncommitted_guardian": "UNKNOWN_RECOVERY_AUTHORITY_KEY"
+}

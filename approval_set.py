@@ -88,14 +88,21 @@ def _require_exact_files(root: pathlib.Path, directory: str, key_ids, code: str)
     require(actual == expected, code)
 
 
-def build(root: pathlib.Path, approval_target, author_key_ids, lineage_key_ids):
+def build(
+    root: pathlib.Path,
+    approval_target,
+    author_key_ids,
+    lineage_key_ids,
+    *,
+    lineage_directory="lineage/authorizations",
+):
     """Bind the target and every signature byte string used for acceptance."""
     root = pathlib.Path(root)
     _require_exact_files(
         root, "approvals", author_key_ids, "APPROVAL_SET_AUTHOR_FILE_SET_MISMATCH"
     )
     _require_exact_files(
-        root, "lineage/authorizations", lineage_key_ids,
+        root, lineage_directory, lineage_key_ids,
         "APPROVAL_SET_LINEAGE_FILE_SET_MISMATCH",
     )
     return build_from_signatures(
@@ -105,20 +112,28 @@ def build(root: pathlib.Path, approval_target, author_key_ids, lineage_key_ids):
             for key_id in author_key_ids
         },
         {
-            key_id: (root / "lineage/authorizations" / f"{key_id}.cose").read_bytes()
+            key_id: (root / lineage_directory / f"{key_id}.cose").read_bytes()
             for key_id in lineage_key_ids
         },
     )
 
 
-def verify(obj, root: pathlib.Path, approval_target, author_key_ids, lineage_key_ids):
+def verify(
+    obj,
+    root: pathlib.Path,
+    approval_target,
+    author_key_ids,
+    lineage_key_ids,
+    *,
+    lineage_directory="lineage/authorizations",
+):
     """Verify exact membership and byte digests; signature validity is separate."""
     root = pathlib.Path(root)
     _require_exact_files(
         root, "approvals", author_key_ids, "APPROVAL_SET_AUTHOR_FILE_SET_MISMATCH"
     )
     _require_exact_files(
-        root, "lineage/authorizations", lineage_key_ids,
+        root, lineage_directory, lineage_key_ids,
         "APPROVAL_SET_LINEAGE_FILE_SET_MISMATCH",
     )
     return verify_from_signatures(
@@ -129,7 +144,7 @@ def verify(obj, root: pathlib.Path, approval_target, author_key_ids, lineage_key
             for key_id in author_key_ids
         },
         {
-            key_id: (root / "lineage/authorizations" / f"{key_id}.cose").read_bytes()
+            key_id: (root / lineage_directory / f"{key_id}.cose").read_bytes()
             for key_id in lineage_key_ids
         },
     )

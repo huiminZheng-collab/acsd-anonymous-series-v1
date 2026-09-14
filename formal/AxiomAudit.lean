@@ -7,6 +7,12 @@ import ACSD
 #print axioms ACSD.authorized_successor_has_parent_quorum
 #print axioms ACSD.fresh_authority_without_transition_is_not_successor
 #print axioms ACSD.transition_authorization_not_reusable_for_other_child
+#print axioms ACSD.recovery_successor_has_precommitted_authority
+#print axioms ACSD.no_recovery_without_precommit
+#print axioms ACSD.recovery_successor_rotates_online_authority
+#print axioms ACSD.recovery_successor_binds_exact_transition
+#print axioms ACSD.recovery_authorization_not_reusable_for_other_child
+#print axioms ACSD.recovery_evidence_does_not_erase_ordinary_authorization
 #print axioms ACSD.scoped_grant_cannot_amplify_policy
 #print axioms ACSD.identity_evidence_cannot_grant_event_match
 #print axioms ACSD.event_acceptance_requires_all_signatures

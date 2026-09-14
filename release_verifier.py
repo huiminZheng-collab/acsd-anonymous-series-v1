@@ -192,6 +192,7 @@ def verify_release_dir(
             "error_code": str(exc),
         }
     data["lineage_status"] = lineage_result["status"]
+    data["lineage_authorization_method"] = lineage_result["method"]
     data["lineage_anchor_status"] = (
         "GENESIS"
         if lineage is None
@@ -216,6 +217,10 @@ def verify_release_dir(
                 target,
                 key_ids,
                 separate_lineage_keys,
+                lineage_directory=(
+                    lineage_result["authorization_directory"]
+                    or "lineage/authorizations"
+                ),
             )
         except (OSError, ValueError) as exc:
             return EXIT_VERIFY_FAIL, "TAMPERED", {

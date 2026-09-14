@@ -1,13 +1,14 @@
-# ACSD v3.2.0-rc1 live-source status
+# ACSD post-v3.3 live-source status
 
-Checked 2026-09-14 in the local work tree. This document describes the
-v3.2.0-rc1 candidate; the committed v3.1.0-rc1 and earlier snapshots remain
-immutable. A release candidate is not a venue submission or deployed service.
+Checked 2026-09-14 in the local work tree. The public v3.3.0-rc1 candidate and
+earlier snapshots remain immutable; the recovery work described below is the
+next additive source iteration. A release candidate is not a venue submission
+or deployed service.
 
 ## Implemented
 
-- installable Python CLI: `keygen`, `init`, `approve`, `finalize`, `release`,
-  `verify`, `inspect`, `disclose-identity`, `verify-identity`,
+- installable Python CLI: `keygen`, `init`, `approve`, `authorize`, `recover`,
+  `finalize`, `release`, `revise`, `verify`, `inspect`, `disclose-identity`, `verify-identity`,
   `verify-identity-set`, and `audit-key-reuse`;
 - one-command single- or local multi-author release, plus distributed staged
   approval;
@@ -36,6 +37,10 @@ immutable. A release candidate is not a venue submission or deployed service.
   double control for key-set or threshold changes;
 - exact transition binding and replay rejection, authorized branch handling,
   and same-parent/same-slot fork detection without an invented winner.
+- optional, disjoint, threshold recovery authorities committed by the parent;
+  one exact authority-changing child may be authorized by either the ordinary
+  predecessor quorum or the recovery quorum, never a mixture. Recovery cannot
+  erase prior signatures or select a winner when both paths produce a fork.
 - a pure typed appraisal kernel used by every public granting path, with
   domain-separated approval-target, approval-set, event-window, identity-slot,
   and registration subjects and exact supporting-certificate digests.
@@ -64,9 +69,9 @@ immutable. A release candidate is not a venue submission or deployed service.
 
 ## Acceptance evidence
 
-- Authoritative read-only gate: 24/24 source, package, installed-wheel,
+- Authoritative read-only gate: 29/29 source, package, installed-wheel,
   differential, formal, and workspace-byte-identity checks pass.
-- Python: 156 tests pass locally; the live TSA test and two unavailable Windows
+- Python: 173 tests pass locally; the live TSA test and two unavailable Windows
   capability cases are skipped.
 - Canonical JSON: 64 fixed vectors have no unexpected divergence; 1,000/1,000
   seeded generated cases agree between Python and Node on bytes and text-layer
@@ -98,7 +103,7 @@ immutable. A release candidate is not a venue submission or deployed service.
   only after constructing and strictly parsing `acsd-appraisal-transcript/v1`;
   optional CLI output exposes the same claim-free value, and Python/Lean agree
   on 19/19 complete derivation/rejection cases.
-- Lean 4.33.1: build succeeds; 84 PEC/lineage/scoped-appraisal/transcript
+- Lean 4.33.1: build succeeds; 90 PEC/lineage/recovery/scoped-appraisal/transcript
   theorems; no
   `sorry` or `admit` in the formal sources. The separately published v1 core's
   53 release/team/series theorems remain a distinct inherited model and are not
@@ -121,6 +126,13 @@ quorum evidence, fresh keys cannot use the continuity path, and a transition
 authorization bound to one child digest cannot be replayed for another child.
 The executable verifier classifies an otherwise self-consistent attacker n+1
 as `VALID_OBJECT_BUT_UNAUTHORIZED_SUCCESSOR`.
+
+The recovery extension proves that an accepted recovery successor names a
+parent-precommitted recovery authority, changes the online authority, and binds
+one exact transition; the same authorization cannot be replayed for a different
+child digest. A separate theorem preserves the possibility that an independently
+ordinary-authorized edge remains valid: recovery is fail-closed key continuity,
+not retroactive revocation or offline fork consensus.
 
 The scoped-claim layer proves that a grant requires its exact scope, signer
 authorization, and declared policy; identity evidence cannot grant an event
@@ -170,24 +182,24 @@ filesystem, COSE, RFC 3161, or other adapters inside Lean.
 - general PKIX path construction/revocation, if a service level needs more than
   exact TSA signer pinning;
 - editor integration for WorkID citation witnesses;
-- deployed transparency/gossip services and cross-series federation.
-- precommitted recovery authorities or hardware-backed recovery workflows;
-  without one, loss of the predecessor threshold safely freezes the lineage.
+- deployed transparency/gossip services and cross-series federation;
+- hardware-backed or independently witnessed recovery-key custody, plus an
+  explicit head-pinning/transparency policy for resolving observed forks;
 - a second standards-based domain instance for testing how far the appraisal
   kernel generalizes beyond scholarly provenance.
 
-## Post-v3.2 candidate work
+## Post-v3.3 candidate work
 
-The frozen v3.2.0-rc1 candidate remains unchanged on the
-`post-v3.2-lifecycle` branch. A new executable submission-lifecycle experiment
+The frozen v3.3.0-rc1 candidate remains unchanged while the
+`post-v3.2-lifecycle` branch continues additively. An executable submission-lifecycle experiment
 uses the public CLI to distinguish no-action rejection, authorized scientific
 revision, and explicit per-slot publication crosswalks. It intentionally keeps
 venue acceptance outside the derived claim vocabulary and rejects cross-release
 replay or mutation of a signed publication reference.
 
-The post-candidate source gate passes 28/28 checks, including 163 Python tests.
-A fresh 294-file evidence package built from this branch passes all 24
-artifact-mode checks, including
+The post-candidate source gate passes 29/29 checks and includes 173 passing
+Python tests. The frozen public v3.3.0-rc1 candidate's 294-file evidence
+package passes all 24 of its artifact-mode checks, including
 Lean compilation, the three formal differential bridges, manifest stability,
 and source/package byte identity. These results qualify the workflow mechanics;
 they do not establish that a venue accepted, rejected, or received a paper.
@@ -209,3 +221,17 @@ key per unrelated lineage; this is an operational policy, not a universal
 unlinkability guarantee. The read-only `audit-key-reuse` command now checks
 that policy across two or more fully verified releases and can fail closed in
 release CI without treating key equality as proof of a common natural person.
+
+The next additive iteration implements a minimal precommitted recovery path.
+The parent records a recovery key set and threshold that is disjoint from its
+online author keys. That quorum may authorize only an exact, authority-changing
+transition; mixed ordinary/recovery signatures, uncommitted guardians,
+insufficient quorum, unchanged-authority recovery, and cross-child replay are
+rejected. A controlled conflict case deliberately retains both an ordinary and
+a recovery-authorized same-slot child and reports an unranked fork. This closes
+the key-loss/compromise authorization gap without claiming global revocation,
+complete fork visibility, guardian honesty, or recovery-key custody.
+
+A fresh 299-file evidence package for the recovery iteration passes all 25
+artifact-mode checks. Rebuilding it from the source tree produces a byte-for-byte
+identical tree and manifest.

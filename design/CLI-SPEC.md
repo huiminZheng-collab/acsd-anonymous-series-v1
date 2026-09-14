@@ -8,12 +8,13 @@
 ```
 acsd init    <paper.pdf> --team team.json [--out release-dir] [--parent parent-dir]
 acsd authorize <release-dir> --key predecessor-key.pem
+acsd recover <release-dir> --key recovery-key.pem
 acsd approve <release-dir> --key author-key.pem
 acsd finalize <release-dir> [--tsa https://tsa.example] [--allow-untimestamped]
 acsd verify  <release-dir> [--expected-parent-release-id URN] [--tsa-trust-cert CERT | --tsa-trust-fingerprint HEX] [--emit-appraisal-transcript]
 acsd inspect <release-dir>
 acsd release <paper.pdf> --key author-key.pem [--key coauthor-key.pem] [--tsa URL]
-acsd revise  <parent-dir> <paper.pdf> --key new-author-key.pem [--parent-key old-author-key.pem]
+acsd revise  <parent-dir> <paper.pdf> --key new-author-key.pem [--parent-key old-author-key.pem | --recovery-key recovery-key.pem]
 acsd compare-successors <left-dir> <right-dir>
 acsd audit-key-reuse <release-dir> <release-dir> [...] [--fail-on-cross-work]
 acsd verify-identity-set <release-dir> --disclosure D --signature S [...] [--require-full-byline]
@@ -31,6 +32,9 @@ acsd verify-identity-set <release-dir> --disclosure D --signature S [...] [--req
   不同机器、不同时间签名，通过 U 盘/邮件传递 `release-dir`）。
 - `authorize`：当作者密钥集合或 threshold 发生变化时，前序 authority 的密钥对
   exact lineage transition 签名；达到前序版本预先声明的 threshold 才有继承权。
+- `recover`：仅当前序版本已绑定 recovery authority 时，由其阈值成员签署同一个
+  exact lineage transition。它只能用于改变在线 authority，且不能与 `authorize`
+  产生的普通前序签名混用。
 - `finalize`：从签名文件重算全部必需批准（不信任 state 中的计数）→ 可选
   RFC 3161 → 原子生成最终目录 + `MANIFEST.sha256` → 状态 `finalized`（或
   `finalized-untimestamped`）。缺签名 → `APPROVALS_INCOMPLETE`（列出缺谁）。
@@ -45,7 +49,8 @@ acsd verify-identity-set <release-dir> --disclosure D --signature S [...] [--req
 - `release`：`init`+全部 `approve`+`finalize` 的一条命令；可重复 `--key`
   处理同一机器上合法持有的多作者私钥，分布式团队仍使用分步流程。
 - `revise`：一条命令生成严格的下一版本或授权分支；新作者以 `--key` 批准完整
-  target，作者集合变化时用重复的 `--parent-key` 满足前序 threshold。
+  target，作者集合变化时用重复的 `--parent-key` 满足前序 threshold，或用重复的
+  `--recovery-key` 满足前序版本预承诺的 recovery threshold。
 - `compare-successors`：验证两个后继并检测同一 parent、line、version 的已授权
   分叉；报告 equivocation，但不替作者挑选“赢家”。
 - `audit-key-reuse`：先完整验证两个或更多 release，再按公开 key ID 聚合作者
@@ -79,7 +84,10 @@ release-dir/
 │   ├── parent-pec.json
 │   ├── transition.json
 │   ├── parent-public-keys/<key-id>.pub
-│   └── authorizations/<key-id>.cose
+│   ├── parent-recovery-public-keys/<key-id>.pub  # 仅预承诺恢复时
+│   ├── authorizations/<key-id>.cose
+│   └── recovery-authorizations/<key-id>.cose     # 与上一目录二选一
+├── recovery-public-keys/<key-id>.pub              # 当前版本给未来的承诺
 ├── receipts/                   # 可选
 │   ├── request.tsq  response.tsr  tsa-cert.der  report.json
 └── MANIFEST.sha256             # 覆盖以上所有文件（除自身）
@@ -178,10 +186,15 @@ release-dir/
 - 轮换：需要变更作者集或 threshold 时，创建新版本（`init --parent`），并由
   前序 authority 按其既有 threshold 签署 exact transition。新版本不能自行
   降低前序 threshold。
-- 密钥丢失：若剩余可用前序密钥不足 threshold，该 lineage 按 fail-closed
-  语义冻结；仍可另起 WorkID 引用旧作，但不能冒充其后继。
-- 撤销：v3 不把事后发布的 sidecar 当作可改写已经生效的历史授权。在线撤销、
-  身份恢复与预承诺 recovery authority 是后续扩展，不能靠包外声明偷偷引入。
+- 密钥丢失：若剩余可用前序密钥不足 threshold 且前序版本没有预承诺 recovery
+  authority，该 lineage 按 fail-closed 语义冻结；仍可另起 WorkID 引用旧作。
+- 预承诺恢复：`--recovery-public-key` 与 `--recovery-threshold` 把独立、公开且与
+  作者 key 集合不相交的恢复 authority 绑定进 release。后继默认继承该配置；
+  授权转换可替换或用 `--clear-recovery` 清除。恢复 key 仍应按 lineage 隔离，
+  否则其公开 key ID 会链接不同论文。
+- 撤销边界：恢复授权不会把过去的有效签名变成无效，也不保证离线验证者看到了
+  所有竞争边。普通在线钥与恢复钥若分别授权同槽子版本，系统报告 equivocation
+  而不选赢家；全局发现/排序需要额外透明日志、pinning 或治理策略。
 
 ## 8. RFC 3161 集成（finalize --tsa）
 

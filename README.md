@@ -130,6 +130,25 @@ correct WorkID, exact parent digest, and the next version number; without the
 old threshold the verifier returns
 `VALID_OBJECT_BUT_UNAUTHORIZED_SUCCESSOR`.
 
+A genesis or successor may additionally precommit a disjoint recovery key set:
+
+```text
+acsd release paper-v1.pdf --key author.key \
+  --recovery-public-key guardian-a.pub \
+  --recovery-public-key guardian-b.pub --recovery-threshold 2 \
+  --out release-v1
+
+acsd revise release-v1 paper-v2.pdf --key replacement-author.key \
+  --recovery-key guardian-a.key --recovery-key guardian-b.key \
+  --out release-v2
+```
+
+The recovery quorum signs the same exact transition as an ordinary predecessor
+quorum, and all child authors still approve the child target. The public
+recovery authority is inherited unless an authorized transition replaces or
+clears it. Recovery and ordinary lineage signatures cannot be mixed on one
+edge, and recovery is refused for an unchanged online authority.
+
 Lineage verification is relative to an exact predecessor object. Supplying
 `--expected-parent-release-id` pins the child to a parent ReleaseID already
 accepted by the verifier; without it, the report says
@@ -156,10 +175,12 @@ already published. Use independent keys for unrelated lineages when that
 direct link is unwanted.
 
 An authorization is immutable evidence, not something cryptography can erase.
-Key loss can therefore freeze a lineage, and a malicious transition already
-validly authorized cannot be retroactively made false. Recovery must be
-precommitted in a future policy or handled as a visibly separate social fork;
-transparent ordering remains a deployment-layer option.
+Without a precommitted recovery authority, key loss freezes the lineage. With
+one, the verifier can establish `RECOVERY_AUTHORIZED_TRANSITION` for an exact
+authority-changing child. This does not silently revoke a competing child made
+with stolen online keys: if both are presented, `compare-successors` still
+reports an unranked fork. Discovery or global ordering remains a transparency,
+pinning, or governance service decision.
 
 For a machine-auditable account of the exact typed facts used to produce the
 release-level outcomes, request the optional appraisal transcript:
@@ -297,6 +318,10 @@ source-tree file hashes with its starting snapshot. It contains:
   transition, whether manual or ACSD, distinguishes authorized key rotation
   from fresh-key n+1 capture, while ACSD supplies the maintained closure,
   threshold, governance, and typed-claim profile;
+- a precommitted-recovery experiment covering 2-of-2 recovery, incomplete
+  quorum, unknown or absent recovery authority, cross-child replay, mixed
+  authorization methods, and the residual unranked online-versus-recovery
+  fork;
 - an offline-verified freeTSA fixture over the demo's complete approval set,
   binding its exact request, response, signer certificate, nonce, policy OID,
   serial number, and `2026-09-13T11:37:22+00:00` time;
@@ -347,6 +372,10 @@ remain opt-in because CI must not depend on network availability.
 - `design/APPRAISAL-TRANSCRIPT-V1.md`: the live verifier-to-kernel wire
   boundary and its formal trust statement;
 - `design/ADJACENT-BASELINE-EVALUATION.md`: scope-limited executable comparison
+  with a non-strawman exact-transition baseline;
+- `design/PRECOMMITTED-RECOVERY.md`: precommitted alternate-authority design,
+  attack obligations, and the explicit non-revocation/view-completeness
+  boundary;
   with bare detached Ed25519 policies and an explicit external-validity gap;
 - `formal/`: the Lean model, strict transcript decoder, executable checker, and proofs;
 - `v1-fixture/`: frozen standalone/series/cyclic-citation reference corpus;

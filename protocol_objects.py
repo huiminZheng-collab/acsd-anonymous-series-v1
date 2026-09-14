@@ -27,6 +27,8 @@ LEGACY_RELEASE_SCHEMA = "acsd-v1.6.0-paper-release/v1"
 APPROVAL_TARGET_SCHEMA = "acsd-approval-target/v2"
 LEGACY_APPROVAL_TARGET_SCHEMA = "acsd-approval-target/v1"
 LINEAGE_AUTHORITY_SCHEMA = "acsd-lineage-authority/v1"
+RECOVERABLE_LINEAGE_AUTHORITY_SCHEMA = "acsd-lineage-authority/v2"
+RECOVERY_AUTHORITY_SCHEMA = "acsd-recovery-authority/v1"
 LINEAGE_TRANSITION_SCHEMA = "acsd-lineage-transition/v1"
 
 
@@ -62,8 +64,9 @@ def lineage_authority_of(release):
             "key_ids": author_keys,
             "threshold": len(author_keys),
         }
+    schema = authority.get("schema")
     require(
-        authority.get("schema") == LINEAGE_AUTHORITY_SCHEMA,
+        schema in {LINEAGE_AUTHORITY_SCHEMA, RECOVERABLE_LINEAGE_AUTHORITY_SCHEMA},
         "LINEAGE_AUTHORITY_INVALID",
     )
     keys = authority.get("key_ids")
@@ -82,7 +85,66 @@ def lineage_authority_of(release):
         "LINEAGE_THRESHOLD_INVALID",
     )
     require(1 <= threshold <= len(keys), "LINEAGE_THRESHOLD_INVALID")
+    if schema == LINEAGE_AUTHORITY_SCHEMA:
+        require(
+            set(authority) == {"schema", "key_ids", "threshold"},
+            "LINEAGE_AUTHORITY_FIELDS",
+        )
+    else:
+        require(
+            set(authority) == {"schema", "key_ids", "threshold", "recovery"},
+            "LINEAGE_AUTHORITY_FIELDS",
+        )
+        recovery = authority.get("recovery")
+        require(isinstance(recovery, dict), "RECOVERY_AUTHORITY_INVALID")
+        require(
+            set(recovery) == {"schema", "key_ids", "threshold"}
+            and recovery.get("schema") == RECOVERY_AUTHORITY_SCHEMA,
+            "RECOVERY_AUTHORITY_INVALID",
+        )
+        recovery_keys = recovery.get("key_ids")
+        recovery_threshold = recovery.get("threshold")
+        require(
+            isinstance(recovery_keys, list)
+            and recovery_keys == sorted(recovery_keys)
+            and len(recovery_keys) >= 1
+            and len(recovery_keys) == len(set(recovery_keys))
+            and all(
+                isinstance(key, str) and KEY_ID_RE.fullmatch(key)
+                for key in recovery_keys
+            ),
+            "RECOVERY_AUTHORITY_INVALID",
+        )
+        require(
+            isinstance(recovery_threshold, int)
+            and not isinstance(recovery_threshold, bool)
+            and 1 <= recovery_threshold <= len(recovery_keys),
+            "RECOVERY_THRESHOLD_INVALID",
+        )
+        require(
+            set(keys).isdisjoint(recovery_keys),
+            "RECOVERY_AUTHORITY_NOT_DISJOINT",
+        )
     return authority
+
+
+def recovery_authority_of(release):
+    """Return the predecessor-bound optional recovery authority."""
+    authority = lineage_authority_of(release)
+    return authority.get("recovery")
+
+
+def online_lineage_authority(authority):
+    """Project the online key set and threshold from a validated authority."""
+    return {
+        "key_ids": authority["key_ids"],
+        "threshold": authority["threshold"],
+    }
+
+
+def online_lineage_authority_of(release):
+    """Project the online key set and threshold from a release."""
+    return online_lineage_authority(lineage_authority_of(release))
 
 
 def build_release(
@@ -94,6 +156,7 @@ def build_release(
     parent_release=None,
     line="main",
     lineage_threshold=None,
+    recovery_authority=None,
 ):
     corresponding_key = next(
         (author["key_id"] for author in team["authors"] if author.get("corresponding")),
@@ -128,17 +191,25 @@ def build_release(
         parent_slot = parent_release["slot"]
         version = parent_slot["version"] + 1 if line == parent_slot["line"] else 1
         parent_release_id = "urn:sha256:" + digest(parent_release)
+    lineage_authority = {
+        "schema": LINEAGE_AUTHORITY_SCHEMA,
+        "key_ids": key_ids,
+        "threshold": threshold,
+    }
+    if recovery_authority is not None:
+        lineage_authority = {
+            "schema": RECOVERABLE_LINEAGE_AUTHORITY_SCHEMA,
+            "key_ids": key_ids,
+            "threshold": threshold,
+            "recovery": recovery_authority,
+        }
     release = {
         "schema": RELEASE_SCHEMA,
         "work_id": work_id,
         "slot": {"line": line, "version": version, "work_id": work_id},
         "content": {"path": content_path, "sha256": content_sha256},
         "authors": authors,
-        "lineage_authority": {
-            "schema": LINEAGE_AUTHORITY_SCHEMA,
-            "key_ids": key_ids,
-            "threshold": threshold,
-        },
+        "lineage_authority": lineage_authority,
         "citation_witnesses": [],
         "reference_work_ids": [],
         "ai_use": new_ai_use_declaration(),
@@ -239,6 +310,8 @@ def build_lineage_transition(parent_release, parent_pec, release, governance, pe
         kind = "team-change"
     elif parent_authority["threshold"] != child_authority["threshold"]:
         kind = "threshold-change"
+    elif parent_authority.get("recovery") != child_authority.get("recovery"):
+        kind = "recovery-change"
     else:
         kind = "continuation"
     return {

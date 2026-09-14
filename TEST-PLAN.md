@@ -51,6 +51,25 @@ complete CLI rather than an object-only predicate.
 | same authority creates an explicitly named new line | valid branch beginning at version 1 |
 | two valid distinct children occupy the same parent/line/version slot | `LINEAGE_EQUIVOCATION_DETECTED`, `winner=null` |
 
+## Precommitted-recovery regression matrix
+
+These cases are automated in `test_recovery_authorization.py` and summarized
+by `design/recovery_precommit_report.json`.
+
+| Attack or transition | Required result |
+|---|---|
+| parent precommits two recovery keys and both sign one exact authority-changing child | `RECOVERY_AUTHORIZED_TRANSITION` |
+| a recovery key is also an online author key | `RECOVERY_AUTHORITY_NOT_DISJOINT` |
+| only one key signs a two-of-two recovery transition | `LINEAGE_AUTHORIZATION_INCOMPLETE`, method `recovery` |
+| an unlisted guardian signs | `UNKNOWN_RECOVERY_AUTHORITY_KEY` |
+| a parent with no recovery commitment receives a recovery signature | `RECOVERY_AUTHORITY_NOT_PRECOMMITTED` |
+| recovery signature copied to different child bytes | `COSE_PAYLOAD_MISMATCH` |
+| ordinary predecessor and recovery signature sets are both nonempty | `LINEAGE_AUTHORIZATION_METHOD_AMBIGUOUS` |
+| recovery key is supplied without changing the online key set or threshold | `RECOVERY_REQUIRES_ONLINE_AUTHORITY_CHANGE` |
+| only the recovery-key configuration changes and recovery keys attempt to authorize it | `RECOVERY_REQUIRES_ONLINE_AUTHORITY_CHANGE` |
+| only the recovery-key configuration changes and the online predecessor authorizes it | `AUTHORIZED_TRANSITION` |
+| ordinary and recovery authorities separately authorize competing same-slot children | both edges verify; comparison returns conflict with `winner=null` |
+
 The last result is detection, not ordering. Timestamp or transparency policy is
 required to rank competing valid statements, and no such policy is inferred by
 the offline verifier.
@@ -171,6 +190,9 @@ raw adapter output being evaluated.
     transition and target, complete child approval, predecessor-threshold
     authorization when authority changes, exact input roles, exact approval-set
     projection, and explicit child-policy permission.
+    An authority-changing edge may instead use a recovery quorum only when the
+    exact recovery authority was committed in the predecessor; ordinary and
+    recovery authorization methods are mutually exclusive for that edge.
 11. The CLI and legacy PEC facade must reach one pure bundle validator and
     report the same first error for shared binding, event-chain, policy, and
     capability mutations; canonicalization and public-key identifiers each

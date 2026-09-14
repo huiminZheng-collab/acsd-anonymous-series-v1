@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """ACSD CLI — anonymous scholarly claim and disclosure tool.
 
-Commands: keygen / init / authorize / approve / finalize / release / revise /
+Commands: keygen / init / authorize / recover / approve / finalize / release / revise /
 verify / inspect / verify-identity-set / audit-key-reuse.
 
 Signing uses Ed25519 via `cryptography` and a minimal COSE Sign1 encoding
@@ -27,7 +27,10 @@ sys.dont_write_bytecode = True
 
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+from cryptography.hazmat.primitives.asymmetric.ed25519 import (
+    Ed25519PrivateKey,
+    Ed25519PublicKey,
+)
 
 ROOT = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
@@ -74,6 +77,7 @@ from protocol_objects import (  # noqa: E402
     LINEAGE_AUTHORITY_SCHEMA,
     LINEAGE_TRANSITION_SCHEMA,
     PEC_SCHEMA,
+    RECOVERY_AUTHORITY_SCHEMA,
     RELEASE_SCHEMA,
     TEAM_SCHEMA,
     build_approval_target,
@@ -85,6 +89,8 @@ from protocol_objects import (  # noqa: E402
     check_bindings,
     lineage_authority_of,
     lineage_claim_subject,
+    online_lineage_authority,
+    recovery_authority_of,
 )
 from release_adapter import adapt_release  # noqa: E402
 from release_verifier import validate_receipt_report, verify_release_dir  # noqa: E402
@@ -107,6 +113,75 @@ def load_team(path):
     key_ids = [a["key_id"] for a in authors]
     require(len(set(key_ids)) == len(key_ids), "TEAM_DUPLICATE_KEY")
     return team
+
+
+def resolve_recovery_authority(args, parent_root, parent_release, author_key_ids):
+    """Resolve an explicit, inherited, or cleared recovery-key commitment."""
+    paths = list(getattr(args, "recovery_public_key", None) or [])
+    threshold = getattr(args, "recovery_threshold", None)
+    clear = bool(getattr(args, "clear_recovery", False))
+    require(
+        not (clear and (paths or threshold is not None)),
+        "RECOVERY_OPTIONS_CONFLICT",
+    )
+    require(
+        not clear or parent_release is not None,
+        "RECOVERY_CLEAR_WITHOUT_PARENT",
+    )
+    parent_recovery = (
+        recovery_authority_of(parent_release)
+        if parent_release is not None
+        else None
+    )
+    public_keys = {}
+    if paths:
+        for raw_path in paths:
+            path = pathlib.Path(raw_path)
+            require(path.is_file(), "RECOVERY_PUBLIC_KEY_NOT_FILE")
+            try:
+                public_key = load_public_key_bytes(path.read_bytes())
+            except (OSError, TypeError, ValueError) as exc:
+                raise ValueError("RECOVERY_PUBLIC_KEY_INVALID") from exc
+            require(
+                isinstance(public_key, Ed25519PublicKey),
+                "RECOVERY_PUBLIC_KEY_INVALID",
+            )
+            key_id = key_id_of(public_key)
+            require(key_id not in public_keys, "RECOVERY_DUPLICATE_KEY")
+            public_keys[key_id] = public_pem(public_key)
+        resolved_threshold = len(public_keys) if threshold is None else threshold
+    elif parent_recovery is not None and not clear:
+        require(parent_root is not None, "RECOVERY_PARENT_ROOT_MISSING")
+        for key_id in parent_recovery["key_ids"]:
+            path = parent_root / f"recovery-public-keys/{key_id}.pub"
+            try:
+                public_key = load_public_key_bytes(path.read_bytes())
+            except (OSError, TypeError, ValueError) as exc:
+                raise ValueError("PARENT_RECOVERY_PUBLIC_KEY_INVALID") from exc
+            require(key_id_of(public_key) == key_id, "PUBLIC_KEY_ID_MISMATCH")
+            public_keys[key_id] = public_pem(public_key)
+        resolved_threshold = (
+            parent_recovery["threshold"] if threshold is None else threshold
+        )
+    else:
+        require(threshold is None, "RECOVERY_THRESHOLD_WITHOUT_KEYS")
+        return None, {}
+    require(
+        isinstance(resolved_threshold, int)
+        and not isinstance(resolved_threshold, bool)
+        and 1 <= resolved_threshold <= len(public_keys),
+        "RECOVERY_THRESHOLD_INVALID",
+    )
+    require(
+        set(public_keys).isdisjoint(author_key_ids),
+        "RECOVERY_AUTHORITY_NOT_DISJOINT",
+    )
+    authority = {
+        "schema": RECOVERY_AUTHORITY_SCHEMA,
+        "key_ids": sorted(public_keys),
+        "threshold": resolved_threshold,
+    }
+    return authority, public_keys
 
 
 def manifest_entries(root: pathlib.Path) -> str:
@@ -182,6 +257,12 @@ def cmd_init(args):
             line = parent_release["slot"]["line"]
     else:
         work_id = "urn:uuid:" + str(uuid.uuid4())
+    recovery_authority, recovery_public_keys = resolve_recovery_authority(
+        args,
+        parent_root,
+        parent_release,
+        key_ids,
+    )
     content_rel = f"paper/{content_sha256}"
     out = pathlib.Path(args.out)
     if out.exists() and any(out.iterdir()):
@@ -192,6 +273,7 @@ def cmd_init(args):
         parent_release=parent_release,
         line=line,
         lineage_threshold=getattr(args, "lineage_threshold", None),
+        recovery_authority=recovery_authority,
     )
     adapted = adapt_release(release)
     governance = build_governance(work_id, content_sha256, team)
@@ -215,6 +297,12 @@ def cmd_init(args):
     (out / content_rel).write_bytes(content_bytes)
     for a in team["authors"]:
         (out / f"public-keys/{a['key_id']}.pub").write_bytes(a["public_key"].encode())
+    if recovery_public_keys:
+        (out / "recovery-public-keys").mkdir(exist_ok=True)
+        for key_id, public_key_bytes in recovery_public_keys.items():
+            (out / f"recovery-public-keys/{key_id}.pub").write_bytes(
+                public_key_bytes
+            )
     write_canonical(out / "release/release.json", release)
     write_canonical(out / "governance/statement.json", governance)
     write_canonical(out / "pec/pec.json", pec)
@@ -233,6 +321,17 @@ def cmd_init(args):
             pub = load_public_key_bytes(source.read_bytes())
             require(key_id_of(pub) == kid, "PUBLIC_KEY_ID_MISMATCH")
             (out / f"lineage/parent-public-keys/{kid}.pub").write_bytes(source.read_bytes())
+        parent_recovery = recovery_authority_of(parent_release)
+        if parent_recovery is not None:
+            (out / "lineage/parent-recovery-public-keys").mkdir(parents=True)
+            (out / "lineage/recovery-authorizations").mkdir(parents=True)
+            for kid in parent_recovery["key_ids"]:
+                source = parent_root / f"recovery-public-keys/{kid}.pub"
+                public_key = load_public_key_bytes(source.read_bytes())
+                require(key_id_of(public_key) == kid, "PUBLIC_KEY_ID_MISMATCH")
+                (out / f"lineage/parent-recovery-public-keys/{kid}.pub").write_bytes(
+                    source.read_bytes()
+                )
     write_canonical(out / "state.json", {
         "schema": "acsd-state/v1",
         "state": "awaiting-approvals",
@@ -244,6 +343,12 @@ def cmd_init(args):
             parent_authority["threshold"] if parent_authority is not None else 0
         ),
         "received_lineage_authorizations": [],
+        "required_recovery_authorization_threshold": (
+            parent_recovery["threshold"]
+            if parent_release is not None and parent_recovery is not None
+            else 0
+        ),
+        "received_recovery_authorizations": [],
     })
     return EXIT_OK, "initialized", {
         "work_id": work_id,
@@ -252,6 +357,7 @@ def cmd_init(args):
         "line": adapted["line"],
         "parent_release_id": release["parent_release_id"],
         "state": "awaiting-approvals",
+        "recovery_authority": recovery_authority,
     }
 
 
@@ -275,6 +381,9 @@ def cmd_authorize(args):
         return EXIT_STATE_CONFLICT, "GENESIS_HAS_NO_LINEAGE_TRANSITION", {}
     if lineage["parent_authority"] == lineage["child_authority"]:
         return EXIT_STATE_CONFLICT, "SEPARATE_LINEAGE_AUTHORIZATION_NOT_REQUIRED", {}
+    recovery_dir = root / "lineage/recovery-authorizations"
+    if recovery_dir.is_dir() and any(recovery_dir.glob("*.cose")):
+        return EXIT_STATE_CONFLICT, "LINEAGE_AUTHORIZATION_METHOD_AMBIGUOUS", {}
     kid = key_id_of(key.public_key())
     if kid not in lineage["parent_authority"]["key_ids"]:
         return EXIT_VERIFY_FAIL, "UNKNOWN_PARENT_AUTHORITY_KEY", {"key_id": kid}
@@ -289,6 +398,54 @@ def cmd_authorize(args):
         "key_id": kid,
         "received": len(received),
         "required_threshold": lineage["parent_authority"]["threshold"],
+    }
+
+
+def cmd_recover(args):
+    """Authorize one exact authority-changing edge with precommitted recovery."""
+    root = pathlib.Path(args.release_dir)
+    if path_is_within(args.key, root):
+        return EXIT_USAGE, "PRIVATE_KEY_INSIDE_RELEASE", {}
+    state = read_canonical(root / "state.json")
+    if state.get("state") != "awaiting-approvals":
+        return EXIT_STATE_CONFLICT, "STATE_CONFLICT", {"state": state.get("state")}
+    try:
+        key = load_private_key(args.key)
+    except (TypeError, ValueError) as exc:
+        return EXIT_USAGE, "PRIVATE_KEY_INVALID", {"error": str(exc)}
+    release = read_canonical(root / "release/release.json")
+    governance = read_canonical(root / "governance/statement.json")
+    pec = read_canonical(root / "pec/pec.json")
+    lineage = load_lineage_structure(root, release, governance, pec)
+    if lineage is None:
+        return EXIT_STATE_CONFLICT, "GENESIS_HAS_NO_LINEAGE_TRANSITION", {}
+    if (
+        online_lineage_authority(lineage["parent_authority"])
+        == online_lineage_authority(lineage["child_authority"])
+    ):
+        return EXIT_STATE_CONFLICT, "RECOVERY_REQUIRES_ONLINE_AUTHORITY_CHANGE", {}
+    recovery = lineage["parent_recovery_authority"]
+    if recovery is None:
+        return EXIT_VERIFY_FAIL, "RECOVERY_AUTHORITY_NOT_PRECOMMITTED", {}
+    ordinary_dir = root / "lineage/authorizations"
+    if ordinary_dir.is_dir() and any(ordinary_dir.glob("*.cose")):
+        return EXIT_STATE_CONFLICT, "LINEAGE_AUTHORIZATION_METHOD_AMBIGUOUS", {}
+    kid = key_id_of(key.public_key())
+    if kid not in recovery["key_ids"]:
+        return EXIT_VERIFY_FAIL, "UNKNOWN_RECOVERY_AUTHORITY_KEY", {"key_id": kid}
+    directory = root / "lineage/recovery-authorizations"
+    directory.mkdir(parents=True, exist_ok=True)
+    path = directory / f"{kid}.cose"
+    if path.exists():
+        return EXIT_STATE_CONFLICT, "DUPLICATE_RECOVERY_AUTHORIZATION", {"key_id": kid}
+    path.write_bytes(cose.cose_sign1(canonical(lineage["transition"]), key))
+    received = sorted(p.stem for p in directory.glob("*.cose"))
+    state["received_recovery_authorizations"] = received
+    write_canonical(root / "state.json", state)
+    return EXIT_OK, "recovery transition authorized", {
+        "key_id": kid,
+        "received": len(received),
+        "required_threshold": recovery["threshold"],
     }
 
 
@@ -367,8 +524,25 @@ def cmd_finalize(args):
         lineage_result = verify_lineage_authorization(root, lineage, set(required))
     except ValueError as exc:
         if str(exc) == "UNAUTHORIZED_SUCCESSOR":
+            recovery_files = (
+                list((root / "lineage/recovery-authorizations").glob("*.cose"))
+                if (root / "lineage/recovery-authorizations").is_dir()
+                else []
+            )
+            recovery = (
+                lineage.get("parent_recovery_authority")
+                if lineage is not None
+                else None
+            )
             return EXIT_INCOMPLETE, "LINEAGE_AUTHORIZATION_INCOMPLETE", {
-                "required_threshold": lineage["parent_authority"]["threshold"],
+                "authorization_method": (
+                    "recovery" if recovery_files else "predecessor"
+                ),
+                "required_threshold": (
+                    recovery["threshold"]
+                    if recovery_files and recovery is not None
+                    else lineage["parent_authority"]["threshold"]
+                ),
             }
         return EXIT_VERIFY_FAIL, "LINEAGE_AUTHORIZATION_INVALID", {"error_code": str(exc)}
 
@@ -392,7 +566,14 @@ def cmd_finalize(args):
         else []
     )
     approval_set_obj = approval_set.build(
-        staging, target, required, separate_lineage_keys
+        staging,
+        target,
+        required,
+        separate_lineage_keys,
+        lineage_directory=(
+            lineage_result["authorization_directory"]
+            or "lineage/authorizations"
+        ),
     )
     write_canonical(staging / "approval/approval-set.json", approval_set_obj)
     approval_set_digest = digest(approval_set_obj)
@@ -511,6 +692,9 @@ def cmd_release(args):
         code, message, initialized = cmd_init(argparse.Namespace(
             content=args.content, team=str(team_path), out=str(out), parent=None,
             line="main", lineage_threshold=getattr(args, "lineage_threshold", None),
+            recovery_public_key=getattr(args, "recovery_public_key", None),
+            recovery_threshold=getattr(args, "recovery_threshold", None),
+            clear_recovery=False,
         ))
     if code != EXIT_OK:
         return code, message, initialized
@@ -533,7 +717,15 @@ def cmd_release(args):
 def cmd_revise(args):
     """One-command authorized successor for locally held old and new keys."""
     out = pathlib.Path(args.out)
-    for key_path in list(args.key) + list(args.parent_key or []):
+    parent_keys = list(getattr(args, "parent_key", None) or [])
+    recovery_keys = list(getattr(args, "recovery_key", None) or [])
+    if parent_keys and recovery_keys:
+        return EXIT_USAGE, "LINEAGE_AUTHORIZATION_METHOD_AMBIGUOUS", {}
+    for key_path in (
+        list(args.key)
+        + parent_keys
+        + recovery_keys
+    ):
         if path_is_within(key_path, out):
             return EXIT_USAGE, "PRIVATE_KEY_INSIDE_RELEASE", {}
     try:
@@ -550,6 +742,9 @@ def cmd_revise(args):
             parent=args.parent_dir,
             line=args.line,
             lineage_threshold=args.lineage_threshold,
+            recovery_public_key=getattr(args, "recovery_public_key", None),
+            recovery_threshold=getattr(args, "recovery_threshold", None),
+            clear_recovery=getattr(args, "clear_recovery", False),
         ))
     if code != EXIT_OK:
         return code, message, initialized
@@ -557,9 +752,20 @@ def cmd_revise(args):
     governance = read_canonical(out / "governance/statement.json")
     pec = read_canonical(out / "pec/pec.json")
     lineage = load_lineage_structure(out, release, governance, pec)
+    if recovery_keys and (
+        online_lineage_authority(lineage["parent_authority"])
+        == online_lineage_authority(lineage["child_authority"])
+    ):
+        return EXIT_STATE_CONFLICT, "RECOVERY_REQUIRES_ONLINE_AUTHORITY_CHANGE", {}
     if lineage["parent_authority"] != lineage["child_authority"]:
-        for key_path in args.parent_key or []:
+        for key_path in parent_keys:
             code, message, authorized = cmd_authorize(argparse.Namespace(
+                release_dir=str(out), key=key_path,
+            ))
+            if code != EXIT_OK:
+                return code, message, authorized
+        for key_path in recovery_keys:
+            code, message, authorized = cmd_recover(argparse.Namespace(
                 release_dir=str(out), key=key_path,
             ))
             if code != EXIT_OK:
@@ -811,12 +1017,20 @@ def main(argv=None):
     pi.add_argument("--parent", help="verified predecessor release directory")
     pi.add_argument("--line", help="line name; defaults to the parent's line or main")
     pi.add_argument("--lineage-threshold", type=int, help="future successor authorization threshold (default: all authors)")
+    pi.add_argument("--recovery-public-key", action="append", help="precommitted Ed25519 recovery public key; repeat for a threshold set")
+    pi.add_argument("--recovery-threshold", type=int, help="recovery signature threshold (default: all recovery keys)")
+    pi.add_argument("--clear-recovery", action="store_true", help="remove an inherited recovery authority through an authorized transition")
     pi.set_defaults(func=cmd_init)
 
     pl = sub.add_parser("authorize", parents=[common], help="authorize a key-set or threshold-changing lineage transition with a predecessor key")
     pl.add_argument("release_dir")
     pl.add_argument("--key", required=True, help="predecessor-authority private key PEM")
     pl.set_defaults(func=cmd_authorize)
+
+    pg = sub.add_parser("recover", parents=[common], help="authorize an exact authority-changing transition with a precommitted recovery key")
+    pg.add_argument("release_dir")
+    pg.add_argument("--key", required=True, help="precommitted recovery-authority private key PEM")
+    pg.set_defaults(func=cmd_recover)
 
     pa = sub.add_parser("approve", parents=[common], help="endorse a release with a private key")
     pa.add_argument("release_dir")
@@ -838,6 +1052,8 @@ def main(argv=None):
     pr.add_argument("--tsa-cert", help="TSA signer certificate when the response omits it")
     pr.add_argument("--allow-untimestamped", action="store_true", help="finalize without a timestamp if the TSA fails")
     pr.add_argument("--lineage-threshold", type=int, help="future successor authorization threshold (default: all authors)")
+    pr.add_argument("--recovery-public-key", action="append", help="precommitted Ed25519 recovery public key; repeat for a threshold set")
+    pr.add_argument("--recovery-threshold", type=int, help="recovery signature threshold (default: all recovery keys)")
     pr.set_defaults(func=cmd_release)
 
     px = sub.add_parser("revise", parents=[common], help="one-command authorized successor using locally held keys")
@@ -845,9 +1061,13 @@ def main(argv=None):
     px.add_argument("content", help="new manuscript file (PDF or text)")
     px.add_argument("--key", action="append", required=True, help="new-version author private key; repeat for co-authors")
     px.add_argument("--parent-key", action="append", help="predecessor-authority key; required up to the old threshold when the key set or threshold changes")
+    px.add_argument("--recovery-key", action="append", help="precommitted recovery private key; alternative to --parent-key")
     px.add_argument("--out", default="revision-dir", help="output directory")
     px.add_argument("--line", help="line name; omit to continue the parent line")
     px.add_argument("--lineage-threshold", type=int, help="future successor authorization threshold (default: all new authors)")
+    px.add_argument("--recovery-public-key", action="append", help="replace the inherited recovery public-key set")
+    px.add_argument("--recovery-threshold", type=int, help="set the inherited or replacement recovery threshold")
+    px.add_argument("--clear-recovery", action="store_true", help="remove the inherited recovery authority")
     px.add_argument("--tsa", help="RFC 3161 TSA URL, or 'local' for protocol testing")
     px.add_argument("--tsa-cert", help="TSA signer certificate when the response omits it")
     px.add_argument("--allow-untimestamped", action="store_true", help="finalize without a timestamp if the TSA fails")
