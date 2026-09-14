@@ -2,24 +2,28 @@ import ast
 import pathlib
 import unittest
 
+import artifact_io
 import bundle_validation
 import canonical_json
 import cli_output
 import claim_derivation
+import key_material
 import legacy_adapter
+import lineage_adapter
 import lineage_verification_transcript
 import pec_core
 import protocol_objects
+import release_verifier
 import release_adapter
 import verification_transcript
 
 
 ROOT = pathlib.Path(__file__).resolve().parent
 PRODUCTION_GRANTERS = (
-    "acsd.py",
     "event_disclosure.py",
     "identity_disclosure.py",
     "lineage_verification_transcript.py",
+    "release_verifier.py",
     "verify_pec.py",
     "verification_transcript.py",
 )
@@ -94,6 +98,69 @@ class TestTrustedKernelArchitecture(unittest.TestCase):
             "lineage_claim_subject",
         ):
             self.assertNotIn(f"def {name}(", cli_source)
+
+    def test_adapter_and_verifier_dependencies_flow_toward_the_kernel(self):
+        self.assertEqual(
+            self.imported_roots(artifact_io),
+            {"canonical_json", "json", "pathlib"},
+        )
+        self.assertEqual(
+            self.imported_roots(key_material),
+            {"canonical_json", "cryptography", "key_identity", "pathlib"},
+        )
+        self.assertEqual(
+            self.imported_roots(lineage_adapter),
+            {
+                "artifact_io",
+                "canonical_json",
+                "cose",
+                "key_identity",
+                "key_material",
+                "protocol_objects",
+                "release_adapter",
+            },
+        )
+        verifier_roots = self.imported_roots(release_verifier)
+        self.assertEqual(
+            verifier_roots,
+            {
+                "approval_set",
+                "artifact_io",
+                "canonical_json",
+                "claim_derivation",
+                "cli_output",
+                "cose",
+                "hashlib",
+                "key_identity",
+                "key_material",
+                "lineage_adapter",
+                "package_manifest",
+                "pathlib",
+                "protocol_objects",
+                "re",
+                "release_adapter",
+                "tsa",
+            },
+        )
+        for module in (artifact_io, key_material, lineage_adapter, release_verifier):
+            self.assertNotIn("acsd", self.imported_roots(module))
+
+    def test_cli_has_no_embedded_adapter_or_release_verifier_definitions(self):
+        source = (ROOT / "acsd.py").read_text(encoding="utf-8")
+        for name in (
+            "read_canonical",
+            "write_canonical",
+            "path_is_within",
+            "load_private_key",
+            "load_public_key_bytes",
+            "load_bound_public_key",
+            "check_release_key_paths",
+            "load_lineage_structure",
+            "verify_lineage_authorization",
+            "validate_receipt_report",
+            "verify_release_dir",
+        ):
+            self.assertNotIn(f"def {name}(", source)
 
     def test_legacy_io_is_confined_to_the_named_adapter(self):
         self.assertEqual(

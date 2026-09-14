@@ -11,14 +11,10 @@ from cryptography.hazmat.primitives import serialization
 
 import approval_set
 import cose
-from acsd import (
-    check_release_key_paths,
-    load_bound_public_key,
-    load_lineage_structure,
-    verify_lineage_authorization,
-)
 from canonical_json import canonical, digest, require
 from key_identity import key_id_of
+from key_material import check_release_key_paths, load_bound_public_key
+from lineage_adapter import load_lineage_structure, verify_lineage_authorization
 from protocol_objects import check_approval_target, check_bindings
 from release_adapter import adapt_release
 

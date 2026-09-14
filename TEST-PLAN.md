@@ -185,6 +185,11 @@ raw adapter output being evaluated.
     CLI may re-export old names but must not copy their implementations, and
     independently built objects must not share mutable AI-use or contribution
     lists.
+14. Canonical-file, key-material, lineage-signature, and release-verification
+    adapters must form a one-way dependency chain into the protocol and claim
+    kernels. None may import the CLI. Existing `acsd` helper/verifier names must
+    be exact compatibility exports, and the installed CLI must preserve all
+    success results, exit codes, and first-error results.
 
 ## Out-of-scope tests for the deterministic local suite
 

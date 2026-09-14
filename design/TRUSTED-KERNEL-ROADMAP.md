@@ -96,7 +96,7 @@ second-domain instance remains open.
    the behavior corpus proves equivalence.
 5. Centralize public-key identifiers and stable error serialization.
 
-Current status: items 1--3 and item 5 are implemented.
+Current status: all five structural-simplification items are implemented.
 `bundle_validation.py` is the only implementation of PEC,
 governance, event-chain, disclosure-policy, and capability-policy acceptance;
 `acsd.check_bindings` and `pec_core.validate_pec` are compatibility facades.
@@ -105,11 +105,14 @@ Thirteen shared adverse mutations compare the facades' first error codes.
 `release_adapter.py` is the live pure projection, while `legacy_adapter.py`
 contains the v1 filesystem, Node subprocess, and metadata-only paths behind
 lazy compatibility wrappers. `cli_output.py` owns the six exit codes and both
-output formats. Item 4 is now partly implemented: `protocol_objects.py` owns
-all live schemas plus release/governance/PEC/target/lineage construction and
-binding checks, while `acsd.py` re-exports the previous names and has fallen
-from 1373 to about 1142 lines in this slice. Verification I/O orchestration and
-command handlers remain; they should move only in behavior-corpus-sized slices.
+output formats. For item 4, `protocol_objects.py` owns all live schemas plus
+release/governance/PEC/target/lineage construction and binding checks.
+`artifact_io.py`, `key_material.py`, and `lineage_adapter.py` establish the
+external facts consumed by the CLI-independent `release_verifier.py`; none
+imports `acsd.py`. The command module re-exports previous names and has fallen
+from 1478 to about 796 lines while retaining routing and authoring/finalization
+workflows. Further command splitting is not planned without a concrete test or
+reuse boundary.
 
 No dependency-injection framework, plugin framework, event bus, database, or
 general policy language is planned. Those additions would enlarge the decision

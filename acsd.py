@@ -14,7 +14,6 @@ import argparse
 import hashlib
 import json
 import pathlib
-import re
 import secrets
 import shutil
 import sys
@@ -28,7 +27,7 @@ sys.dont_write_bytecode = True
 
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey, Ed25519PublicKey
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 ROOT = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
@@ -36,9 +35,9 @@ sys.path.insert(0, str(ROOT))
 import cose  # noqa: E402
 import tsa  # noqa: E402
 import approval_set  # noqa: E402
-import claim_derivation as claim_core  # noqa: E402
 import identity_disclosure  # noqa: E402
 from acsd_version import __version__  # noqa: E402
+from artifact_io import path_is_within, read_canonical, write_canonical  # noqa: E402
 from canonical_json import canonical, digest, require  # noqa: E402
 from cli_output import (  # noqa: E402
     EXIT_EXTERNAL,
@@ -50,12 +49,22 @@ from cli_output import (  # noqa: E402
     emit_human,
     emit_json,
 )
-from key_identity import KEY_ID_RE, key_id_of, validate_key_id  # noqa: E402
+from key_identity import key_id_of  # noqa: E402
+from key_material import (  # noqa: E402
+    check_release_key_paths,
+    load_bound_public_key,
+    load_certificate_der,
+    load_private_key,
+    load_public_key_bytes,
+    public_pem,
+)
+from lineage_adapter import (  # noqa: E402
+    load_lineage_structure,
+    verify_lineage_authorization,
+)
 from package_manifest import (  # noqa: E402
     build_manifest_text,
     iter_payload_files,
-    payload_path,
-    verify_manifest,
 )
 from protocol_objects import (  # noqa: E402
     APPROVAL_TARGET_SCHEMA,
@@ -77,107 +86,7 @@ from protocol_objects import (  # noqa: E402
     lineage_claim_subject,
 )
 from release_adapter import adapt_release  # noqa: E402
-
-# --- key helpers -----------------------------------------------------------
-
-
-def load_private_key(path) -> Ed25519PrivateKey:
-    key_path = pathlib.Path(path)
-    if not key_path.is_file():
-        raise ValueError("PRIVATE_KEY_NOT_FILE")
-    try:
-        data = key_path.read_bytes()
-    except OSError as exc:
-        raise ValueError("PRIVATE_KEY_UNREADABLE") from exc
-    return serialization.load_pem_private_key(data, password=None)
-
-
-def load_public_key_bytes(data: bytes) -> Ed25519PublicKey:
-    return serialization.load_pem_public_key(data)
-
-
-def public_pem(pub: Ed25519PublicKey) -> bytes:
-    return pub.public_bytes(
-        encoding=serialization.Encoding.PEM,
-        format=serialization.PublicFormat.SubjectPublicKeyInfo,
-    )
-
-
-def load_certificate_der(path) -> bytes:
-    raw = pathlib.Path(path).read_bytes()
-    try:
-        cert = x509.load_pem_x509_certificate(raw)
-    except ValueError:
-        cert = x509.load_der_x509_certificate(raw)
-    return cert.public_bytes(serialization.Encoding.DER)
-
-
-def validate_receipt_report(report):
-    expected_fields = {
-        "schema", "subject", "subject_digest", "nonce", "tsa_url",
-        "tsa_cert_fingerprint", "capability",
-    }
-    require(isinstance(report, dict) and set(report) == expected_fields, "RECEIPT_REPORT_FIELDS")
-    require(report.get("schema") == "acsd-receipt-report/v1", "RECEIPT_REPORT_SCHEMA")
-    require(
-        isinstance(report.get("subject"), str)
-        and isinstance(report.get("subject_digest"), str)
-        and KEY_ID_RE.fullmatch(report["subject_digest"])
-        and isinstance(report.get("nonce"), str)
-        and re.fullmatch(r"[0-9a-f]{32}", report["nonce"])
-        and isinstance(report.get("tsa_url"), str)
-        and bool(report["tsa_url"])
-        and isinstance(report.get("tsa_cert_fingerprint"), str)
-        and KEY_ID_RE.fullmatch(report["tsa_cert_fingerprint"])
-        and isinstance(report.get("capability"), str),
-        "RECEIPT_REPORT_INVALID",
-    )
-
-
-def load_bound_public_key(root: pathlib.Path, kid: str) -> Ed25519PublicKey:
-    """Load the public key stored under *kid* and verify the name binding."""
-    validate_key_id(kid)
-    pub = load_public_key_bytes((root / f"public-keys/{kid}.pub").read_bytes())
-    require(key_id_of(pub) == kid, "PUBLIC_KEY_ID_MISMATCH")
-    return pub
-
-
-def path_is_within(path, directory) -> bool:
-    try:
-        pathlib.Path(path).resolve().relative_to(pathlib.Path(directory).resolve())
-        return True
-    except ValueError:
-        return False
-
-
-def check_release_key_paths(release):
-    for author in release.get("authors", []):
-        kid = validate_key_id(author.get("key_id"))
-        require(
-            author.get("public_key_path") == f"public-keys/{kid}.pub",
-            "PUBLIC_KEY_PATH_MISMATCH",
-        )
-
-
-# --- canonical read --------------------------------------------------------
-
-
-def read_canonical(path: pathlib.Path):
-    raw = path.read_bytes()
-    if raw.endswith(b"\n"):
-        raw = raw[:-1]
-    try:
-        obj = json.loads(raw)
-    except ValueError as e:
-        raise ValueError(f"NONCANONICAL:{path.name}") from e
-    if canonical(obj) != raw:
-        raise ValueError(f"NONCANONICAL:{path.name}")
-    return obj
-
-
-def write_canonical(path: pathlib.Path, obj):
-    path.write_bytes(canonical(obj) + b"\n")
-
+from release_verifier import validate_receipt_report, verify_release_dir  # noqa: E402
 
 # --- team input ------------------------------------------------------------
 
@@ -197,77 +106,6 @@ def load_team(path):
     key_ids = [a["key_id"] for a in authors]
     require(len(set(key_ids)) == len(key_ids), "TEAM_DUPLICATE_KEY")
     return team
-
-
-def load_lineage_structure(root, release, governance, pec):
-    """Validate an optional parent-to-child edge, excluding signatures."""
-    adapted = adapt_release(release)
-    parent_id = release.get("parent_release_id")
-    predecessor_pec = pec["subject"].get("predecessor_pec_digest")
-    if parent_id is None:
-        require(adapted["version"] == 1, "LINEAGE_GENESIS_VERSION")
-        require(predecessor_pec is None, "PREDECESSOR_MISMATCH")
-        return None
-
-    lineage_root = root / "lineage"
-    parent_release = read_canonical(lineage_root / "parent-release.json")
-    parent_pec = read_canonical(lineage_root / "parent-pec.json")
-    transition = read_canonical(lineage_root / "transition.json")
-    parent = adapt_release(parent_release)
-    require(parent_id == "urn:sha256:" + parent["digest"], "PARENT_RELEASE_MISMATCH")
-    require(parent["work_id"] == adapted["work_id"], "LINEAGE_WORK_ID_MISMATCH")
-    if parent["line"] == adapted["line"]:
-        require(adapted["version"] == parent["version"] + 1, "LINEAGE_VERSION_NOT_CONSECUTIVE")
-    else:
-        require(adapted["version"] == 1, "LINEAGE_BRANCH_VERSION")
-    require(predecessor_pec == digest(parent_pec), "PREDECESSOR_MISMATCH")
-    expected = build_lineage_transition(parent_release, parent_pec, release, governance, pec)
-    require(transition == expected, "LINEAGE_TRANSITION_MISMATCH")
-    return {
-        "parent_release": parent_release,
-        "parent_pec": parent_pec,
-        "transition": transition,
-        "parent_authority": lineage_authority_of(parent_release),
-        "child_authority": lineage_authority_of(release),
-    }
-
-
-def verify_lineage_authorization(root, lineage, valid_child_approvals):
-    """Verify authority continuity for one exact parent-to-child edge."""
-    if lineage is None:
-        return {"status": "GENESIS", "required": 0, "valid": []}
-    old = lineage["parent_authority"]
-    new = lineage["child_authority"]
-    old_keys = set(old["key_ids"])
-    if old == new:
-        inherited = sorted(old_keys.intersection(valid_child_approvals))
-        require(len(inherited) >= old["threshold"], "UNAUTHORIZED_SUCCESSOR")
-        return {"status": "AUTHORIZED_CONTINUATION", "required": old["threshold"], "valid": inherited}
-
-    auth_dir = root / "lineage/authorizations"
-    if auth_dir.exists():
-        for path in auth_dir.glob("*.cose"):
-            require(path.stem in old_keys, "LINEAGE_AUTHORIZATION_UNKNOWN_KEY")
-    valid = []
-    payload = canonical(lineage["transition"])
-    for kid in old["key_ids"]:
-        approval_path = auth_dir / f"{kid}.cose"
-        if not approval_path.is_file():
-            continue
-        pub_path = root / f"lineage/parent-public-keys/{kid}.pub"
-        try:
-            pub = load_public_key_bytes(pub_path.read_bytes())
-            require(key_id_of(pub) == kid, "PUBLIC_KEY_ID_MISMATCH")
-            cose.cose_verify(approval_path.read_bytes(), pub, expected_payload=payload)
-        except FileNotFoundError:
-            raise ValueError("PARENT_PUBLIC_KEY_MISSING")
-        except ValueError:
-            raise
-        except Exception as exc:
-            raise ValueError("LINEAGE_AUTHORIZATION_SIGNATURE_INVALID") from exc
-        valid.append(kid)
-    require(len(valid) >= old["threshold"], "UNAUTHORIZED_SUCCESSOR")
-    return {"status": "AUTHORIZED_TRANSITION", "required": old["threshold"], "valid": valid}
 
 
 def manifest_entries(root: pathlib.Path) -> str:
@@ -743,230 +581,6 @@ def cmd_revise(args):
             "line": initialized["line"],
         })
     return code, message, finalized
-
-
-def verify_release_dir(root: pathlib.Path, trusted_tsa_cert_der: bytes = None,
-                       trusted_tsa_fingerprint: str = None,
-                       allow_local_test_tsa: bool = False,
-                       require_external_time: bool = False,
-                       expected_parent_release_id: str = None):
-    # Validate the closed package boundary before interpreting any attacker-
-    # controlled path or signed object.  A present manifest can never be
-    # downgraded by editing state.json.
-    manifest_path = root / "MANIFEST.sha256"
-    if manifest_path.exists() or manifest_path.is_symlink():
-        try:
-            verify_manifest(root)
-        except (OSError, UnicodeError, ValueError) as exc:
-            return EXIT_VERIFY_FAIL, "TAMPERED", {"error_code": str(exc)}
-
-    state = read_canonical(root / "state.json")
-    release = read_canonical(root / "release/release.json")
-    governance = read_canonical(root / "governance/statement.json")
-    pec = read_canonical(root / "pec/pec.json")
-    target = read_canonical(root / "approval/target.json")
-    adapted = adapt_release(release)
-    check_release_key_paths(release)
-    try:
-        content_file = payload_path(root, release["content"]["path"])
-        content_bytes = content_file.read_bytes()
-    except (OSError, ValueError) as exc:
-        return EXIT_VERIFY_FAIL, "TAMPERED", {"error_code": str(exc)}
-    if hashlib.sha256(content_bytes).hexdigest() != release["content"]["sha256"]:
-        return EXIT_VERIFY_FAIL, "TAMPERED", {"error_code": "CONTENT_DIGEST_MISMATCH"}
-    try:
-        check_bindings(pec, adapted, governance, release)
-        lineage = load_lineage_structure(root, release, governance, pec)
-        transition = lineage["transition"] if lineage is not None else None
-        check_approval_target(target, release, governance, pec, adapted, transition)
-    except ValueError as e:
-        return EXIT_VERIFY_FAIL, "TAMPERED", {"error_code": str(e)}
-
-    key_ids = sorted(adapted["author_key_ids"])
-    target_bytes = canonical(target)
-    valid = {}
-    approval_certificate_digests = {}
-    for kid in key_ids:
-        approval_path = root / f"approvals/{kid}.cose"
-        try:
-            pub = load_bound_public_key(root, kid)
-        except ValueError as e:
-            return EXIT_VERIFY_FAIL, "TAMPERED", {"error_code": str(e)}
-        if not approval_path.exists():
-            continue
-        try:
-            approval_bytes = approval_path.read_bytes()
-            cose.cose_verify(approval_bytes, pub, expected_payload=target_bytes)
-            valid[kid] = True
-            approval_certificate_digests[kid] = hashlib.sha256(approval_bytes).hexdigest()
-        except ValueError as e:
-            return EXIT_VERIFY_FAIL, "TAMPERED", {"error_code": str(e)}
-        except Exception:
-            return EXIT_VERIFY_FAIL, "TAMPERED", {"error_code": "APPROVAL_SIGNATURE_INVALID"}
-    missing = [k for k in key_ids if not valid.get(k)]
-    permitted = set(pec["claim_policy"]["permitted_outcomes"])
-    permitted_claim_kinds = claim_core.permitted_claims(permitted)
-    appraised_evidence = []
-    data = {
-        "work_id": adapted["work_id"],
-        "release_digest": adapted["digest"],
-        "parent_release_id": release.get("parent_release_id"),
-        "pec_digest": digest(pec),
-        "approval_target_digest": digest(target),
-        "state": state.get("state"),
-        "missing_approvals": missing,
-        "granted_outcomes": [],
-        "non_claims": pec["claim_policy"]["global_non_claims"],
-    }
-    if missing:
-        return EXIT_INCOMPLETE, "INCOMPLETE", data
-    if expected_parent_release_id is not None and release.get("parent_release_id") != expected_parent_release_id:
-        return EXIT_VERIFY_FAIL, "TAMPERED", {**data, "error_code": "PARENT_PIN_MISMATCH"}
-    try:
-        lineage_result = verify_lineage_authorization(root, lineage, set(valid))
-    except ValueError as exc:
-        if str(exc) == "UNAUTHORIZED_SUCCESSOR":
-            data["lineage_status"] = "UNAUTHORIZED_SUCCESSOR"
-            return EXIT_VERIFY_FAIL, "VALID_OBJECT_BUT_UNAUTHORIZED_SUCCESSOR", data
-        return EXIT_VERIFY_FAIL, "TAMPERED", {**data, "error_code": str(exc)}
-    data["lineage_status"] = lineage_result["status"]
-    data["lineage_anchor_status"] = (
-        "GENESIS" if lineage is None else
-        "PIN_MATCHED" if expected_parent_release_id is not None else
-        "UNPINNED_EXACT_PARENT"
-    )
-    separate_lineage_keys = (
-        lineage_result["valid"]
-        if lineage is not None
-        and lineage["parent_authority"] != lineage["child_authority"]
-        else []
-    )
-    approval_set_path = root / "approval/approval-set.json"
-    approval_set_obj = None
-    if approval_set_path.exists():
-        try:
-            approval_set_obj = read_canonical(approval_set_path)
-            approval_set.verify(
-                approval_set_obj, root, target, key_ids, separate_lineage_keys
-            )
-        except (OSError, ValueError) as exc:
-            return EXIT_VERIFY_FAIL, "TAMPERED", {**data, "error_code": str(exc)}
-        data["approval_set_digest"] = digest(approval_set_obj)
-    elif pec.get("schema") == PEC_SCHEMA and state.get("state") in (
-        "finalized", "finalized-untimestamped"
-    ):
-        return EXIT_VERIFY_FAIL, "TAMPERED", {
-            **data, "error_code": "APPROVAL_SET_MISSING"
-        }
-
-    approval_support_digest = (
-        digest(approval_set_obj) if approval_set_obj is not None else
-        digest({
-            "target_digest": digest(target),
-            "approval_certificate_digests": [
-                {"key_id": kid, "sha256": approval_certificate_digests[kid]}
-                for kid in key_ids
-            ],
-        })
-    )
-    appraised_evidence.append(claim_core.AppraisedEvidence(
-        claim_core.EvidenceKind.UNANIMOUS_APPROVAL,
-        claim_core.ApprovalTargetSubject(digest(target)),
-        approval_support_digest,
-    ))
-    if lineage is not None and approval_set_obj is not None:
-        appraised_evidence.append(claim_core.AppraisedEvidence(
-            claim_core.EvidenceKind.LINEAGE_AUTHORIZATION,
-            lineage_claim_subject(lineage),
-            digest(approval_set_obj),
-        ))
-
-    def refresh_granted_outcomes() -> None:
-        derivations = claim_core.derive(appraised_evidence, permitted_claim_kinds)
-        data["granted_outcomes"] = list(claim_core.wire_outcomes(derivations))
-
-    refresh_granted_outcomes()
-
-    # Optional timestamp verification (imprint binding + genTime).  v0.3
-    # timestamps the complete approval set; legacy PECs retain target-only
-    # semantics and can never be upgraded to approval-set existence.
-    tsr_path = root / "receipts/response.tsr"
-    if tsr_path.exists():
-        report = read_canonical(root / "receipts/report.json")
-        validate_receipt_report(report)
-        if pec.get("schema") == PEC_SCHEMA:
-            if approval_set_obj is None:
-                return EXIT_VERIFY_FAIL, "TAMPERED", {"error_code": "APPROVAL_SET_MISSING"}
-            subject_path = "approval/approval-set.json"
-            subject_digest = digest(approval_set_obj)
-            capability = "rfc3161-exact-approval-set-imprint"
-        else:
-            subject_path = "approval/target.json"
-            subject_digest = digest(target)
-            capability = "rfc3161-exact-approval-target-imprint"
-        subject_digest_bytes = bytes.fromhex(subject_digest)
-        if (report.get("subject") != subject_path
-                or report.get("subject_digest") != subject_digest
-                or report.get("capability") != capability):
-            return EXIT_VERIFY_FAIL, "TAMPERED", {"error_code": "RECEIPT_REPORT_BINDING_MISMATCH"}
-        tsq_info = tsa.parse_tsq((root / "receipts/request.tsq").read_bytes())
-        if tsq_info["imprint"] != subject_digest_bytes:
-            return EXIT_VERIFY_FAIL, "TAMPERED", {"error_code": "TSQ_IMPRINT_MISMATCH"}
-        if int(report.get("nonce", ""), 16) != tsq_info["nonce"]:
-            return EXIT_VERIFY_FAIL, "TAMPERED", {"error_code": "TSQ_NONCE_MISMATCH"}
-
-        is_local_test = report.get("tsa_url") == "local"
-        verify_cert = trusted_tsa_cert_der
-        verify_fingerprint = trusted_tsa_fingerprint
-        allow_self_signed = False
-        if is_local_test and allow_local_test_tsa:
-            verify_cert = (root / "receipts/tsa-cert.der").read_bytes()
-            allow_self_signed = True
-        if verify_cert is None and verify_fingerprint is None:
-            data["timestamp_status"] = "PRESENT_UNVERIFIED_NO_EXTERNAL_TRUST"
-            if require_external_time:
-                return EXIT_INCOMPLETE, "EXTERNAL_TIME_UNVERIFIED", data
-        else:
-            try:
-                info = tsa.verify_tsr(
-                    tsr_path.read_bytes(), subject_digest_bytes,
-                    trusted_cert_der=verify_cert,
-                    trusted_fingerprint=verify_fingerprint,
-                    expected_nonce=tsq_info["nonce"],
-                    allow_self_signed=allow_self_signed,
-                )
-            except ValueError as e:
-                return EXIT_VERIFY_FAIL, "TAMPERED", {"error_code": str(e)}
-            data["timestamp_status"] = "LOCAL_TEST_VERIFIED" if is_local_test else "EXTERNAL_PIN_VERIFIED"
-            data["timestamp_gen_time"] = info["genTime"].isoformat()
-            data["timestamp_signer_fingerprint"] = info["signer_fingerprint"]
-            if not is_local_test:
-                if pec.get("schema") == PEC_SCHEMA:
-                    time_kind = claim_core.EvidenceKind.APPROVAL_SET_TIMESTAMP
-                    time_subject = claim_core.ApprovalSetTimeSubject(
-                        subject_digest, info["genTime"].isoformat()
-                    )
-                    expected_outcome = "APPROVAL_SET_EXISTED_NOT_AFTER"
-                else:
-                    time_kind = claim_core.EvidenceKind.APPROVAL_TARGET_TIMESTAMP
-                    time_subject = claim_core.ApprovalTargetTimeSubject(
-                        subject_digest, info["genTime"].isoformat()
-                    )
-                    expected_outcome = "EXTERNALLY_NOT_AFTER"
-                appraised_evidence.append(claim_core.AppraisedEvidence(
-                    time_kind,
-                    time_subject,
-                    hashlib.sha256(tsr_path.read_bytes()).hexdigest(),
-                ))
-                refresh_granted_outcomes()
-                if (expected_outcome not in data["granted_outcomes"]
-                        and require_external_time):
-                    return EXIT_INCOMPLETE, "EXTERNAL_TIME_NOT_AUTHORIZED", data
-    elif require_external_time:
-        return EXIT_INCOMPLETE, "EXTERNAL_TIME_MISSING", data
-    if not manifest_path.exists() and state.get("state") in ("finalized", "finalized-untimestamped"):
-        return EXIT_VERIFY_FAIL, "TAMPERED", {"error_code": "MANIFEST_MISSING"}
-    return EXIT_OK, "VALID", data
 
 
 def cmd_verify(args):

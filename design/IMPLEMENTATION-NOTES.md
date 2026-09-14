@@ -6,7 +6,7 @@
 ## 0. 2026-09-14 已落地的简化
 
 早期建议的完整 `acsd/` 包拆分没有机械照搬；当前体量不需要十几个包内
-模块。实际落地的是七个安全边界清楚的平面模块：
+模块。实际落地的是十一项安全边界清楚的平面模块：
 
 - `canonical_json.py`：唯一的受限 JSON 字节规范；
 - `bundle_validation.py`：唯一的 PEC、governance、事件链和 policy 验证；
@@ -15,14 +15,18 @@
 - `legacy_adapter.py`：v1 文件、Node 子进程和旧元数据检查的隔离边界；
 - `key_identity.py`：唯一的公钥标识定义；
 - `cli_output.py`：唯一的 CLI 退出码和输出序列化定义。
+- `artifact_io.py`：规范 JSON 文件与路径归属边界；
+- `key_material.py`：私钥/公钥/证书的加载和 key-id 文件绑定；
+- `lineage_adapter.py`：父子边文件结构与前序阈值签名适配；
+- `release_verifier.py`：与 argparse/作者命令无关的完整离线验证编排。
 
 `acsd.check_bindings` 与 `pec_core.validate_pec` 保留为兼容入口，但不再各自
-实现安全规则。相对 1478 行的整理起点，`acsd.py` 已减少约 336 行至约
-1142 行；`pec_core.py` 减少约 112 行至约 105 行。
+实现安全规则。相对 1478 行的整理起点，`acsd.py` 已减少约 682 行至约
+796 行；`pec_core.py` 减少约 112 行至约 105 行。
 新增模块的目的不是追求仓库总行数下降，而是让每条安全规则只有一个权威
-实现。审批集合的文件收集和纯集合验证也已经分开。对象层现已从 CLI 中
-移出；当前剩余的大块工作是按行为语料逐步拆分验证 I/O 与命令编排，不再
-为了目录形式机械拆包。
+实现。审批集合的文件收集和纯集合验证也已经分开。对象、I/O 适配和完整
+验证器现已从 CLI 中移出；`acsd.py` 只保留命令路由与作者侧工作流。没有
+新的复用或测试边界前，不再为了目录形式继续拆包。
 
 ## 1. 建议的 Python 包结构
 
@@ -58,6 +62,7 @@ tests/               # 与模块一一对应；M-* 矩阵全部落位
 | `verify_sidecar_subject` | `pec_core.py` | 平移，作为 `tsa.py` 的 scope 前置检查 |
 | release projection / v1 standalone package | `release_adapter.py` / `legacy_adapter.py` | 活跃路径只用纯投影；旧公开名称由 `pec_core.py` 延迟转发 |
 | release/governance/PEC/target/lineage 对象 | `protocol_objects.py` | schema、构造和 binding 检查无文件/网络/密码学依赖；`acsd.py` 兼容导出旧名称 |
+| canonical/key/lineage/release verification | `artifact_io.py` / `key_material.py` / `lineage_adapter.py` / `release_verifier.py` | 单向进入 protocol/claim kernel，均不依赖 CLI；旧名称由 `acsd.py` 原对象导出 |
 | `verify_demo.py` / `verify_release.py` 的 manifest 逻辑 | 根目录 | 平移至 `package.py`，加 symlink 拒绝 |
 | 错误码与输出格式 | `canonical_json.require` / `cli_output.py` | 条件错误码与进程退出/序列化边界分别单一定义 |
 | v1 Node verifier `verify-standalone.cjs` | v1 代码库 | **打包进 release**（或 pin 版本+校验和），作为交叉验证第二实现 |
