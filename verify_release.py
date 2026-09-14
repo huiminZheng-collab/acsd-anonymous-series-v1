@@ -5,6 +5,10 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+# A verifier executed from inside the artifact must not create __pycache__
+# before checking the artifact's closed file set.
+sys.dont_write_bytecode = True
+
 from package_manifest import verify_manifest
 
 

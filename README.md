@@ -232,7 +232,7 @@ source-tree file hashes with its starting snapshot. It contains:
 
 - 24/24 source, package, installed-wheel, differential, formal, and byte-identity
   checks passing as one command;
-- 155 Python tests passing, with the live-network and two unavailable Windows
+- 156 Python tests passing, with the live-network and two unavailable Windows
   capability cases skipped locally;
 - 64 fixed Python-Node canonical-JSON vectors with no unexpected divergence;
 - 1,000 seeded generated differential cases with 1,000 byte and verdict

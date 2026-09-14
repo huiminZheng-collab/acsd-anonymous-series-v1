@@ -65,7 +65,7 @@ immutable. A release candidate is not a venue submission or deployed service.
 
 - Authoritative read-only gate: 24/24 source, package, installed-wheel,
   differential, formal, and workspace-byte-identity checks pass.
-- Python: 155 tests pass locally; the live TSA test and two unavailable Windows
+- Python: 156 tests pass locally; the live TSA test and two unavailable Windows
   capability cases are skipped.
 - Canonical JSON: 64 fixed vectors have no unexpected divergence; 1,000/1,000
   seeded generated cases agree between Python and Node on bytes and text-layer

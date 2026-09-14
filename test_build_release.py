@@ -1,9 +1,12 @@
 import pathlib
+import subprocess
+import sys
 import tempfile
 import unittest
 from unittest import mock
 
 import build_release
+from package_manifest import write_manifest
 
 
 class TestBuildRelease(unittest.TestCase):
@@ -38,6 +41,26 @@ class TestBuildRelease(unittest.TestCase):
             except OSError:
                 self.skipTest("symlink creation is unavailable")
             self.assertFalse(build_release._same_tree(left, right))
+
+    def test_standalone_verifier_does_not_pollute_its_artifact(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            candidate = pathlib.Path(temporary) / "candidate"
+            candidate.mkdir()
+            for name in ("verify_release.py", "package_manifest.py"):
+                (candidate / name).write_bytes((build_release.ROOT / name).read_bytes())
+            (candidate / "payload.txt").write_text("manifested\n", encoding="utf-8")
+            write_manifest(candidate)
+
+            for _ in range(2):
+                result = subprocess.run(
+                    [sys.executable, "verify_release.py", "."],
+                    cwd=candidate,
+                    capture_output=True,
+                    text=True,
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertIn("MANIFEST VALID", result.stdout)
+                self.assertFalse((candidate / "__pycache__").exists())
 
 
 if __name__ == "__main__":

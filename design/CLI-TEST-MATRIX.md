@@ -78,7 +78,7 @@
 
 - 差分 canonical 测试（`design/canonical_diff_runner.py`）作为
   M-VER-11/12 的底层依赖，CI 中必须先跑且 exit 0。
-- 当前 v3.2.0-rc1 unittest（155 pass + 3 个环境相关 skip）、1,000 个生成式
+- 当前 v3.2.0-rc1 unittest（156 pass + 3 个环境相关 skip）、1,000 个生成式
   差分样本与 demo/v1 复验保持通过。
 
 ## 7. 授权谱系回归
