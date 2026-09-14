@@ -16,15 +16,15 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Install Lean 4.33.1
-        run: |
-          curl -sSL -o lean.zip https://github.com/leanprover/lean4/releases/download/v4.33.1/lean-4.33.1-linux.zip
-          unzip -q lean.zip
-          echo "$PWD/lean-4.33.1-linux/bin" >> "$GITHUB_PATH"
-      - name: Install Python deps (v1 fixture)
-        run: python -m pip install --target artifact/.deps cbor2 cryptography
       - name: Root release manifest
         run: node verify-release-manifest.cjs
+      - name: Install Lean 4.33.1
+        run: |
+          curl -sSL -o "$RUNNER_TEMP/lean.zip" https://github.com/leanprover/lean4/releases/download/v4.33.1/lean-4.33.1-linux.zip
+          unzip -q "$RUNNER_TEMP/lean.zip" -d "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/lean-4.33.1-linux/bin" >> "$GITHUB_PATH"
+      - name: Install Python deps (v1 fixture)
+        run: python -m pip install --target artifact/.deps cbor2 cryptography
       - name: v1 fixture (generate + verify)
         run: |
           cd artifact
@@ -70,13 +70,15 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Install Lean 4.33.1
-        run: |
-          Invoke-WebRequest -Uri "https://github.com/leanprover/lean4/releases/download/v4.33.1/lean-4.33.1-windows.zip" -OutFile lean.zip
-          Expand-Archive -Path lean.zip -DestinationPath .
-          Add-Content -Path $env:GITHUB_PATH -Value "$PWD\lean-4.33.1-windows\bin"
       - name: Root release manifest
         run: node verify-release-manifest.cjs
+      - name: Install Lean 4.33.1
+        run: |
+          $leanZip = Join-Path $env:RUNNER_TEMP "lean.zip"
+          $leanRoot = Join-Path $env:RUNNER_TEMP "lean"
+          Invoke-WebRequest -Uri "https://github.com/leanprover/lean4/releases/download/v4.33.1/lean-4.33.1-windows.zip" -OutFile $leanZip
+          Expand-Archive -Path $leanZip -DestinationPath $leanRoot
+          Add-Content -Path $env:GITHUB_PATH -Value "$leanRoot\lean-4.33.1-windows\bin"
       - name: v2 release manifest
         run: python v2.0.0/verify_release.py v2.0.0
       - name: v2 unit tests
