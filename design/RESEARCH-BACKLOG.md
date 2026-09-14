@@ -254,18 +254,20 @@ transparency service.
 
 ### D-09 — Private-key protection profiles
 
-- **Priority / route status:** P1 / `unexplored`.
-- **Problem:** the current CLI generates unencrypted PEM keys; this is acceptable
-  only as a plainly documented prototype boundary, not an author-ready security
-  posture.
-- **Candidate service levels:** encrypted local PEM; operating-system keystore;
-  FIDO2/HSM-backed signing; offline recovery material. The protocol should bind
-  public keys and signatures without standardizing one storage backend.
-- **Smallest experiment:** implement one encrypted-key backend and one
-  hardware/OS-backed adapter behind the same signing interface; test key export,
-  loss, cancellation, and non-interactive misuse.
-- **Missing checks:** cross-platform availability, secret-handling audit,
-  migration/backup UX, packaging, and threat-specific recommendations.
+- **Priority / route status:** P1 / `attempted`.
+- **Problem:** unencrypted PEM is a lower protection level, not an author-ready
+  default for a local private key.
+- **Implemented smallest route:** `keygen --encrypt` produces an encrypted
+  PKCS#8 PEM through the maintained cryptographic library; signing prompts only
+  on an interactive terminal and fails closed otherwise. No passphrase flag,
+  environment variable, release object, or JSON field exists.
+- **Implemented evidence:** `key_material.py`, `test_key_protection.py`, and
+  `design/KEY-PROTECTION.md` cover successful release, one prompt per command,
+  wrong passphrase, noninteractive rejection, and confirmation mismatch.
+- **Deferred service levels:** OS keystore, FIDO2/HSM, remote signing, and
+  offline recovery custody remain adapters outside the protocol wire format.
+- **Missing checks:** cross-platform terminal and backup usability, secret-
+  handling audit, migration/rollback UX, and threat-specific recommendations.
 
 ### D-10 — Release-safe test and packaging workflow
 

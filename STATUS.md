@@ -66,12 +66,16 @@ or deployed service.
   `artifact_io.py`, `key_material.py`, `lineage_adapter.py`, and
   `release_verifier.py`. The verifier imports no CLI module and `acsd.py`
   retains only routing and authoring/finalization workflows.
+- optional interactive encrypted PKCS#8 private keys backed by the maintained
+  serialization library; no passphrase is accepted through command arguments,
+  environment variables, JSON output, or release artifacts, and noninteractive
+  encrypted-key use fails closed.
 
 ## Acceptance evidence
 
 - Authoritative read-only gate: 29/29 source, package, installed-wheel,
   differential, formal, and workspace-byte-identity checks pass.
-- Python: 173 tests pass locally; the live TSA test and two unavailable Windows
+- Python: 176 tests pass locally; the live TSA test and two unavailable Windows
   capability cases are skipped.
 - Canonical JSON: 64 fixed vectors have no unexpected divergence; 1,000/1,000
   seeded generated cases agree between Python and Node on bytes and text-layer
@@ -176,8 +180,8 @@ filesystem, COSE, RFC 3161, or other adapters inside Lean.
 
 ## Remaining product hardening
 
-- encrypted or OS-backed private-key storage (generated keys are presently
-  unencrypted PEM files);
+- OS-backed private-key storage, FIDO2/HSM signing, and verified backup or
+  migration workflows beyond the optional interactive encrypted-PEM profile;
 - installer binaries and shell completion beyond `pip install`;
 - general PKIX path construction/revocation, if a service level needs more than
   exact TSA signer pinning;

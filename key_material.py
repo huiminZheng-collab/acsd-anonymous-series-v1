@@ -9,7 +9,16 @@ from canonical_json import require
 from key_identity import key_id_of, validate_key_id
 
 
-def load_private_key(path):
+class PrivateKeyPassphraseRequired(ValueError):
+    """Raised when an encrypted private key needs an interactive passphrase."""
+
+
+class PrivateKeyPassphraseInvalid(ValueError):
+    """Raised when an encrypted private key cannot be decrypted."""
+
+
+def load_private_key(path, password=None):
+    """Load one PKCS#8 PEM key, preserving the encrypted-key distinction."""
     key_path = Path(path)
     if not key_path.is_file():
         raise ValueError("PRIVATE_KEY_NOT_FILE")
@@ -17,7 +26,21 @@ def load_private_key(path):
         data = key_path.read_bytes()
     except OSError as exc:
         raise ValueError("PRIVATE_KEY_UNREADABLE") from exc
-    return serialization.load_pem_private_key(data, password=None)
+    try:
+        return serialization.load_pem_private_key(data, password=password)
+    except TypeError as exc:
+        message = str(exc).lower()
+        if password is None and "private key is encrypted" in message:
+            raise PrivateKeyPassphraseRequired(
+                "PRIVATE_KEY_PASSPHRASE_REQUIRED"
+            ) from exc
+        raise ValueError("PRIVATE_KEY_INVALID") from exc
+    except ValueError as exc:
+        if password is not None:
+            raise PrivateKeyPassphraseInvalid(
+                "PRIVATE_KEY_PASSPHRASE_INVALID"
+            ) from exc
+        raise ValueError("PRIVATE_KEY_INVALID") from exc
 
 
 def load_public_key_bytes(data):

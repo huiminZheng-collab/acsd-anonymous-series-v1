@@ -11,6 +11,7 @@ separate I/O-free modules.
 from __future__ import annotations
 
 import argparse
+import getpass
 import hashlib
 import json
 import pathlib
@@ -60,6 +61,8 @@ from key_material import (  # noqa: E402
     load_certificate_der,
     load_private_key,
     load_public_key_bytes,
+    PrivateKeyPassphraseInvalid,
+    PrivateKeyPassphraseRequired,
     public_pem,
 )
 from lineage_adapter import (  # noqa: E402
@@ -96,6 +99,72 @@ from release_adapter import adapt_release  # noqa: E402
 from release_verifier import validate_receipt_report, verify_release_dir  # noqa: E402
 
 # --- team input ------------------------------------------------------------
+
+
+def _prompt_existing_private_key_passphrase(path):
+    """Read one private-key passphrase only from an interactive terminal."""
+    if not sys.stdin.isatty():
+        raise ValueError("PRIVATE_KEY_PASSPHRASE_REQUIRED")
+    try:
+        phrase = getpass.getpass(f"Passphrase for {path}: ")
+    except (EOFError, KeyboardInterrupt) as exc:
+        raise ValueError("PRIVATE_KEY_PASSPHRASE_CANCELLED") from exc
+    if not phrase:
+        raise ValueError("PRIVATE_KEY_PASSPHRASE_REQUIRED")
+    return phrase.encode("utf-8")
+
+
+def _prompt_new_private_key_passphrase():
+    """Read and confirm a new private-key passphrase without serializing it."""
+    if not sys.stdin.isatty():
+        raise ValueError("PRIVATE_KEY_PASSPHRASE_REQUIRED")
+    try:
+        first = getpass.getpass("New private-key passphrase: ")
+        second = getpass.getpass("Confirm private-key passphrase: ")
+    except (EOFError, KeyboardInterrupt) as exc:
+        raise ValueError("PRIVATE_KEY_PASSPHRASE_CANCELLED") from exc
+    if not first:
+        raise ValueError("PRIVATE_KEY_PASSPHRASE_REQUIRED")
+    if first != second:
+        raise ValueError("PRIVATE_KEY_PASSPHRASE_CONFIRMATION_MISMATCH")
+    return first.encode("utf-8")
+
+
+def load_signing_key(path, passphrase_cache=None):
+    """Load a key, prompting once per command invocation when it is encrypted."""
+    try:
+        return load_private_key(path)
+    except PrivateKeyPassphraseRequired:
+        cache_key = str(pathlib.Path(path).resolve())
+        password = (
+            passphrase_cache.get(cache_key)
+            if passphrase_cache is not None
+            else None
+        )
+        if password is None:
+            password = _prompt_existing_private_key_passphrase(path)
+    try:
+        key = load_private_key(path, password=password)
+    except PrivateKeyPassphraseInvalid as exc:
+        if passphrase_cache is not None:
+            passphrase_cache.pop(cache_key, None)
+        raise ValueError("PRIVATE_KEY_PASSPHRASE_INVALID") from exc
+    if passphrase_cache is not None:
+        passphrase_cache[cache_key] = password
+    return key
+
+
+def private_key_error_code(exc):
+    """Keep expected passphrase failures distinct from malformed key material."""
+    code = str(exc)
+    if code in {
+        "PRIVATE_KEY_PASSPHRASE_REQUIRED",
+        "PRIVATE_KEY_PASSPHRASE_CANCELLED",
+        "PRIVATE_KEY_PASSPHRASE_INVALID",
+        "PRIVATE_KEY_PASSPHRASE_CONFIRMATION_MISMATCH",
+    }:
+        return code
+    return "PRIVATE_KEY_INVALID"
 
 
 def load_team(path):
@@ -200,18 +269,30 @@ def _send_tsq(tsq: bytes, url: str) -> bytes:
 
 def cmd_keygen(args):
     out_dir = pathlib.Path(args.out_dir)
-    out_dir.mkdir(parents=True, exist_ok=True)
     name = args.name or "author"
     key_path = out_dir / f"{name}.key"
     if key_path.exists():
         return EXIT_STATE_CONFLICT, "KEY_EXISTS", {"path": str(key_path)}
+    try:
+        password = (
+            _prompt_new_private_key_passphrase()
+            if getattr(args, "encrypt", False)
+            else None
+        )
+    except ValueError as exc:
+        return EXIT_USAGE, private_key_error_code(exc), {}
+    out_dir.mkdir(parents=True, exist_ok=True)
     key = Ed25519PrivateKey.generate()
     pub = key.public_key()
     kid = key_id_of(pub)
     private_pem = key.private_bytes(
         encoding=serialization.Encoding.PEM,
         format=serialization.PrivateFormat.PKCS8,
-        encryption_algorithm=serialization.NoEncryption(),
+        encryption_algorithm=(
+            serialization.BestAvailableEncryption(password)
+            if password is not None
+            else serialization.NoEncryption()
+        ),
     )
     key_path.write_bytes(private_pem)
     (out_dir / f"{name}.pub").write_bytes(public_pem(pub))
@@ -224,6 +305,7 @@ def cmd_keygen(args):
         "key_id": kid,
         "private_key": str(key_path),
         "public_key": (out_dir / f"{name}.pub").read_text(),
+        "encrypted": password is not None,
     }
 
 
@@ -370,9 +452,9 @@ def cmd_authorize(args):
     if state.get("state") != "awaiting-approvals":
         return EXIT_STATE_CONFLICT, "STATE_CONFLICT", {"state": state.get("state")}
     try:
-        key = load_private_key(args.key)
+        key = load_signing_key(args.key, getattr(args, "passphrase_cache", None))
     except (TypeError, ValueError) as exc:
-        return EXIT_USAGE, "PRIVATE_KEY_INVALID", {"error": str(exc)}
+        return EXIT_USAGE, private_key_error_code(exc), {}
     release = read_canonical(root / "release/release.json")
     governance = read_canonical(root / "governance/statement.json")
     pec = read_canonical(root / "pec/pec.json")
@@ -410,9 +492,9 @@ def cmd_recover(args):
     if state.get("state") != "awaiting-approvals":
         return EXIT_STATE_CONFLICT, "STATE_CONFLICT", {"state": state.get("state")}
     try:
-        key = load_private_key(args.key)
+        key = load_signing_key(args.key, getattr(args, "passphrase_cache", None))
     except (TypeError, ValueError) as exc:
-        return EXIT_USAGE, "PRIVATE_KEY_INVALID", {"error": str(exc)}
+        return EXIT_USAGE, private_key_error_code(exc), {}
     release = read_canonical(root / "release/release.json")
     governance = read_canonical(root / "governance/statement.json")
     pec = read_canonical(root / "pec/pec.json")
@@ -454,9 +536,9 @@ def cmd_approve(args):
     if path_is_within(args.key, root):
         return EXIT_USAGE, "PRIVATE_KEY_INSIDE_RELEASE", {}
     try:
-        key = load_private_key(args.key)
+        key = load_signing_key(args.key, getattr(args, "passphrase_cache", None))
     except (TypeError, ValueError) as e:
-        return EXIT_USAGE, "PRIVATE_KEY_INVALID", {"error": str(e)}
+        return EXIT_USAGE, private_key_error_code(e), {}
     kid = key_id_of(key.public_key())
     release = read_canonical(root / "release/release.json")
     governance = read_canonical(root / "governance/statement.json")
@@ -657,12 +739,12 @@ def cmd_finalize(args):
     }
 
 
-def team_from_private_keys(key_paths):
+def team_from_private_keys(key_paths, passphrase_cache=None):
     """Build the public team declaration used by one-command flows."""
     try:
-        keys = [load_private_key(path) for path in key_paths]
+        keys = [load_signing_key(path, passphrase_cache) for path in key_paths]
     except (TypeError, ValueError) as e:
-        raise ValueError("PRIVATE_KEY_INVALID") from e
+        raise ValueError(private_key_error_code(e)) from e
     key_ids = [key_id_of(key.public_key()) for key in keys]
     require(len(set(key_ids)) == len(key_ids), "DUPLICATE_AUTHOR_KEY")
     authors = []
@@ -683,7 +765,8 @@ def cmd_release(args):
         if path_is_within(key_path, out):
             return EXIT_USAGE, "PRIVATE_KEY_INSIDE_RELEASE", {}
     try:
-        team, key_ids = team_from_private_keys(args.key)
+        passphrase_cache = {}
+        team, key_ids = team_from_private_keys(args.key, passphrase_cache)
     except ValueError as exc:
         return EXIT_USAGE, str(exc), {}
     with tempfile.TemporaryDirectory(prefix="acsd-team-") as temp_dir:
@@ -700,7 +783,7 @@ def cmd_release(args):
         return code, message, initialized
     for key_path in args.key:
         code, message, approved = cmd_approve(argparse.Namespace(
-            release_dir=str(out), key=key_path,
+            release_dir=str(out), key=key_path, passphrase_cache=passphrase_cache,
         ))
         if code != EXIT_OK:
             return code, message, approved
@@ -729,7 +812,8 @@ def cmd_revise(args):
         if path_is_within(key_path, out):
             return EXIT_USAGE, "PRIVATE_KEY_INSIDE_RELEASE", {}
     try:
-        team, key_ids = team_from_private_keys(args.key)
+        passphrase_cache = {}
+        team, key_ids = team_from_private_keys(args.key, passphrase_cache)
     except ValueError as exc:
         return EXIT_USAGE, str(exc), {}
     with tempfile.TemporaryDirectory(prefix="acsd-team-") as temp_dir:
@@ -760,19 +844,19 @@ def cmd_revise(args):
     if lineage["parent_authority"] != lineage["child_authority"]:
         for key_path in parent_keys:
             code, message, authorized = cmd_authorize(argparse.Namespace(
-                release_dir=str(out), key=key_path,
+                release_dir=str(out), key=key_path, passphrase_cache=passphrase_cache,
             ))
             if code != EXIT_OK:
                 return code, message, authorized
         for key_path in recovery_keys:
             code, message, authorized = cmd_recover(argparse.Namespace(
-                release_dir=str(out), key=key_path,
+                release_dir=str(out), key=key_path, passphrase_cache=passphrase_cache,
             ))
             if code != EXIT_OK:
                 return code, message, authorized
     for key_path in args.key:
         code, message, approved = cmd_approve(argparse.Namespace(
-            release_dir=str(out), key=key_path,
+            release_dir=str(out), key=key_path, passphrase_cache=passphrase_cache,
         ))
         if code != EXIT_OK:
             return code, message, approved
@@ -853,7 +937,10 @@ def cmd_disclose_identity(args):
     out = pathlib.Path(args.out)
     if path_is_within(out, root):
         return EXIT_USAGE, "DISCLOSURE_OUTPUT_INSIDE_RELEASE", {}
-    key = load_private_key(args.key)
+    try:
+        key = load_signing_key(args.key)
+    except (TypeError, ValueError) as exc:
+        return EXIT_USAGE, private_key_error_code(exc), {}
     key_id = key_id_of(key.public_key())
     release = read_canonical(root / "release/release.json")
     slots = [
@@ -1008,6 +1095,11 @@ def main(argv=None):
     pk = sub.add_parser("keygen", parents=[common], help="generate an Ed25519 keypair")
     pk.add_argument("--name", help="key base name (default author)")
     pk.add_argument("--out-dir", default="keys", help="output directory")
+    pk.add_argument(
+        "--encrypt",
+        action="store_true",
+        help="prompt for a passphrase and encrypt the PKCS#8 private key",
+    )
     pk.set_defaults(func=cmd_keygen)
 
     pi = sub.add_parser("init", parents=[common], help="create a release directory")

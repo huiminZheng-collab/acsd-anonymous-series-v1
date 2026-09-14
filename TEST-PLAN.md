@@ -98,6 +98,10 @@ and are automated in `test_cli_signing.py`, `test_cose.py`,
 | explicitly verify the built-in local TSA | `LOCAL_TEST_VERIFIED`, never external time |
 | use an approval-target timestamp as evidence that the completed signature set existed | typed derivation denies the claim |
 | substitute any of four accepted evidence kinds for another claim kind | all 12 off-diagonal combinations denied |
+| generate an encrypted key and release with it | finalized release verifies; one prompt for the one-command flow |
+| supply a wrong encrypted-key passphrase | `PRIVATE_KEY_PASSPHRASE_INVALID`, no signature or release is accepted |
+| use an encrypted key without an interactive terminal | `PRIVATE_KEY_PASSPHRASE_REQUIRED`, never an unprotected fallback |
+| provide mismatched new-key passphrase confirmations | `PRIVATE_KEY_PASSPHRASE_CONFIRMATION_MISMATCH`, no private key is written |
 | add evidence sets whose components support no requested claim | union grants no claim without one matching verified atom |
 
 ## Verification-certificate differential matrix

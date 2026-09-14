@@ -6,6 +6,7 @@
 ## 1. 命令接口
 
 ```
+acsd keygen  [--name author] [--out-dir keys] [--encrypt]
 acsd init    <paper.pdf> --team team.json [--out release-dir] [--parent parent-dir]
 acsd authorize <release-dir> --key predecessor-key.pem
 acsd recover <release-dir> --key recovery-key.pem
@@ -173,8 +174,12 @@ release-dir/
 
 ## 7. 密钥与多人工作流
 
-- 密钥生成：`acsd keygen`（默认 Ed25519，PKCS#8 PEM；私钥权限 0600，
-  存 `~/.acsd/keys/`，**绝不**写入 release-dir）。`team.json` 只含公钥与
+- 密钥生成：`acsd keygen --encrypt` 在交互终端双重输入口令，生成受维护库
+  PKCS#8 加密保护的 Ed25519 私钥；随后任一签名命令按需提示口令。一条
+  `release`/`revise` 命令对同一路径只提示一次。口令绝不作为命令参数、环境变量、
+  JSON 输出或 release 文件出现；无交互终端使用加密私钥→
+  `PRIVATE_KEY_PASSPHRASE_REQUIRED`。省略 `--encrypt` 保留兼容性明文 PEM，
+  但属于较低保护级别。私钥权限 0600，**绝不**写入 release-dir。`team.json` 只含公钥与
   角色槽位：
   ```json
   {"schema": "acsd-team/v1",

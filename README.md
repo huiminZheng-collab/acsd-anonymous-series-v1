@@ -71,10 +71,12 @@ differential verifier.  Lean is only needed to rebuild the formal model.
 
 ## One-command release
 
-Generate a private key once, outside any public release directory:
+Generate a private key once, outside any public release directory. For normal
+author use, encrypt the local PKCS#8 PEM and enter the passphrase twice at the
+terminal:
 
 ```text
-acsd keygen --name author --out-dir private-keys
+acsd keygen --name author --out-dir private-keys --encrypt
 ```
 
 Then build, approve, and finalize a single-author package in one command:
@@ -90,10 +92,17 @@ If all coauthor keys are legitimately available on one machine, repeat
 acsd release paper.pdf --key private-keys/a.key --key private-keys/b.key --out release-dir
 ```
 
-The CLI rejects private keys located inside the release directory.  Generated
-private PEM files are currently unencrypted, so their directory needs operating
-system access control and backup protection; encrypted key-store integration is
-a remaining product-hardening item.
+The CLI rejects private keys located inside the release directory. An encrypted
+key prompts only at an interactive terminal; a one-command release prompts
+once for a key reused inside that command. ACSD deliberately has no passphrase
+argument, environment-variable, or release-file option. A noninteractive use
+of an encrypted key fails closed as `PRIVATE_KEY_PASSPHRASE_REQUIRED`.
+
+Omitting `--encrypt` preserves the legacy unencrypted PEM format for
+compatibility only. It is a lower protection level and still requires OS access
+control and a separate backup plan. The current profile is not an OS keystore,
+HSM, malware defense, or unattended-signing solution; see
+[`design/KEY-PROTECTION.md`](design/KEY-PROTECTION.md).
 
 For coauthors signing on separate machines, use the staged flow:
 
