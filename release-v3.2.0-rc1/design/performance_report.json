@@ -1,0 +1,30 @@
+{
+  "scope": "in-memory canonicalize+sha256 manifest verification+linear rank scan",
+  "repetitions": 5,
+  "results": [
+    {
+      "objects": 10,
+      "median_ms": 2.233,
+      "min_ms": 1.953,
+      "peak_mib": 0.009
+    },
+    {
+      "objects": 100,
+      "median_ms": 26.452,
+      "min_ms": 21.869,
+      "peak_mib": 0.123
+    },
+    {
+      "objects": 1000,
+      "median_ms": 227.537,
+      "min_ms": 187.919,
+      "peak_mib": 1.378
+    },
+    {
+      "objects": 5000,
+      "median_ms": 718.809,
+      "min_ms": 682.654,
+      "peak_mib": 7.039
+    }
+  ]
+}

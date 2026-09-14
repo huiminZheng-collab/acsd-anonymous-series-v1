@@ -1,0 +1,159 @@
+{
+  "schema": "acsd-v1.6.0-python-reference-results/v1",
+  "release_checks": [
+    {
+      "release_key": "p-v1",
+      "valid": true
+    },
+    {
+      "release_key": "q-v1",
+      "valid": true
+    },
+    {
+      "release_key": "p-v2-main",
+      "valid": true
+    },
+    {
+      "release_key": "p-v2-companion",
+      "valid": true
+    },
+    {
+      "release_key": "p-v2-conflict",
+      "valid": true
+    },
+    {
+      "release_key": "q-v2-amendment",
+      "valid": true
+    },
+    {
+      "release_key": "copy-p-v1",
+      "valid": true
+    },
+    {
+      "release_key": "copy-q-v1",
+      "valid": true
+    }
+  ],
+  "signed_object_checks": [
+    {
+      "id": "bundle1",
+      "valid": true
+    },
+    {
+      "id": "rotation",
+      "valid": true
+    },
+    {
+      "id": "bundle2",
+      "valid": true
+    },
+    {
+      "id": "bundle2-conflict",
+      "valid": true
+    },
+    {
+      "id": "bundle-rank-too-low",
+      "valid": true
+    },
+    {
+      "id": "bundle-unsupported-semantic-edge",
+      "valid": true
+    },
+    {
+      "id": "copy-bundle",
+      "valid": true
+    }
+  ],
+  "observation_checks": [
+    {
+      "id": "original",
+      "valid": true
+    },
+    {
+      "id": "copy",
+      "valid": true
+    }
+  ],
+  "all_standalone_releases_valid": true,
+  "all_release_reference_manifests_match_content": true,
+  "signed_reference_work_id_mismatch_rejected": true,
+  "signed_citation_witness_offset_mismatch_rejected": true,
+  "signed_noncanonical_json_rejected": true,
+  "canonical_json_corpus": [
+    {
+      "id": "empty-object",
+      "expected_canonical": true,
+      "accepted": true,
+      "passed": true
+    },
+    {
+      "id": "nested-ascii",
+      "expected_canonical": true,
+      "accepted": true,
+      "passed": true
+    },
+    {
+      "id": "utf8-string-value",
+      "expected_canonical": true,
+      "accepted": true,
+      "passed": true
+    },
+    {
+      "id": "leading-whitespace",
+      "expected_canonical": false,
+      "accepted": false,
+      "passed": true
+    },
+    {
+      "id": "key-order",
+      "expected_canonical": false,
+      "accepted": false,
+      "passed": true
+    },
+    {
+      "id": "duplicate-key",
+      "expected_canonical": false,
+      "accepted": false,
+      "passed": true
+    },
+    {
+      "id": "decimal-number",
+      "expected_canonical": false,
+      "accepted": false,
+      "passed": true
+    },
+    {
+      "id": "unsafe-integer",
+      "expected_canonical": false,
+      "accepted": false,
+      "passed": true
+    },
+    {
+      "id": "nonascii-key",
+      "expected_canonical": false,
+      "accepted": false,
+      "passed": true
+    },
+    {
+      "id": "trailing-newline",
+      "expected_canonical": false,
+      "accepted": false,
+      "passed": true
+    },
+    {
+      "id": "invalid-json",
+      "expected_canonical": false,
+      "accepted": false,
+      "passed": true
+    }
+  ],
+  "canonical_json_corpus_all_match_expected": true,
+  "all_series_objects_valid": true,
+  "all_valid_bundle_commitment_ranks_valid": true,
+  "signed_rank_too_low_bundle_rejected": true,
+  "all_valid_bundle_semantic_edges_supported": true,
+  "signed_unsupported_semantic_edge_rejected": true,
+  "all_observations_valid": true,
+  "semantic_graph_cyclic": true,
+  "cryptographic_graph_acyclic": true
+}
