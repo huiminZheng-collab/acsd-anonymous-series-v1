@@ -60,6 +60,14 @@ The Lean executable then checks:
   count; and
 - an explicit policy rule for every emitted exact-subject claim.
 
+The declarative rule is the same `Compatible` relation used by the earlier
+digest-scoped abstraction; the exact appraisal layer does not maintain a
+second copy. Lean proves that a claim emitted after strict canonical-text
+decoding has an exact-subject declarative derivation, and that this derivation
+remains valid under any chosen projection to the coarser digest scope. The
+reverse implication is deliberately absent because such a projection may
+forget an event window, slot, time, or lineage endpoint.
+
 For v2 it additionally checks the exact identity-signature projection, exact
 identity-COSE input projection, release/slot/key membership, and uniqueness.
 Only then can it emit the narrow claim that a particular release slot key

@@ -190,6 +190,11 @@ raw adapter output being evaluated.
     kernels. None may import the CLI. Existing `acsd` helper/verifier names must
     be exact compatibility exports, and the installed CLI must preserve all
     success results, exit codes, and first-error results.
+15. The formal appraisal layer must reuse the single declarative `Compatible`
+    relation rather than copy its constructors. Strictly decoded ordinary and
+    lineage certificates must lead to exact-subject derivations, and those
+    derivations must refine the earlier digest-scoped abstraction under an
+    arbitrary subject projection.
 
 ## Out-of-scope tests for the deterministic local suite
 

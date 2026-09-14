@@ -221,7 +221,7 @@ source-tree file hashes with its starting snapshot. It contains:
 
 - 23/23 source, package, installed-wheel, differential, formal, and byte-identity
   checks passing as one command;
-- 147 Python tests passing, with the live-network and two unavailable Windows
+- 148 Python tests passing, with the live-network and two unavailable Windows
   capability cases skipped locally;
 - 64 fixed Python-Node canonical-JSON vectors with no unexpected divergence;
 - 1,000 seeded generated differential cases with 1,000 byte and verdict
@@ -240,6 +240,9 @@ source-tree file hashes with its starting snapshot. It contains:
   certificate schemas;
 - a strict Lean decoder and executable checker for the lineage profile, with
   15/15 complete derivation/rejection differential cases;
+- one declarative evidence/claim compatibility relation shared by the coarse
+  and exact-subject models, with proved strict-decoder-to-exact-derivation and
+  exact-to-arbitrary-digest-projection refinement for both certificate profiles;
 - a complete 7-by-11 typed unary compatibility test plus a checked-in selected
   4-by-4 semantic-confusion challenge with all 12 off-diagonal substitutions
   denied and a key-compromise timeline;
@@ -250,7 +253,7 @@ source-tree file hashes with its starting snapshot. It contains:
 - an offline-verified freeTSA fixture over the demo's complete approval set,
   binding its exact request, response, signer certificate, nonce, policy OID,
   serial number, and `2026-09-13T11:37:22+00:00` time;
-- a Lean 4.33.1 build with 73 theorems covering PEC, lineage, scoped claims,
+- a Lean 4.33.1 build with 81 theorems covering PEC, lineage, scoped claims,
   parameterized appraisal/checker correspondence, transcript-group closure,
   selective identity, atomic event disclosure, and typed time subjects with no
   `sorry`/`admit`; the separately published v1 formal core's 53

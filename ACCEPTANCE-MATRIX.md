@@ -23,6 +23,7 @@
 | Adapter transcript agreement | independent Python/Node adapters over exact approval, disclosure, key, and Merkle inputs | PASS; canonical certificate bytes identical |
 | Critical-evidence deletion | remove one author/event signature or substitute Merkle scope | PASS; only dependent claims disappear |
 | Transcript-to-appraisal formal bridge | Lean executable closure checks plus independent support/appraisal relations | PASS; composed soundness theorem and weak-rule counterexample |
+| Single formal compatibility semantics | `Compatible` is the only declarative evidence/claim relation; exact appraisal aliases it and proves arbitrary-projection refinement | PASS; architecture regression and axiom audit |
 | Canonical transcript to Lean refinement | strict Lean JSON decoder plus complete scoped-derivation differential | PASS; 35/35 positive/adverse cases agree across v1, v2, and v3 |
 | Selective identity transcript closure | v2 release/slot/key/assertion/signature/input checks and adverse mutations | PASS; substitutions remove only the identity claim |
 | Exact approval-set time closure | v3 approval-set/signature/request/response/certificate/report/trust checks | PASS; exact set and UTC time are in the claim subject |
@@ -38,8 +39,8 @@
 | Complete live-source gate | `check.py` source mode | PASS; 23/23 checks including artifact self-check and workspace byte identity |
 | Lean formal compilation | PEC, lineage, scoped-claim, and parameterized appraisal modules; pinned 4.33.1 project | PASS |
 
-The formal row contains 73 PEC/composition/lineage/scoped-appraisal/transcript
-theorems; the explicit axiom audit checks 41 central boundary theorems. It proves
+The formal row contains 81 PEC/composition/lineage/scoped-appraisal/transcript
+theorems; the explicit axiom audit checks 49 central boundary theorems. It proves
 soundness after strict decoding and empirically checks the restricted JSON
 projection; it does not claim cryptographic implementation correctness or
 natural-person truth. The separately

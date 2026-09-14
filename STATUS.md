@@ -65,7 +65,7 @@ work toward a later candidate, not a public deployment or venue submission.
 
 - Authoritative read-only gate: 23/23 source, package, installed-wheel,
   differential, formal, and workspace-byte-identity checks pass.
-- Python: 147 tests pass locally; the live TSA test and two unavailable Windows
+- Python: 148 tests pass locally; the live TSA test and two unavailable Windows
   capability cases are skipped.
 - Canonical JSON: 64 fixed vectors have no unexpected divergence; 1,000/1,000
   seeded generated cases agree between Python and Node on bytes and text-layer
@@ -88,11 +88,12 @@ work toward a later candidate, not a public deployment or venue submission.
   its dependent claims in the pure checker.
 - JSON-to-Lean refinement: Lean directly and strictly decodes all three canonical
   schemas and independently emits the same complete scoped derivations as
-  Python in 35/35 positive and adverse cases.
+  Python in 35/35 positive and adverse cases. The strict text decoder is now
+  connected by theorem to the exact-subject declarative derivation.
 - Authorized-lineage refinement: Python and Node emit byte-identical canonical
   certificates; Python and Lean agree on all 15 valid, deletion, substitution,
   policy, and structural cases.
-- Lean 4.33.1: build succeeds; 73 PEC/lineage/scoped-appraisal/transcript
+- Lean 4.33.1: build succeeds; 81 PEC/lineage/scoped-appraisal/transcript
   theorems; no
   `sorry` or `admit` in the formal sources. The separately published v1 core's
   53 release/team/series theorems remain a distinct inherited model and are not
@@ -105,8 +106,10 @@ reuse is impossible when target digests differ; granted results require
 acceptance, policy permission, and their capability; and external time requires
 an exact subject, signer pin, nonce, RFC profile, and a non-local authority.
 The closed `Outcome` type has no constructor for human-authorship or originality
-claims. Signature unforgeability, SHA-256 collision resistance, DER/CBOR/JSON
-parser refinement, and PKIX governance are implementation assumptions.
+claims. Signature unforgeability, SHA-256 collision resistance, filesystem and
+release-object parser refinement, DER/CBOR adapter correctness, and PKIX
+governance are implementation assumptions. The restricted claim-free
+certificate JSON is decoded directly and strictly in Lean.
 
 The lineage model proves that every accepted successor has predecessor-authority
 quorum evidence, fresh keys cannot use the continuity path, and a transition
@@ -122,11 +125,13 @@ Every derivation over a union of evidence sets also has a compatible, verified,
 exact-subject supporting atom in one component; union does not manufacture a
 new capability.
 
-The newer appraisal layer additionally parameterizes the exact subject, keeps
-its declarative rule relation separate from the executable Boolean checker, and
-proves checker soundness and completeness, exact-support provenance,
-append-component support, target/set separation, and absence of a natural-person
-identity rule. Adapter correctness is still an explicit boundary assumption.
+The newer appraisal layer additionally parameterizes the exact subject and
+reuses the one declarative `Compatible` relation while keeping it separate from
+the executable Boolean checker. It proves checker soundness and completeness,
+exact-support provenance, append-component support, target/set separation,
+absence of a natural-person identity rule, and that every exact derivation
+refines the earlier digest-scoped abstraction under any chosen subject
+projection. Adapter correctness is still an explicit boundary assumption.
 
 The transcript layer independently checks exact author/event/identity signature
 projections, nonempty signer sets, COSE-input closure, three-way PEC scope,

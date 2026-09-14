@@ -59,6 +59,11 @@ unbound transitions, wrong mode/kind, policy absence, and nonconsecutive
 versions. The formal soundness result is in
 `formal/ACSD/LineageTranscript.lean`.
 
+The strict canonical-text decoder is also connected directly to the
+exact-subject `AppraisalDerives` relation. The shared refinement theorem then
+projects that derivation to the coarse digest-scoped model without introducing
+a second lineage-specific compatibility table.
+
 ## Trust boundary
 
 The transcript checkers validate closure of already appraised facts; they do

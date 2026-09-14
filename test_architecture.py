@@ -251,6 +251,18 @@ class TestTrustedKernelArchitecture(unittest.TestCase):
             {"__future__", "re", "claim_derivation"},
         )
 
+    def test_formal_appraisal_has_one_declarative_compatibility_relation(self):
+        scoped = (ROOT / "formal/ACSD/ScopedClaims.lean").read_text(
+            encoding="utf-8"
+        )
+        appraisal = (ROOT / "formal/ACSD/Appraisal.lean").read_text(
+            encoding="utf-8"
+        )
+        self.assertEqual(scoped.count("inductive Compatible"), 1)
+        self.assertIn("abbrev AppraisalRule := Compatible", appraisal)
+        self.assertNotIn("inductive AppraisalRule", appraisal)
+        self.assertIn("theorem appraisalDerives_refines_abstract", appraisal)
+
     def test_every_public_granting_path_depends_on_decision_core(self):
         for name in PRODUCTION_GRANTERS:
             with self.subTest(module=name):

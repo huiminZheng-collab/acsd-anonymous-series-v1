@@ -57,6 +57,14 @@ the frozen v3.1.0-rc1 package is intentionally untouched.
 5. Give executable countermodels for deleting each critical premise. The main
    results must not be projections from a conjunction called `Accepted`.
 
+Current status: implemented for the typed and certificate boundaries. The
+coarse and exact-subject models now share one inductive `Compatible` relation;
+the executable Boolean table is proved equivalent to it. Every exact
+derivation, and therefore every accepted exact checker result, refines the
+earlier digest-scoped relation under any caller-chosen subject projection. This
+makes the coarse model an explicit abstraction instead of a competing
+semantics.
+
 ### P1 — checked adapter boundary
 
 1. Define a canonical `acsd-verification-certificate/v1` transcript containing
@@ -82,8 +90,10 @@ closure. Time has exact approval-set, author-approval, request, response,
 certificate, report, signer-pin, authority-class, and UTC-subject closure.
 The separate lineage profile now has byte-identical Python/Node certificates,
 strict Python/Lean closure checkers, and 15/15 complete differential cases over
-exact parent/child/transition/signature/input/approval-set scope. Only a
-second-domain instance remains open.
+exact parent/child/transition/signature/input/approval-set scope. For both
+profiles, the actual strict canonical-text decoder is connected to a full
+exact-subject `AppraisalDerives` judgment and its coarse abstraction. Production
+CLI certificate emission and a second-domain instance remain open.
 
 ### P1 — structural simplification
 
@@ -151,7 +161,7 @@ checks should the project describe itself as cross-domain.
 | Route | Evidence | Missing check | Status |
 |---|---|---|---|
 | Continue adding independent verifier-specific grants | Existing paths had manual string grants and vocabulary drift | None; this directly violates the single-kernel objective | ruled out |
-| Typed exact-subject unary kernel | ACSD evidence families already have distinct safe unary claims | Production integration and full matrix | attempted |
+| Typed exact-subject unary kernel | All live grant paths use the Python kernel; Lean has one declarative relation plus exact-to-abstract refinement | Production verifier certificate emission | attempted |
 | General-purpose recursive trust language | Mature systems such as SecPAL and RATS already occupy this space | No ACSD requirement justifies the complexity | ruled out for P0 |
 | Finite multi-premise rules with proof certificates | Needed for quorum and a real second-domain instance | Approval/event/identity/time and authorized-lineage JSON-to-Lean refinement exist; a second domain remains | attempted |
 | Full parser/crypto verification in Lean | Would maximize assurance but dominates current project cost | First establish a narrow transcript and refinement boundary | unexplored P2 |

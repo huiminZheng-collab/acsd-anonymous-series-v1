@@ -497,6 +497,35 @@ theorem decodedCertificateV3Claims_sound
         atom.subject = request.subject ∧ AppraisalRule atom.kind request.kind := by
   exact ⟨refineCertificate raw, decoded, rfl, transcriptClaims_sound member⟩
 
+/-! `decodeCertificateText` is the actual canonical-JSON entry point used by
+the executable checker.  A claim emitted from its refined value therefore has
+both a closed transcript policy and a derivation in the exact-subject model. -/
+theorem decodedCertificateTextClaims_derivable
+    {text : String} {raw : RawCertificate} {certificate : Digest}
+    {request : AppraisalRequest}
+    (decoded : decodeCertificateText text = .ok raw)
+    (member : request ∈ deriveCertificate raw certificate) :
+    decodeCertificateText text = .ok raw ∧
+    TranscriptPolicyBound (refineCertificate raw) ∧
+    AppraisalDerives (transcriptPolicy (refineCertificate raw))
+      (transcriptAtoms (refineCertificate raw) certificate) request := by
+  exact ⟨decoded, transcriptClaims_derivable member⟩
+
+theorem decodedCertificateTextClaims_refine_abstract
+    (project : ScopedSubject → Digest)
+    {text : String} {raw : RawCertificate} {certificate : Digest}
+    {request : AppraisalRequest}
+    (decoded : decodeCertificateText text = .ok raw)
+    (member : request ∈ deriveCertificate raw certificate) :
+    decodeCertificateText text = .ok raw ∧
+    Derives (abstractPolicy (transcriptPolicy (refineCertificate raw)))
+      (fun item => item ∈
+        (transcriptAtoms (refineCertificate raw) certificate).map
+          (abstractAtom project))
+      (abstractRequest project request) := by
+  exact ⟨decoded, appraisalDerives_refines_abstract project
+    (transcriptClaims_derivable member).2⟩
+
 /-! A separate closed profile carries an authorized lineage edge without
 forcing identity, event, or time facts into the same certificate. -/
 
@@ -713,10 +742,9 @@ def deriveLineageCertificate
     [lineageTranscriptRequest transcript]
   else []
 
-theorem decodedLineageCertificateClaims_sound
-    {json : Json} {raw : RawLineageCertificate} {certificate : Digest}
+theorem lineageCertificateClaims_sound
+    {raw : RawLineageCertificate} {certificate : Digest}
     {request : AppraisalRequest}
-    (_decoded : decodeLineageCertificateJson json = .ok raw)
     (member : request ∈ deriveLineageCertificate raw certificate) :
     LineageGroupClosed (refineLineageCertificate raw) ∧
     AppraisalDerives
@@ -730,5 +758,47 @@ theorem decodedLineageCertificateClaims_sound
     subst request
     exact sound
   · simp at member
+
+theorem decodedLineageCertificateClaims_sound
+    {json : Json} {raw : RawLineageCertificate} {certificate : Digest}
+    {request : AppraisalRequest}
+    (_decoded : decodeLineageCertificateJson json = .ok raw)
+    (member : request ∈ deriveLineageCertificate raw certificate) :
+    LineageGroupClosed (refineLineageCertificate raw) ∧
+    AppraisalDerives
+      (lineageTranscriptPolicy (refineLineageCertificate raw))
+      [lineageTranscriptAtom (refineLineageCertificate raw) certificate]
+      request := by
+  exact lineageCertificateClaims_sound member
+
+theorem decodedLineageCertificateTextClaims_derivable
+    {text : String} {raw : RawLineageCertificate} {certificate : Digest}
+    {request : AppraisalRequest}
+    (decoded : decodeLineageCertificateText text = .ok raw)
+    (member : request ∈ deriveLineageCertificate raw certificate) :
+    decodeLineageCertificateText text = .ok raw ∧
+    LineageGroupClosed (refineLineageCertificate raw) ∧
+    AppraisalDerives
+      (lineageTranscriptPolicy (refineLineageCertificate raw))
+      [lineageTranscriptAtom (refineLineageCertificate raw) certificate]
+      request := by
+  exact ⟨decoded, lineageCertificateClaims_sound member⟩
+
+theorem decodedLineageCertificateTextClaims_refine_abstract
+    (project : ScopedSubject → Digest)
+    {text : String} {raw : RawLineageCertificate} {certificate : Digest}
+    {request : AppraisalRequest}
+    (decoded : decodeLineageCertificateText text = .ok raw)
+    (member : request ∈ deriveLineageCertificate raw certificate) :
+    decodeLineageCertificateText text = .ok raw ∧
+    Derives
+      (abstractPolicy
+        (lineageTranscriptPolicy (refineLineageCertificate raw)))
+      (fun item => item ∈
+        [lineageTranscriptAtom (refineLineageCertificate raw) certificate].map
+          (abstractAtom project))
+      (abstractRequest project request) := by
+  exact ⟨decoded, appraisalDerives_refines_abstract project
+    (lineageCertificateClaims_sound member).2⟩
 
 end ACSD

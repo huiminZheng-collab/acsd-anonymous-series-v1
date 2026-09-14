@@ -271,18 +271,23 @@ transparency service.
   path now covers v1 approval/event, v2 selective identity, and v3 exact
   approval-set time; Python and Lean agree on 35/35 positive and adverse cases.
   The v3 time subject retains both the exact approval-set digest and normalized
-  UTC instant, while exact receipt/trust inputs remain visible assumptions.
-- **Problem:** the proof assumes typed inputs and cryptographic predicates. It
-  does not prove that the DER/CBOR/JSON parsers and executable verifier refine
-  those predicates.
+  UTC instant, while exact receipt/trust inputs remain visible assumptions. A
+  separate authorized-lineage profile agrees in 15/15 cases. Both strict
+  canonical-text decoders now lead by theorem to exact-subject declarative
+  derivations. The exact model reuses the single declarative compatibility
+  relation and refines the earlier digest-scoped abstraction under any subject
+  projection.
+- **Problem:** the proof still assumes the facts emitted by filesystem,
+  DER/CBOR, signature, and hashing adapters. It does not prove that the
+  production release verifier establishes those predicates.
 - **Candidate approaches:** a small extracted/reference checker; proof-producing
   test vectors; parser refinement for only the restricted canonical subset;
   property-based correspondence tests as empirical evidence.
-- **Smallest experiment:** add one authorized lineage edge to the same closed
-  transcript profile and require exact Python/Node bytes plus Python/Lean claim
-  agreement under predecessor-authority deletion and substitution.
-- **Missing checks:** lineage transcript refinement, a second-domain instance,
-  and a maintained trusted-computing-base inventory.
+- **Smallest experiment:** make the production offline verifier optionally emit
+  the same claim-free certificate facts and require its granted outcomes to
+  agree with certificate-derived outcomes before exposing that mode publicly.
+- **Missing checks:** production-verifier certificate emission, a second-domain
+  instance, and a maintained trusted-computing-base inventory.
 
 ### D-12 — Comparative and human evaluation
 

@@ -20,6 +20,8 @@ import ACSD
 #print axioms ACSD.derivation_over_append_has_component_support
 #print axioms ACSD.target_time_cannot_derive_approval_set_time
 #print axioms ACSD.unsupported_natural_identity_has_no_rule
+#print axioms ACSD.appraisalDerives_refines_abstract
+#print axioms ACSD.checkClaim_refines_abstract
 #print axioms ACSD.approvalGroupClosedB_iff
 #print axioms ACSD.eventGroupClosedB_iff
 #print axioms ACSD.identityGroupClosedB_iff
@@ -32,12 +34,18 @@ import ACSD
 #print axioms ACSD.transcript_checkClaim_sound
 #print axioms ACSD.weak_any_approval_accepts_missing_required_signer
 #print axioms ACSD.transcriptClaims_sound
+#print axioms ACSD.transcriptClaims_derivable
 #print axioms ACSD.decodedCertificateV1Claims_sound
 #print axioms ACSD.decodedCertificateV2Claims_sound
 #print axioms ACSD.decodedCertificateV3Claims_sound
+#print axioms ACSD.decodedCertificateTextClaims_derivable
+#print axioms ACSD.decodedCertificateTextClaims_refine_abstract
 #print axioms ACSD.authorizedSuccessorB_sound
 #print axioms ACSD.lineageGroupClosedB_sound
 #print axioms ACSD.closed_lineage_is_authorized_successor
 #print axioms ACSD.checkLineageGroup_sound
 #print axioms ACSD.lineageTranscriptClaim_sound
+#print axioms ACSD.lineageCertificateClaims_sound
 #print axioms ACSD.decodedLineageCertificateClaims_sound
+#print axioms ACSD.decodedLineageCertificateTextClaims_derivable
+#print axioms ACSD.decodedLineageCertificateTextClaims_refine_abstract

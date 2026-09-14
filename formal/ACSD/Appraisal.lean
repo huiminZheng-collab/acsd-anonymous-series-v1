@@ -38,17 +38,11 @@ structure AppraisalPolicy where
   permittedClaims : List ScopedClaim
   deriving Repr
 
-/-! The declarative rule relation is separate from the executable Boolean
-table below. -/
-inductive AppraisalRule : EvidenceKind → ScopedClaim → Prop where
-  | keyApproval : AppraisalRule .unanimousApproval .keyAssent
-  | governanceApproval : AppraisalRule .unanimousApproval .governanceAssent
-  | event : AppraisalRule .eventDisclosure .committedEvidenceMatch
-  | identity : AppraisalRule .identityDisclosure .slotKeyIdentityAssent
-  | targetTime : AppraisalRule .approvalTargetTimestamp .approvalTargetExistedNotAfter
-  | approvalTime : AppraisalRule .approvalSetTimestamp .approvalSetExistedNotAfter
-  | registration : AppraisalRule .scittInclusion .statementRegistered
-  | lineage : AppraisalRule .lineageAuthorization .authorizedSuccessor
+/-! The exact-subject appraisal layer reuses the single declarative
+compatibility relation from `ScopedClaims`.  The earlier implementation copied
+the same eight constructors into a second inductive relation, making semantic
+drift possible even though the two tables happened to agree. -/
+abbrev AppraisalRule := Compatible
 
 def compatibleB : EvidenceKind → ScopedClaim → Bool
   | .unanimousApproval, .keyAssent => true
@@ -219,5 +213,52 @@ theorem unsupported_natural_identity_has_no_rule
   rcases derives_has_exact_support derived with ⟨item, _, _, rule⟩
   have impossible := compatibleB_of_rule rule
   cases item.kind <;> simp [compatibleB] at impossible
+
+/-! The exact-subject model is a strengthening of the original digest-scoped
+model, not a second unrelated semantics.  For any caller-chosen projection of
+structured subjects to a coarse digest, every exact derivation remains a valid
+coarse derivation.  The converse is intentionally not claimed: a projection
+may forget an event window, author slot, UTC instant, or lineage endpoint. -/
+
+def abstractAtom
+    (project : ScopedSubject → Digest) (item : AppraisedAtom) : EvidenceAtom := {
+  kind := item.kind
+  subject := project item.subject
+  verified := true
+}
+
+def abstractRequest
+    (project : ScopedSubject → Digest) (request : AppraisalRequest) : ClaimRequest := {
+  kind := request.kind
+  subject := project request.subject
+}
+
+def abstractPolicy (policy : AppraisalPolicy) : DerivationPolicy := {
+  permittedClaims := policy.permittedClaims
+}
+
+theorem appraisalDerives_refines_abstract
+    (project : ScopedSubject → Digest)
+    {policy : AppraisalPolicy} {evidence : List AppraisedAtom}
+    {request : AppraisalRequest}
+    (derived : AppraisalDerives policy evidence request) :
+    Derives (abstractPolicy policy)
+      (fun item => item ∈ evidence.map (abstractAtom project))
+      (abstractRequest project request) := by
+  rcases derived with
+    ⟨permitted, _requestScoped, item, member, _itemScoped, exactSubject, rule⟩
+  refine ⟨permitted, abstractAtom project item, ?_, rfl, ?_, rule⟩
+  · exact List.mem_map_of_mem member
+  · exact congrArg project exactSubject
+
+theorem checkClaim_refines_abstract
+    (project : ScopedSubject → Digest)
+    {policy : AppraisalPolicy} {evidence : List AppraisedAtom}
+    {request : AppraisalRequest}
+    (accepted : checkClaim policy evidence request = true) :
+    Derives (abstractPolicy policy)
+      (fun item => item ∈ evidence.map (abstractAtom project))
+      (abstractRequest project request) := by
+  exact appraisalDerives_refines_abstract project (checkClaim_sound accepted)
 
 end ACSD

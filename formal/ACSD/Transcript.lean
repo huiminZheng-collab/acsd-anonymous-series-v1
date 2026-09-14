@@ -533,6 +533,27 @@ theorem transcriptClaims_sound
     (List.mem_filter.mp member).2
   exact transcript_checkClaim_sound accepted
 
+/-! In addition to identifying the closed transcript group that supports a
+claim, membership in the executable result has a derivation in the independent
+exact-subject semantics.  This is the bridge used by the strict JSON decoder. -/
+theorem transcriptClaims_derivable
+    {transcript : VerificationTranscript} {certificate : Digest}
+    {request : AppraisalRequest}
+    (member : request ∈ transcriptClaims transcript certificate) :
+    TranscriptPolicyBound transcript ∧
+    AppraisalDerives (transcriptPolicy transcript)
+      (transcriptAtoms transcript certificate) request := by
+  have accepted :
+      transcriptCheckClaim transcript certificate request = true :=
+    (List.mem_filter.mp member).2
+  have parts :
+      transcriptPolicyBoundB transcript = true ∧
+      checkClaim (transcriptPolicy transcript)
+        (transcriptAtoms transcript certificate) request = true := by
+    simpa [transcriptCheckClaim] using accepted
+  exact ⟨transcriptPolicyBoundB_iff transcript |>.mp parts.1,
+    checkClaim_sound parts.2⟩
+
 /-! A concrete countermodel for the tempting weak rule “one approval signature
 is enough”. The predecessor-selected two-key set is not closed. -/
 def weakKeyOne : KeyId := { value := 1 }
