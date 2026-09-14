@@ -1,5 +1,7 @@
 import ACSD.Core
 import ACSD.PEC
+import ACSD.GenericAppraisal
+import ACSD.RatsAppraisal
 import ACSD.Lineage
 import ACSD.ScopedClaims
 import ACSD.Appraisal

@@ -319,7 +319,10 @@ transparency service.
   canonical-text decoders now lead by theorem to exact-subject declarative
   derivations. The exact model reuses the single declarative compatibility
   relation and refines the earlier digest-scoped abstraction under any subject
-  projection.
+  projection. A separate `GenericAppraisal` finite multi-premise calculus now
+  has a compact RATS evidence/policy/result instance, proving exact
+  five-premise closure, nonce non-substitution, and policy gating without
+  adding a new product wire format.
 - **Problem:** the proof still assumes the facts emitted by filesystem,
   DER/CBOR, signature, and hashing adapters. It does not prove that the
   production release verifier establishes those predicates.
@@ -329,8 +332,10 @@ transparency service.
 - **Smallest experiment:** make the production offline verifier optionally emit
   the same claim-free certificate facts and require its granted outcomes to
   agree with certificate-derived outcomes before exposing that mode publicly.
-- **Missing checks:** production-verifier certificate emission, a second-domain
-  instance, and a maintained trusted-computing-base inventory.
+- **Missing checks:** production-verifier certificate emission, a canonical
+  second-domain transcript with Python/Lean differential validation, and a
+  maintained trusted-computing-base inventory. The current RATS instance is a
+  formal abstraction, not EAT/COSE interoperability evidence.
 
 ### D-12 — Comparative and human evaluation
 

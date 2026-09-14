@@ -96,8 +96,13 @@ exact-subject `AppraisalDerives` judgment and its coarse abstraction. The
 production release verifier now additionally passes all appraised facts through
 the smaller generic `acsd-appraisal-transcript/v1` wire boundary before granting
 outcomes; its strict Python and Lean decoders agree on 19/19 maintained cases,
-and Lean connects emitted requests to exact and abstract derivations. A second-
-domain instance remains open.
+and Lean connects emitted requests to exact and abstract derivations. A
+separate formal generalization experiment now factors a finite multi-premise
+calculus and instantiates a compact RATS appraisal rule: exact token/attester,
+measurement, nonce, reference-value, and verifier-policy facts are all
+required for one exact appraisal result. This is not an EAT parser or a
+Python/Lean adapter refinement, so the second-domain boundary validation
+remains open; see `design/GENERALIZATION-GATE.md`.
 
 ### P1 — structural simplification
 
@@ -167,13 +172,12 @@ checks should the project describe itself as cross-domain.
 | Continue adding independent verifier-specific grants | Existing paths had manual string grants and vocabulary drift | None; this directly violates the single-kernel objective | ruled out |
 | Typed exact-subject unary kernel | All live grant paths use the Python kernel; the release verifier's generic transcript is strict-decoded by Python and Lean with exact-to-abstract refinement | Adapter soundness is still assumed at the transcript boundary | implemented for live release verification |
 | General-purpose recursive trust language | Mature systems such as SecPAL and RATS already occupy this space | No ACSD requirement justifies the complexity | ruled out for P0 |
-| Finite multi-premise rules with proof certificates | Needed for quorum and a real second-domain instance | Approval/event/identity/time and authorized-lineage JSON-to-Lean refinement exist; a second domain remains | attempted |
+| Finite multi-premise rules with proof certificates | Needed for quorum and a real second-domain instance | Approval/event/identity/time and authorized-lineage JSON-to-Lean refinement exist; `GenericAppraisal` and the five-premise RATS instance provide a formal-only second domain | Canonical second-domain transcript and Python/Lean differential | attempted |
 | Full parser/crypto verification in Lean | Would maximize assurance but dominates current project cost | First establish a narrow transcript and refinement boundary | unexplored P2 |
 
 ## Smallest next experiment
 
-Instantiate the same typed appraisal discipline in one standards-based second
-domain, preferably a compact RATS/EAT appraisal. The experiment must retain a
-claim-free transcript, an independently stated multi-premise rule, critical
-premise deletion tests, and Python/Lean agreement. This is a generalization
-gate, not permission to add a general policy language.
+Decide whether a concrete RATS appraisal use case justifies a claim-free
+canonical second-domain transcript and Python/Lean differential. The formal
+five-premise instance is already useful as a generalization check; it is not
+permission to add a general policy language or an unneeded EAT implementation.

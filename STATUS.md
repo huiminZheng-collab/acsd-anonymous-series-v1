@@ -107,8 +107,8 @@ or deployed service.
   only after constructing and strictly parsing `acsd-appraisal-transcript/v1`;
   optional CLI output exposes the same claim-free value, and Python/Lean agree
   on 19/19 complete derivation/rejection cases.
-- Lean 4.33.1: build succeeds; 90 PEC/lineage/recovery/scoped-appraisal/transcript
-  theorems; no
+- Lean 4.33.1: build succeeds; 103 formal theorem declarations across
+  PEC/lineage/recovery/scoped-appraisal/transcript/generalization modules; no
   `sorry` or `admit` in the formal sources. The separately published v1 core's
   53 release/team/series theorems remain a distinct inherited model and are not
   included in this v3 count.
@@ -178,6 +178,14 @@ derivable in the exact-subject semantics and refines the abstract model. This
 connects the product decision to the formal kernel; it does not verify the
 filesystem, COSE, RFC 3161, or other adapters inside Lean.
 
+A separate formal generalization experiment factors a finite multi-premise
+calculus and instantiates the RATS separation of evidence, appraisal policy,
+and result. The instance requires exact token/attester, measurement, nonce,
+reference-value, and verifier-policy facts before one exact appraisal result.
+It is intentionally not a production ACSD feature, EAT parser, COSE verifier,
+or claim that a device is safe; `design/GENERALIZATION-GATE.md` records its
+scope and the remaining adapter-refinement check.
+
 ## Remaining product hardening
 
 - OS-backed private-key storage, FIDO2/HSM signing, and verified backup or
@@ -189,8 +197,8 @@ filesystem, COSE, RFC 3161, or other adapters inside Lean.
 - deployed transparency/gossip services and cross-series federation;
 - hardware-backed or independently witnessed recovery-key custody, plus an
   explicit head-pinning/transparency policy for resolving observed forks;
-- a second standards-based domain instance for testing how far the appraisal
-  kernel generalizes beyond scholarly provenance.
+- a canonical second-domain transcript and differential adapter check for
+  testing how far the appraisal kernel generalizes beyond scholarly provenance.
 
 ## Post-v3.3 candidate work
 
@@ -201,7 +209,7 @@ revision, and explicit per-slot publication crosswalks. It intentionally keeps
 venue acceptance outside the derived claim vocabulary and rejects cross-release
 replay or mutation of a signed publication reference.
 
-The post-candidate source gate passes 29/29 checks and includes 173 passing
+The post-candidate source gate passes 29/29 checks and includes 176 passing
 Python tests. The frozen public v3.3.0-rc1 candidate's 294-file evidence
 package passes all 24 of its artifact-mode checks, including
 Lean compilation, the three formal differential bridges, manifest stability,

@@ -1,6 +1,12 @@
 import ACSD
 
 #print axioms ACSD.approval_not_reusable
+#print axioms ACSD.multiPremiseDerives_requires_permission
+#print axioms ACSD.missing_required_premise_blocks_derivation
+#print axioms ACSD.complete_exact_rats_evidence_derives
+#print axioms ACSD.rats_appraisal_requires_exact_freshness
+#print axioms ACSD.different_nonce_fixture_does_not_satisfy_exact_freshness
+#print axioms ACSD.unpermitted_rats_result_has_no_derivation
 #print axioms ACSD.granted_implies_permitted
 #print axioms ACSD.external_time_requires_signer_pin
 #print axioms ACSD.local_test_never_grants_external_time
