@@ -116,7 +116,11 @@ def verify(body, signature: bytes, release, public_key: Ed25519PublicKey):
         "author_slot": slot,
         "author_key_id": author["key_id"],
         "identity_assertion": assertion,
-        "non_claims": ["natural_person_identity_verified", "publication_acceptance_verified"],
+        "non_claims": [
+            "natural_person_identity_verified",
+            "contribution_truth_verified",
+            "publication_acceptance_verified",
+        ],
     }
 
 
@@ -152,6 +156,7 @@ def verify_set(
         "results": results,
         "non_claims": [
             "natural_person_identity_verified",
+            "contribution_truth_verified",
             "joint_team_statement",
             "publication_acceptance_verified",
         ],

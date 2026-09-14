@@ -2,7 +2,7 @@
 """ACSD CLI — anonymous scholarly claim and disclosure tool.
 
 Commands: keygen / init / authorize / approve / finalize / release / revise /
-verify / inspect / audit-key-reuse.
+verify / inspect / verify-identity-set / audit-key-reuse.
 
 Signing uses Ed25519 via `cryptography` and a minimal COSE Sign1 encoding
 (`cose.py`). Canonical bytes, protocol objects, and claim derivation live in
@@ -700,6 +700,37 @@ def cmd_verify_identity(args):
     return EXIT_OK, "identity disclosure valid", result
 
 
+def cmd_verify_identity_set(args):
+    """Verify partial or complete per-slot unblinding for one exact release."""
+    if len(args.disclosure) != len(args.signature):
+        return EXIT_USAGE, "IDENTITY_SIDECAR_COUNT_MISMATCH", {
+            "disclosure_count": len(args.disclosure),
+            "signature_count": len(args.signature),
+        }
+    root = pathlib.Path(args.release_dir)
+    code, message, verification = verify_release_dir(root)
+    if code != EXIT_OK:
+        return code, "RELEASE_NOT_ACCEPTED", {
+            "verifier_message": message, "verifier_data": verification
+        }
+    release = read_canonical(root / "release/release.json")
+    public_keys = {
+        author["key_id"]: load_bound_public_key(root, author["key_id"])
+        for author in release["authors"]
+    }
+    disclosures = [
+        (
+            read_canonical(pathlib.Path(body_path)),
+            pathlib.Path(signature_path).read_bytes(),
+        )
+        for body_path, signature_path in zip(args.disclosure, args.signature)
+    ]
+    result = identity_disclosure.verify_set(disclosures, release, public_keys)
+    if args.require_full_byline and not result["full_byline"]:
+        return EXIT_INCOMPLETE, result["status"], result
+    return EXIT_OK, result["status"], result
+
+
 def cmd_compare_successors(args):
     """Detect a same-parent, same-slot fork without choosing a winner."""
     left_root = pathlib.Path(args.left)
@@ -856,6 +887,25 @@ def main(argv=None):
     pdi.add_argument("--disclosure", required=True, help="identity disclosure JSON")
     pdi.add_argument("--signature", required=True, help="matching COSE signature")
     pdi.set_defaults(func=cmd_verify_identity)
+
+    pdis = sub.add_parser(
+        "verify-identity-set", parents=[common],
+        help="verify a partial or complete set of exact-slot identity sidecars",
+    )
+    pdis.add_argument("release_dir")
+    pdis.add_argument(
+        "--disclosure", action="append", required=True,
+        help="identity disclosure JSON; repeat once per slot",
+    )
+    pdis.add_argument(
+        "--signature", action="append", required=True,
+        help="matching COSE signature; repeat in disclosure order",
+    )
+    pdis.add_argument(
+        "--require-full-byline", action="store_true",
+        help="exit 5 unless every author slot has one valid disclosure",
+    )
+    pdis.set_defaults(func=cmd_verify_identity_set)
 
     pc = sub.add_parser("compare-successors", parents=[common], help="detect a same-parent, same-slot authorized fork")
     pc.add_argument("left", help="first finalized successor directory")

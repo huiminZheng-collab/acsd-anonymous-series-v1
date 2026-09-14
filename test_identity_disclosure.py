@@ -37,6 +37,7 @@ class TestIdentityDisclosure(unittest.TestCase):
         )
         self.assertEqual(result["status"], "SLOT_KEY_ASSENT_TO_IDENTITY_ASSERTION")
         self.assertIn("natural_person_identity_verified", result["non_claims"])
+        self.assertIn("contribution_truth_verified", result["non_claims"])
 
     def test_cross_release_replay_and_wrong_slot_key_fail(self):
         body, signature = self.signed(1, "Alice Example")

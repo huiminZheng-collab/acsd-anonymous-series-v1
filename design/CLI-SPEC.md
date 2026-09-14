@@ -16,6 +16,7 @@ acsd release <paper.pdf> --key author-key.pem [--key coauthor-key.pem] [--tsa UR
 acsd revise  <parent-dir> <paper.pdf> --key new-author-key.pem [--parent-key old-author-key.pem]
 acsd compare-successors <left-dir> <right-dir>
 acsd audit-key-reuse <release-dir> <release-dir> [...] [--fail-on-cross-work]
+acsd verify-identity-set <release-dir> --disclosure D --signature S [...] [--require-full-byline]
 ```
 
 通用选项：`--json`（机器可读输出）。
@@ -51,6 +52,10 @@ acsd audit-key-reuse <release-dir> <release-dir> [...] [--fail-on-cross-work]
   slot；同一 WorkID 内的复用和跨 WorkID 复用分别报告。默认是只读信息审计，
   `--fail-on-cross-work` 在发现跨 WorkID 复用时返回 exit 1，方便发布前 CI。
   相等 key ID 证明公开密钥可链接，不证明背后是同一自然人。
+- `verify-identity-set`：验证同一 exact release 的一个或多个 slot sidecar。
+  合法子集返回 `PARTIAL_BYLINE_KEY_ASSENT`；覆盖所有且仅有的作者 slot 才返回
+  `FULL_BYLINE_KEY_ASSENT`。`--require-full-byline` 将合法但不完整的集合映射为
+  exit 5。重复 slot、签名错误、release/key 作用域不匹配均拒绝。
 
 ## 2. 目录结构（发布包）
 

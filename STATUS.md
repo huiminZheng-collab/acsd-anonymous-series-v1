@@ -7,8 +7,8 @@ immutable. A release candidate is not a venue submission or deployed service.
 ## Implemented
 
 - installable Python CLI: `keygen`, `init`, `approve`, `finalize`, `release`,
-  `verify`, `inspect`, `disclose-identity`, `verify-identity`, and
-  `audit-key-reuse`;
+  `verify`, `inspect`, `disclose-identity`, `verify-identity`,
+  `verify-identity-set`, and `audit-key-reuse`;
 - one-command single- or local multi-author release, plus distributed staged
   approval;
 - restricted canonical JSON and SHA-256 bindings;
@@ -185,8 +185,8 @@ revision, and explicit per-slot publication crosswalks. It intentionally keeps
 venue acceptance outside the derived claim vocabulary and rejects cross-release
 replay or mutation of a signed publication reference.
 
-The post-candidate source gate passes 26/26 checks, including 162 Python tests.
-A fresh 288-file evidence package built from this branch passes all 22
+The post-candidate source gate passes 27/27 checks, including 163 Python tests.
+A fresh 291-file evidence package built from this branch passes all 23
 artifact-mode checks, including
 Lean compilation, the three formal differential bridges, manifest stability,
 and source/package byte identity. These results qualify the workflow mechanics;

@@ -105,3 +105,14 @@
 | M-KEY-04 | 不同 WorkID 使用独立 keys | `NO_CROSS_WORK_KEY_REUSE`；无 equality group |
 | M-KEY-05 | 任一输入 release 验证失败 | `RELEASE_NOT_ACCEPTED`；不从未验证元数据生成审计结论 |
 | M-KEY-06 | 重复输入同一 exact release | `DUPLICATE_RELEASE_INPUT`；不制造伪复用计数 |
+
+## 9. 多作者身份 sidecar 集合
+
+| ID | 场景 | 期望 |
+|---|---|---|
+| M-IDSET-01 | 两作者 release 只给 slot 1 sidecar | `PARTIAL_BYLINE_KEY_ASSENT`；默认 exit 0 |
+| M-IDSET-02 | 上一场景增加 `--require-full-byline` | 同一部分结果，exit 5 |
+| M-IDSET-03 | 每个作者 slot 恰有一个有效 sidecar | `FULL_BYLINE_KEY_ASSENT`；slot 顺序和共同 publication ref 可读 |
+| M-IDSET-04 | 同一 slot 重复或给出冲突陈述 | `VERIFIED_IDENTITY_SLOT_EQUIVOCATION`；不选赢家 |
+| M-IDSET-05 | disclosure/signature 数量不同 | exit 2 `IDENTITY_SIDECAR_COUNT_MISMATCH` |
+| M-IDSET-06 | release、key、payload 或签名不匹配 | exit 1；不得计入 partial/full byline |

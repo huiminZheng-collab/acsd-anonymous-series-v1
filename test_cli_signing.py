@@ -247,6 +247,85 @@ class TestCLISigning(unittest.TestCase):
             self.assertEqual(r.returncode, 2)
             self.assertEqual(json.loads(r.stdout)["message"], "DISCLOSURE_OUTPUT_INSIDE_RELEASE")
 
+    def test_partial_and_full_identity_sets_have_distinct_cli_results(self):
+        with tempfile.TemporaryDirectory() as d:
+            alice, bob, rel = self._setup(d)
+            run("approve", str(rel), "--key", alice["private_key"])
+            run("approve", str(rel), "--key", bob["private_key"])
+            self.assertEqual(run("finalize", str(rel)).returncode, 0)
+            sidecars = pathlib.Path(d) / "identity-set"
+            created = []
+            for key, name in ((alice, "Alice Example"), (bob, "Bob Example")):
+                result = run(
+                    "disclose-identity", str(rel),
+                    "--key", key["private_key"],
+                    "--display-name", name,
+                    "--publication-ref", "doi:10.0000/example",
+                    "--out", str(sidecars), "--json",
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                created.append(json.loads(result.stdout)["data"])
+
+            partial = run(
+                "verify-identity-set", str(rel),
+                "--disclosure", created[0]["disclosure"],
+                "--signature", created[0]["signature"], "--json",
+            )
+            self.assertEqual(partial.returncode, 0, partial.stderr)
+            self.assertEqual(
+                json.loads(partial.stdout)["message"],
+                "PARTIAL_BYLINE_KEY_ASSENT",
+            )
+            required = run(
+                "verify-identity-set", str(rel),
+                "--disclosure", created[0]["disclosure"],
+                "--signature", created[0]["signature"],
+                "--require-full-byline", "--json",
+            )
+            self.assertEqual(required.returncode, 5, required.stderr)
+
+            full = run(
+                "verify-identity-set", str(rel),
+                "--disclosure", created[0]["disclosure"],
+                "--disclosure", created[1]["disclosure"],
+                "--signature", created[0]["signature"],
+                "--signature", created[1]["signature"],
+                "--require-full-byline", "--json",
+            )
+            self.assertEqual(full.returncode, 0, full.stderr)
+            full_data = json.loads(full.stdout)["data"]
+            self.assertEqual(full_data["status"], "FULL_BYLINE_KEY_ASSENT")
+            self.assertEqual(full_data["disclosed_slots"], [1, 2])
+            self.assertEqual(
+                full_data["shared_publication_ref"], "doi:10.0000/example"
+            )
+            self.assertIn("natural_person_identity_verified", full_data["non_claims"])
+
+            duplicate = run(
+                "verify-identity-set", str(rel),
+                "--disclosure", created[0]["disclosure"],
+                "--disclosure", created[0]["disclosure"],
+                "--signature", created[0]["signature"],
+                "--signature", created[0]["signature"], "--json",
+            )
+            self.assertEqual(duplicate.returncode, 1, duplicate.stderr)
+            self.assertEqual(
+                json.loads(duplicate.stdout)["message"],
+                "VERIFIED_IDENTITY_SLOT_EQUIVOCATION",
+            )
+
+            mismatch = run(
+                "verify-identity-set", str(rel),
+                "--disclosure", created[0]["disclosure"],
+                "--disclosure", created[1]["disclosure"],
+                "--signature", created[0]["signature"], "--json",
+            )
+            self.assertEqual(mismatch.returncode, 2, mismatch.stderr)
+            self.assertEqual(
+                json.loads(mismatch.stdout)["message"],
+                "IDENTITY_SIDECAR_COUNT_MISMATCH",
+            )
+
     def test_timestamp_flow(self):
         with tempfile.TemporaryDirectory() as d:
             alice, bob, rel = self._setup(d)

@@ -1,0 +1,34 @@
+{
+  "adverse": {
+    "changed_name": "COSE_PAYLOAD_MISMATCH",
+    "duplicate_slot": "VERIFIED_IDENTITY_SLOT_EQUIVOCATION",
+    "smuggled_contribution": "IDENTITY_DISCLOSURE_FIELDS"
+  },
+  "coverage": {
+    "one_of_three": {
+      "slots": [
+        1
+      ],
+      "status": "PARTIAL_BYLINE_KEY_ASSENT"
+    },
+    "three_of_three": {
+      "contribution_truth_listed_as_non_claim": true,
+      "shared_publication_ref": "urn:example:proceedings:three-author-paper",
+      "slots": [
+        1,
+        2,
+        3
+      ],
+      "status": "FULL_BYLINE_KEY_ASSENT"
+    },
+    "two_of_three": {
+      "require_full_exit": 5,
+      "slots": [
+        1,
+        2
+      ],
+      "status": "PARTIAL_BYLINE_KEY_ASSENT"
+    }
+  },
+  "schema": "acsd-multi-author-unblinding-evaluation/v1"
+}

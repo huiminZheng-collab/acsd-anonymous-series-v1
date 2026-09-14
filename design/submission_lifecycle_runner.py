@@ -22,9 +22,7 @@ DESIGN = pathlib.Path(__file__).resolve().parent
 ROOT = DESIGN.parent
 sys.path.insert(0, str(ROOT))
 
-import identity_disclosure  # noqa: E402
 from artifact_io import read_canonical, write_canonical  # noqa: E402
-from key_material import load_bound_public_key  # noqa: E402
 
 
 ACSD = ROOT / "acsd.py"
@@ -110,7 +108,8 @@ def run_experiment() -> dict:
 
         sidecars = work / "publication-crosswalks"
         absent_before_explicit_action = not sidecars.exists()
-        signed = []
+        disclosure_paths = []
+        signature_paths = []
         for slot, key, display_name in (
             (1, first, "Example Author One"),
             (2, second, "Example Author Two"),
@@ -131,14 +130,16 @@ def run_experiment() -> dict:
             )["data"]
             if verified["author_slot"] != slot:
                 raise AssertionError("unexpected disclosed slot")
-            signed.append((read_canonical(body_path), signature_path.read_bytes()))
+            disclosure_paths.append(body_path)
+            signature_paths.append(signature_path)
 
-        release = read_canonical(release_v2 / "release" / "release.json")
-        public_keys = {
-            author["key_id"]: load_bound_public_key(release_v2, author["key_id"])
-            for author in release["authors"]
-        }
-        byline = identity_disclosure.verify_set(signed, release, public_keys)
+        byline_args = ["verify-identity-set", release_v2]
+        for body_path in disclosure_paths:
+            byline_args.extend(["--disclosure", body_path])
+        for signature_path in signature_paths:
+            byline_args.extend(["--signature", signature_path])
+        byline_args.append("--require-full-byline")
+        byline = _invoke(*byline_args)["data"]
 
         replay_body = sidecars / "identity-slot-1.json"
         replay_signature = sidecars / "identity-slot-1.cose"

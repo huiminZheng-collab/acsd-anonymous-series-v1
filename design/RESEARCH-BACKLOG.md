@@ -163,7 +163,11 @@ transparency service.
 - **Smallest experiment:** a three-slot paper with one, two, and all three slot
   disclosures, plus a forged disclosure and an unauthorized contribution claim.
 - **Implemented evidence:** exact per-slot signatures, full-byline universal
-  quantification, duplicate-slot conflict rejection, and two-slot fixtures.
+  quantification, duplicate-slot conflict rejection, two-slot fixtures, and
+  the installable `verify-identity-set` command with an optional fail-incomplete
+  full-byline mode. `design/multi_author_unblinding_runner.py` exercises 1/3,
+  2/3, and 3/3 disclosure plus duplicate-slot, payload-mutation, and
+  contribution-field injection attacks exclusively through the public CLI.
 - **Missing checks:** withdrawal semantics, threshold versus unanimity for team
   statements, corresponding-author metadata, and real collaborative usability.
 

@@ -223,10 +223,24 @@ acsd verify-identity release-dir \
   --signature identity-sidecars/identity-slot-1.cose
 ```
 
+Verify one or more slot sidecars together, optionally requiring a complete
+byline:
+
+```text
+acsd verify-identity-set release-dir \
+  --disclosure identity-sidecars/identity-slot-1.json \
+  --disclosure identity-sidecars/identity-slot-2.json \
+  --signature identity-sidecars/identity-slot-1.cose \
+  --signature identity-sidecars/identity-slot-2.cose \
+  --require-full-byline
+```
+
 The result means that the exact key assigned to that release slot assented to
 the displayed mapping. It does not verify a natural person or venue status.
 Partial slot disclosure is never reported as a complete byline; conflicting
-same-slot assertions have no automatically selected winner.
+same-slot assertions have no automatically selected winner. Without
+`--require-full-byline`, a valid partial set exits 0 and is explicitly labeled
+`PARTIAL_BYLINE_KEY_ASSENT`; with it, a missing slot exits 5.
 
 ## Reproduce the evidence
 
@@ -245,9 +259,9 @@ Linux/macOS:
 The authoritative `check.py` gate is read-only and finishes by comparing all
 source-tree file hashes with its starting snapshot. It contains:
 
-- 24/24 source, package, installed-wheel, differential, formal, and byte-identity
+- 27/27 source, package, installed-wheel, differential, formal, and byte-identity
   checks passing as one command;
-- 156 Python tests passing, with the live-network and two unavailable Windows
+- 163 Python tests passing, with the live-network and two unavailable Windows
   capability cases skipped locally;
 - 64 fixed Python-Node canonical-JSON vectors with no unexpected divergence;
 - 1,000 seeded generated differential cases with 1,000 byte and verdict

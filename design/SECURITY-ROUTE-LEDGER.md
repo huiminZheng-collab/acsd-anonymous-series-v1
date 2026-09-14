@@ -114,3 +114,10 @@ implication from accepted succession to predecessor quorum under typed inputs.
 | Reuse one public signing key across unrelated papers while claiming unlinkability | Deterministic public key and key-ID equality creates a visible cross-paper edge before disclosure | The executable isolation experiment observes equal key IDs in two independently packaged releases | None; later sidecars cannot erase already public equality | low | ruled out |
 | Treat exact release-bound identity assent as if it identified every occurrence of the same key | Amplifies one scoped author assertion into unsupported natural-person claims about other works | Cross-release replay fails with `IDENTITY_RELEASE_MISMATCH`; Lean requires exact release equality for slot assent | None; observer inference is not a verifier grant | low | ruled out |
 | Generate an independent key per unrelated lineage | Removes the direct equality edge while preserving normal exact-release verification | The third experimental release exposes a distinct key ID; `audit-key-reuse --fail-on-cross-work` enforces the policy across fully verified inputs | Recovery/privacy study and optional workspace-registry integration | low | attempted |
+
+## 2026-09-14 multi-author unblinding decisions
+
+| Approach | Target or obstruction | Evidence | Missing check | Cost | Status |
+|---|---|---|---|---|---|
+| Treat any nonempty identity-sidecar subset as a complete byline | Lets one cooperating slot amplify its assent into claims about silent coauthors | `identity_disclosure.verify_set` quantifies over every release slot; CLI partial-set fixture returns only `PARTIAL_BYLINE_KEY_ASSENT` | None; completeness requires every slot | low | ruled out |
+| Verify one exact sidecar per slot and optionally require full coverage | Preserves voluntary partial disclosure while giving publication workflows a fail-incomplete mode | `verify-identity-set`, duplicate-slot rejection, partial exit 0, `--require-full-byline` exit 5, installed-wheel check, and reproducible 1/3–3/3 experiment | Real-team usability and a separately typed contribution-disclosure design | low | attempted |

@@ -103,6 +103,29 @@ def _installed_cli_e2e(temp: pathlib.Path, wheel: pathlib.Path, env):
         cwd=e2e,
         env=env,
     )
+    identity_dir = e2e / "identity-sidecars"
+    _run(
+        "installed-cli-disclose-identity",
+        [
+            str(acsd), "disclose-identity", str(release),
+            "--key", str(keys / "author.key"),
+            "--display-name", "Installed Example Author",
+            "--out", str(identity_dir),
+        ],
+        cwd=e2e,
+        env=env,
+    )
+    _run(
+        "installed-cli-verify-identity-set",
+        [
+            str(acsd), "verify-identity-set", str(release),
+            "--disclosure", str(identity_dir / "identity-slot-1.json"),
+            "--signature", str(identity_dir / "identity-slot-1.cose"),
+            "--require-full-byline",
+        ],
+        cwd=e2e,
+        env=env,
+    )
     second_paper = e2e / "second-paper.txt"
     second_paper.write_text(
         "Second installed ACSD command-line check.\n", encoding="utf-8"
@@ -163,6 +186,16 @@ def _common_checks(checks, temp, env):
             "design/cross_paper_isolation_runner.py",
             "--check-report",
             "design/cross_paper_isolation_report.json",
+        ],
+        env=env,
+    ))
+    checks.append(_run(
+        "multi-author-unblinding",
+        [
+            sys.executable,
+            "design/multi_author_unblinding_runner.py",
+            "--check-report",
+            "design/multi_author_unblinding_report.json",
         ],
         env=env,
     ))
