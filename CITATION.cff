@@ -1,9 +1,16 @@
 cff-version: 1.2.0
-message: "If you use the ACSD v1.0.0 release, please cite this repository."
-title: "ACSD v1.0.0 - Anonymous Scholarly Claim and Disclosure"
-version: "v1.0.0"
-date-released: 2026-09-11
+message: "If you use ACSD, cite this repository and the exact additive release directory you verified."
+title: "ACSD - Anonymous Scholarly Claim and Disclosure"
+version: "v3.3.0-rc1"
+date-released: 2026-09-14
 repository-code: "https://github.com/huiminZheng-collab/acsd-anonymous-series-v1"
 license: MIT
+keywords:
+  - anonymous scholarly release
+  - cryptographic provenance
+  - authorized lineage
+  - selective unblinding
+  - RFC 3161
+  - formal verification
 authors:
   - name: "ACSD contributors"

@@ -4,7 +4,7 @@ This repository is a **content-anonymous** research release. It contains an
 additive sequence of anonymous papers and offline-verifiable prototypes for
 scholarly releases, authorized version lineages, scoped disclosures, external
 time evidence, and mutual citations. The current candidate is
-[`v3.2.0-rc1/`](v3.2.0-rc1/); older releases remain frozen in place.
+[`v3.3.0-rc1/`](v3.3.0-rc1/); older releases remain frozen in place.
 
 It is not author-unlinkable double-blind publication: a GitHub account, network
 metadata, timing, or a public signing key can link a release to a person. No
@@ -22,11 +22,11 @@ manifests.
 
 ## Current quickstart
 
-Verify the exact v3.2.0-rc1 payload, then run its read-only artifact gate:
+Verify the exact v3.3.0-rc1 payload, then run its read-only artifact gate:
 
 ```powershell
-python .\v3.2.0-rc1\verify_release.py .\v3.2.0-rc1
-Set-Location v3.2.0-rc1
+python .\v3.3.0-rc1\verify_release.py .\v3.3.0-rc1
+Set-Location v3.3.0-rc1
 python .\check.py --artifact --skip-formal
 ```
 
@@ -85,6 +85,25 @@ This remains a limited evidence system: it proves neither natural-person
 identity nor originality, and its exact TSA signer pin is not general PKIX
 revocation or path validation.
 
+## v3.3.0-rc1 Submission lifecycle and disclosure boundaries
+
+The additive [`v3.3.0-rc1/`](v3.3.0-rc1/) candidate keeps the v3.2 lineage
+rules and adds executable post-release workflows: rejection as no public
+transition, exact predecessor-authorized revision when manuscript bytes
+change, and partial or complete per-slot unblinding when they do not. A signed
+publication crosswalk binds an author key to a later record without claiming
+venue acceptance. The candidate also adds a verified cross-work key-reuse
+audit and a controlled Ed25519 comparison showing that a hand-built exact
+predecessor transition can reproduce the core key-rotation decision; ACSD's
+additional contribution is the maintained canonical, threshold, approval-
+closure, governance, and typed-claim profile.
+
+The package contains 163 Python tests, three maintained Python--Lean
+differential suites, 84 v3 theorem statements with no `sorry`/`admit`, a
+15-page content-anonymous paper, and 294 manifest-covered payload files. Its
+real freeTSA fixture remains an interoperability existence check rather than a
+service-reliability evaluation.
+
 ## Contents
 
 - `paper/acsd-v1.pdf` - the anonymous technical paper.
@@ -97,9 +116,12 @@ revocation or path validation.
 - `RELEASE-MANIFEST.sha256` - SHA-256 manifest for the exact public payload.
 - `v2.0.0/` - additive PEC paper, implementation, tests, formal model, and its
   own complete SHA-256 manifest.
-- `v3.2.0-rc1/` - current authorized-lineage paper, CLI, adversarial corpus,
+- `v3.2.0-rc1/` - frozen authorized-lineage paper, CLI, adversarial corpus,
   strict appraisal transcript, Lean sources, and its own complete SHA-256
   manifest.
+- `v3.3.0-rc1/` - current post-release lifecycle, aggregate unblinding,
+  cross-work key audit, adjacent-baseline evaluation, synchronized paper, and
+  its own complete SHA-256 manifest.
 
 ## Claims that can be checked
 
@@ -147,7 +169,7 @@ describes how a separately selected TSA receipt can be checked offline.
 
 ## Release status
 
-- Current additive candidate: `v3.2.0-rc1`
+- Current additive candidate: `v3.3.0-rc1`
 - Historical base release: `v1.0.0`
 - Anonymity level: content-anonymous only
 - Timestamp status: v3 includes one pinned freeTSA response as an

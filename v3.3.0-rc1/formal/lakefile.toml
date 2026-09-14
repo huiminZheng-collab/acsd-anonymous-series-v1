@@ -1,0 +1,10 @@
+name = "acsd-pec"
+version = "0.3.0"
+defaultTargets = ["ACSD", "acsd-transcript-checker"]
+
+[[lean_lib]]
+name = "ACSD"
+
+[[lean_exe]]
+name = "acsd-transcript-checker"
+root = "TranscriptCli"

@@ -1,0 +1,10 @@
+cff-version: 1.2.0
+message: "If you use the ACSD profile or reference implementation, cite this software and its accompanying manuscript."
+title: "ACSD: Anonymous Scholarly Claim and Disclosure"
+type: software
+version: 3.2.0-rc1
+date-released: 2026-09-14
+authors:
+  - name: "ACSD contributors"
+repository-code: "https://github.com/huiminZheng-collab/acsd-anonymous-series-v1"
+license: MIT

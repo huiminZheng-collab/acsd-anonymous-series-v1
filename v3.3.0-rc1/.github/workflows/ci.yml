@@ -1,0 +1,70 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            python-version: '3.9'
+            minimum-crypto: true
+          - os: ubuntu-latest
+            python-version: '3.12'
+            minimum-crypto: false
+          - os: windows-latest
+            python-version: '3.12'
+            minimum-crypto: false
+          - os: macos-latest
+            python-version: '3.12'
+            minimum-crypto: false
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install declared minimum dependency
+        if: matrix.minimum-crypto
+        run: |
+          python -m pip install "cryptography==42.0.0"
+          python -m pip install -e . --no-deps
+      - name: Install current dependencies
+        if: ${{ ! matrix.minimum-crypto }}
+        run: python -m pip install -e .
+      - name: Read-only engineering gate
+        run: python check.py --skip-formal
+      - name: Frozen v3 evidence packages
+        run: |
+          python verify_release.py release-v3.0.0
+          python verify_release.py release-v3.1.0-rc1
+          python release-v3.1.0-rc1/check.py --artifact --skip-formal
+          python build_release.py --check release-v3.1.0-rc1
+      - name: Installed CLI smoke
+        run: acsd --help
+
+  lean:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Official Lean action; the project and lean-toolchain live in formal/.
+      - uses: leanprover/lean-action@v1
+        with:
+          lake-package-directory: formal
+          build: true
+          test: false
+          axiom-audit: true
+          axiom-audit-root: ACSD
+      - name: Lean transcript differential
+        run: python design/lean_transcript_diff.py --checker formal/.lake/build/bin/acsd-transcript-checker

@@ -50,11 +50,13 @@ jobs:
           lake build
       - name: Install v3 dependencies
         run: python -m pip install "cryptography>=42"
-      - name: v3 release manifest
+      - name: v3.2 release manifest
         run: python v3.2.0-rc1/verify_release.py v3.2.0-rc1
-      - name: v3 read-only artifact gate
+      - name: v3.3 release manifest
+        run: python v3.3.0-rc1/verify_release.py v3.3.0-rc1
+      - name: v3.3 read-only artifact gate
         run: |
-          cd v3.2.0-rc1
+          cd v3.3.0-rc1
           python check.py --artifact
       - name: No dirty tree
         run: git diff --exit-code
@@ -96,11 +98,13 @@ jobs:
           lake build
       - name: Install v3 dependencies
         run: python -m pip install "cryptography>=42"
-      - name: v3 release manifest
+      - name: v3.2 release manifest
         run: python v3.2.0-rc1/verify_release.py v3.2.0-rc1
-      - name: v3 read-only artifact gate
+      - name: v3.3 release manifest
+        run: python v3.3.0-rc1/verify_release.py v3.3.0-rc1
+      - name: v3.3 read-only artifact gate
         run: |
-          cd v3.2.0-rc1
+          cd v3.3.0-rc1
           python check.py --artifact --skip-formal
       - name: No dirty tree
         run: git diff --exit-code

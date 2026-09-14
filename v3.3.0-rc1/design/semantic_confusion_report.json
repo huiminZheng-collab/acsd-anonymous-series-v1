@@ -1,0 +1,60 @@
+{
+  "schema": "acsd-semantic-confusion-report/v1",
+  "subject_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "matrix": [
+    {
+      "evidence": "APPROVAL_TARGET_TIMESTAMP",
+      "decisions": {
+        "TARGET_IMPRINT_EXISTED_NOT_AFTER": "GRANTED",
+        "APPROVAL_SET_IMPRINT_EXISTED_NOT_AFTER": "DENIED",
+        "STATEMENT_REGISTERED": "DENIED",
+        "SLOT_KEY_ASSENT_TO_IDENTITY_ASSERTION": "DENIED"
+      }
+    },
+    {
+      "evidence": "APPROVAL_SET_TIMESTAMP",
+      "decisions": {
+        "TARGET_IMPRINT_EXISTED_NOT_AFTER": "DENIED",
+        "APPROVAL_SET_IMPRINT_EXISTED_NOT_AFTER": "GRANTED",
+        "STATEMENT_REGISTERED": "DENIED",
+        "SLOT_KEY_ASSENT_TO_IDENTITY_ASSERTION": "DENIED"
+      }
+    },
+    {
+      "evidence": "SCITT_INCLUSION",
+      "decisions": {
+        "TARGET_IMPRINT_EXISTED_NOT_AFTER": "DENIED",
+        "APPROVAL_SET_IMPRINT_EXISTED_NOT_AFTER": "DENIED",
+        "STATEMENT_REGISTERED": "GRANTED",
+        "SLOT_KEY_ASSENT_TO_IDENTITY_ASSERTION": "DENIED"
+      }
+    },
+    {
+      "evidence": "SLOT_IDENTITY_ASSENT",
+      "decisions": {
+        "TARGET_IMPRINT_EXISTED_NOT_AFTER": "DENIED",
+        "APPROVAL_SET_IMPRINT_EXISTED_NOT_AFTER": "DENIED",
+        "STATEMENT_REGISTERED": "DENIED",
+        "SLOT_KEY_ASSENT_TO_IDENTITY_ASSERTION": "GRANTED"
+      }
+    }
+  ],
+  "unsupported_claims": {
+    "NATURAL_PERSON_IDENTITY_VERIFIED": "DENIED",
+    "ORIGINALITY_VERIFIED": "DENIED",
+    "SIGNERS_UNCOMPROMISED_AT_TIME": "DENIED"
+  },
+  "timeline": {
+    "t0_target_timestamp": [
+      "TARGET_IMPRINT_EXISTED_NOT_AFTER"
+    ],
+    "t1_key_compromise_or_revocation": "external fact; no ACSD evidence atom is synthesized",
+    "t2_signatures_added": [
+      "GOVERNANCE_ASSENT",
+      "KEY_ASSENT",
+      "TARGET_IMPRINT_EXISTED_NOT_AFTER"
+    ],
+    "approval_set_time_at_t0": "DENIED",
+    "signers_uncompromised_at_t0": "DENIED"
+  }
+}

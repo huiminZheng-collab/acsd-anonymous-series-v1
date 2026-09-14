@@ -1,0 +1,30 @@
+{
+  "cases": {
+    "adverse": {
+      "cross_release_replay": "IDENTITY_RELEASE_MISMATCH",
+      "mutated_publication_ref": "COSE_PAYLOAD_MISMATCH"
+    },
+    "explicit_publication_crosswalk": {
+      "byline_status": "FULL_BYLINE_KEY_ASSENT",
+      "disclosed_slots": [
+        1,
+        2
+      ],
+      "publication_acceptance_derived": false,
+      "publication_acceptance_listed_as_non_claim": true,
+      "shared_publication_ref": "urn:example:proceedings:paper-123",
+      "sidecar_absent_before_explicit_action": true
+    },
+    "rejection_out_of_band": {
+      "protocol_action": "none",
+      "release_still_valid": true,
+      "release_tree_unchanged": true
+    },
+    "revision_after_rejection": {
+      "authorized_successor_derived": true,
+      "lineage_status": "AUTHORIZED_CONTINUATION",
+      "version": 2
+    }
+  },
+  "schema": "acsd-submission-lifecycle-evaluation/v1"
+}
