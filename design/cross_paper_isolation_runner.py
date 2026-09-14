@@ -125,6 +125,16 @@ def run_experiment() -> dict:
             signature,
             expected=1,
         )
+        same_key_audit = _invoke(
+            "audit-key-reuse", release_a, release_b
+        )["data"]
+        strict_audit = _invoke(
+            "audit-key-reuse", release_a, release_b,
+            "--fail-on-cross-work", expected=1,
+        )
+        independent_key_audit = _invoke(
+            "audit-key-reuse", release_a, release_c
+        )["data"]
 
         report = {
             "schema": SCHEMA,
@@ -134,10 +144,13 @@ def run_experiment() -> dict:
                 "release_a_identity_assent": accepted_a["status"],
                 "release_b_scope_replay": rejected_b["message"],
                 "release_b_identity_assent_derived": False,
+                "cli_audit_status": same_key_audit["status"],
+                "strict_cli_message": strict_audit["message"],
             },
             "independent_public_keys": {
                 "key_id_equal": key_a == key_c,
                 "public_key_equality_link": key_a == key_c,
+                "cli_audit_status": independent_key_audit["status"],
             },
             "boundary": {
                 "exact_release_scope_formally_modeled": True,
@@ -154,10 +167,13 @@ def run_experiment() -> dict:
                     "SLOT_KEY_ASSENT_TO_IDENTITY_ASSERTION",
                 "release_b_scope_replay": "IDENTITY_RELEASE_MISMATCH",
                 "release_b_identity_assent_derived": False,
+                "cli_audit_status": "CROSS_WORK_KEY_REUSE_DETECTED",
+                "strict_cli_message": "CROSS_WORK_KEY_REUSE_DETECTED",
             },
             "independent_public_keys": {
                 "key_id_equal": False,
                 "public_key_equality_link": False,
+                "cli_audit_status": "NO_CROSS_WORK_KEY_REUSE",
             },
             "boundary": {
                 "exact_release_scope_formally_modeled": True,

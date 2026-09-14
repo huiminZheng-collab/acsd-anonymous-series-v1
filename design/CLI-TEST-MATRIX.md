@@ -94,3 +94,14 @@
 | M-LIN-07 | 授权创建新 line | 继承 WorkID，新 line 从 version 1 开始 |
 | M-LIN-08 | 同一 parent/slot 出现两个已授权后继 | 报告 `LINEAGE_EQUIVOCATION_DETECTED`，`winner=null` |
 | M-LIN-09 | 验证者提供正确/错误 parent ReleaseID pin | 正确为 `PIN_MATCHED`；错误为 `PARENT_PIN_MISMATCH` |
+
+## 8. 跨论文密钥复用审计
+
+| ID | 场景 | 期望 |
+|---|---|---|
+| M-KEY-01 | 同一 key 出现在两个不同 WorkID | 报告 `CROSS_WORK_KEY_REUSE_DETECTED` 和精确 occurrences；默认 exit 0 |
+| M-KEY-02 | 上一场景增加 `--fail-on-cross-work` | 同一报告，exit 1，供发布 CI fail closed |
+| M-KEY-03 | 同一 key 仅在一个 WorkID 的多个版本出现 | 进入 `same_work_reuse_groups`，不触发跨 WorkID 警报 |
+| M-KEY-04 | 不同 WorkID 使用独立 keys | `NO_CROSS_WORK_KEY_REUSE`；无 equality group |
+| M-KEY-05 | 任一输入 release 验证失败 | `RELEASE_NOT_ACCEPTED`；不从未验证元数据生成审计结论 |
+| M-KEY-06 | 重复输入同一 exact release | `DUPLICATE_RELEASE_INPUT`；不制造伪复用计数 |

@@ -16,6 +16,7 @@
 | Single production claim path | architecture gate plus release, time, event, identity, and demo adapters | PASS; no manual string grant append |
 | Single PEC/policy validation path | CLI and legacy facade delegate to `bundle_validation.py`; 13 common adverse mutations compare first error codes | PASS |
 | Single public-key identifier definition | CLI, event, identity, and certificate adapters import `key_identity.py` | PASS |
+| Cross-paper public-key reuse audit | I/O-free grouping plus `audit-key-reuse`; same-WorkID continuity separated from cross-WorkID warning | PASS; optional fail-closed exit 1 |
 | I/O-free protocol-object boundary | `protocol_objects.py` owns live schemas/builders/binding checks; `acsd.py` only re-exports the compatibility names | PASS; import-graph and identity tests |
 | Fresh nested defaults | separate builds cannot share mutable AI-use or contribution lists | PASS |
 | CLI-independent offline verifier | artifact/key/lineage adapters feed `release_verifier.py`; no adapter or verifier imports `acsd.py` | PASS; compatibility identity and full CLI/lineage/TSA corpus |

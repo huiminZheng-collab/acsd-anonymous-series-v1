@@ -140,6 +140,21 @@ merely reuses a visible WorkID from being confused with the known lineage.
 same parent and slot as `LINEAGE_EQUIVOCATION_DETECTED`, but deliberately does
 not choose a winner. A different line is an authorized branch, not a conflict.
 
+Before publishing otherwise unrelated releases, audit visible signing-key
+reuse across their verified WorkIDs:
+
+```text
+acsd audit-key-reuse release-a release-b --fail-on-cross-work
+```
+
+Without `--fail-on-cross-work` the command is informational and exits 0; with
+it, any key occurring under more than one WorkID returns exit 1. Reuse inside
+one WorkID lineage is reported separately because it commonly expresses
+intended continuity. Exact-release identity sidecars remain scope-isolated,
+but no later disclosure mechanism can erase equality of public keys that were
+already published. Use independent keys for unrelated lineages when that
+direct link is unwanted.
+
 An authorization is immutable evidence, not something cryptography can erase.
 Key loss can therefore freeze a lineage, and a malicious transition already
 validly authorized cannot be retroactively made false. Recovery must be
@@ -300,6 +315,8 @@ remain opt-in because CI must not depend on network availability.
 - `cli_output.py`: stable exit-code and human/JSON process-output contract;
 - `approval_set.py`, `event_disclosure.py`, `identity_disclosure.py`, and
   `package_manifest.py`: narrow protocol components shared by CLI and tests;
+- `linkability_audit.py`: I/O-free classification of same-lineage and cross-
+  WorkID public-key reuse;
 - `SPEC.md`: object, trust, and claim semantics;
 - `ANONYMITY.md`: content-anonymous scope and known linkability;
 - `TEST-PLAN.md` and `design/SECURITY-ROUTE-LEDGER.md`: attacks and design

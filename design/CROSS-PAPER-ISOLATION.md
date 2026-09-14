@@ -49,5 +49,7 @@ The runner creates only temporary keys and releases. It demonstrates both
 sides of the boundary: a disclosure for A is rejected against B despite public
 key reuse, while the two release records remain publicly linkable by equal key
 IDs. A third release with an independently generated key has no such equality
-edge. The experiment establishes this implementation property, not universal
+edge. It exercises the product command directly; add `--fail-on-cross-work`
+to make a detected cross-WorkID key group return exit code 1 in a release CI.
+The experiment establishes this implementation property, not universal
 anonymity against writing style, timing, network, repository, or social clues.

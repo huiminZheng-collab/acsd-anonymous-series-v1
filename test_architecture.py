@@ -12,6 +12,7 @@ import key_material
 import legacy_adapter
 import lineage_adapter
 import lineage_verification_transcript
+import linkability_audit
 import pec_core
 import protocol_objects
 import release_verifier
@@ -59,6 +60,12 @@ class TestTrustedKernelArchitecture(unittest.TestCase):
         self.assertEqual(
             self.imported_roots(release_adapter),
             {"canonical_json"},
+        )
+
+    def test_linkability_audit_is_an_io_free_release_projection(self):
+        self.assertEqual(
+            self.imported_roots(linkability_audit),
+            {"canonical_json", "release_adapter"},
         )
 
     def test_protocol_object_layer_has_no_io_crypto_or_cli_dependencies(self):

@@ -15,6 +15,7 @@ acsd inspect <release-dir>
 acsd release <paper.pdf> --key author-key.pem [--key coauthor-key.pem] [--tsa URL]
 acsd revise  <parent-dir> <paper.pdf> --key new-author-key.pem [--parent-key old-author-key.pem]
 acsd compare-successors <left-dir> <right-dir>
+acsd audit-key-reuse <release-dir> <release-dir> [...] [--fail-on-cross-work]
 ```
 
 通用选项：`--json`（机器可读输出）。
@@ -46,6 +47,10 @@ acsd compare-successors <left-dir> <right-dir>
   target，作者集合变化时用重复的 `--parent-key` 满足前序 threshold。
 - `compare-successors`：验证两个后继并检测同一 parent、line、version 的已授权
   分叉；报告 equivocation，但不替作者挑选“赢家”。
+- `audit-key-reuse`：先完整验证两个或更多 release，再按公开 key ID 聚合作者
+  slot；同一 WorkID 内的复用和跨 WorkID 复用分别报告。默认是只读信息审计，
+  `--fail-on-cross-work` 在发现跨 WorkID 复用时返回 exit 1，方便发布前 CI。
+  相等 key ID 证明公开密钥可链接，不证明背后是同一自然人。
 
 ## 2. 目录结构（发布包）
 
@@ -214,6 +219,9 @@ release-dir/
 - `verify-identity` 的成功结果是
   `SLOT_KEY_ASSENT_TO_IDENTITY_ASSERTION`，不是自然人身份或会议录用验证。
 - 同一 slot 的冲突陈述不自动选赢家；缺少任一 slot 时不得输出完整 byline。
+- 身份 sidecar 的 exact-release 作用域不会扩张到另一篇论文；但若两篇论文
+  复用同一公开密钥，key ID 等值本身已形成可观察链接。无关 lineage 默认
+  使用独立密钥，并可在发布前运行 `audit-key-reuse`。
 
 ## 11. 范围外（明确不做，v1.0 前）
 

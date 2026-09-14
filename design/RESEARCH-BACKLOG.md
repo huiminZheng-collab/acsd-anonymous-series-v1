@@ -135,14 +135,16 @@ transparency service.
   protocol-level links available in each case.
 - **Implemented evidence:** `design/CROSS-PAPER-ISOLATION.md` distinguishes
   exact verifier scope from observer linkability;
-  `design/cross_paper_isolation_runner.py` shows that a release-A sidecar is
+  `design/cross_paper_isolation_runner.py` and the product
+  `audit-key-reuse` command show that a release-A sidecar is
   rejected against release B even when both expose the same key ID, while also
   recording that the releases remain publicly linkable by that equality. The
   existing Lean theorem `slot_assent_requires_exact_release` covers the exact-
   release grant boundary.
 - **Missing checks:** primary-literature comparison with anonymous credential
   and key-evolving pseudonym systems, recovery without a common public link,
-  and a user-facing key-policy lint before release creation. The current
+  and optional integration of the audit into an authoring workspace registry.
+  The current
   experiment does not claim stylometric, timing, network, or repository
   unlinkability.
 

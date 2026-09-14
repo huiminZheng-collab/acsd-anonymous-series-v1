@@ -19,7 +19,7 @@ ROOT = pathlib.Path(__file__).resolve().parent
 WHEEL_INPUTS = (
     "pyproject.toml", "README.md", "LICENSE", "acsd.py", "acsd_version.py", "approval_set.py", "appraisal_transcript.py", "artifact_io.py",
     "bundle_validation.py", "canonical_json.py", "claim_derivation.py", "cli_output.py", "cose.py", "event_disclosure.py", "identity_disclosure.py", "key_identity.py",
-    "key_material.py", "legacy_adapter.py", "lineage_adapter.py", "package_manifest.py", "pec_core.py", "protocol_objects.py", "release_adapter.py", "release_verifier.py", "tsa.py", "verification_transcript.py",
+    "key_material.py", "legacy_adapter.py", "lineage_adapter.py", "linkability_audit.py", "package_manifest.py", "pec_core.py", "protocol_objects.py", "release_adapter.py", "release_verifier.py", "tsa.py", "verification_transcript.py",
     "lineage_verification_transcript.py",
 )
 
@@ -100,6 +100,32 @@ def _installed_cli_e2e(temp: pathlib.Path, wheel: pathlib.Path, env):
     _run(
         "installed-cli-verify",
         [str(acsd), "verify", str(release)],
+        cwd=e2e,
+        env=env,
+    )
+    second_paper = e2e / "second-paper.txt"
+    second_paper.write_text(
+        "Second installed ACSD command-line check.\n", encoding="utf-8"
+    )
+    second_release = e2e / "second-release"
+    _run(
+        "installed-cli-second-keygen",
+        [str(acsd), "keygen", "--name", "second", "--out-dir", str(keys)],
+        cwd=e2e,
+        env=env,
+    )
+    _run(
+        "installed-cli-second-release",
+        [
+            str(acsd), "release", str(second_paper),
+            "--key", str(keys / "second.key"), "--out", str(second_release),
+        ],
+        cwd=e2e,
+        env=env,
+    )
+    _run(
+        "installed-cli-key-reuse-audit",
+        [str(acsd), "audit-key-reuse", str(release), str(second_release)],
         cwd=e2e,
         env=env,
     )

@@ -2,7 +2,7 @@
 """ACSD CLI — anonymous scholarly claim and disclosure tool.
 
 Commands: keygen / init / authorize / approve / finalize / release / revise /
-verify / inspect.
+verify / inspect / audit-key-reuse.
 
 Signing uses Ed25519 via `cryptography` and a minimal COSE Sign1 encoding
 (`cose.py`). Canonical bytes, protocol objects, and claim derivation live in
@@ -36,6 +36,7 @@ import cose  # noqa: E402
 import tsa  # noqa: E402
 import approval_set  # noqa: E402
 import identity_disclosure  # noqa: E402
+import linkability_audit  # noqa: E402
 from acsd_version import __version__  # noqa: E402
 from artifact_io import path_is_within, read_canonical, write_canonical  # noqa: E402
 from canonical_json import canonical, digest, require  # noqa: E402
@@ -738,6 +739,27 @@ def cmd_compare_successors(args):
     }
 
 
+def cmd_audit_key_reuse(args):
+    """Report observable author-key equality across verified releases."""
+    if len(args.release_dirs) < 2:
+        return EXIT_USAGE, "AT_LEAST_TWO_RELEASES_REQUIRED", {}
+    releases = []
+    for release_index, release_dir in enumerate(args.release_dirs, 1):
+        root = pathlib.Path(release_dir)
+        code, message, verification = verify_release_dir(root)
+        if code != EXIT_OK:
+            return code, "RELEASE_NOT_ACCEPTED", {
+                "release_index": release_index,
+                "verifier_message": message,
+                "verifier_data": verification,
+            }
+        releases.append(read_canonical(root / "release/release.json"))
+    result = linkability_audit.audit_releases(releases)
+    if args.fail_on_cross_work and result["cross_work_reuse_groups"]:
+        return EXIT_VERIFY_FAIL, result["status"], result
+    return EXIT_OK, result["status"], result
+
+
 def main(argv=None):
     common = argparse.ArgumentParser(add_help=False)
     common.add_argument("--json", action="store_true", help="machine-readable output")
@@ -839,6 +861,19 @@ def main(argv=None):
     pc.add_argument("left", help="first finalized successor directory")
     pc.add_argument("right", help="second finalized successor directory")
     pc.set_defaults(func=cmd_compare_successors)
+
+    pkr = sub.add_parser(
+        "audit-key-reuse", parents=[common],
+        help="report public signing keys reused across verified WorkID lineages",
+    )
+    pkr.add_argument(
+        "release_dirs", nargs="+", help="two or more finalized release directories"
+    )
+    pkr.add_argument(
+        "--fail-on-cross-work", action="store_true",
+        help="exit 1 when a key occurs under more than one WorkID",
+    )
+    pkr.set_defaults(func=cmd_audit_key_reuse)
 
     args = p.parse_args(argv)
     try:

@@ -7,7 +7,8 @@ immutable. A release candidate is not a venue submission or deployed service.
 ## Implemented
 
 - installable Python CLI: `keygen`, `init`, `approve`, `finalize`, `release`,
-  `verify`, `inspect`, `disclose-identity`, and `verify-identity`;
+  `verify`, `inspect`, `disclose-identity`, `verify-identity`, and
+  `audit-key-reuse`;
 - one-command single- or local multi-author release, plus distributed staged
   approval;
 - restricted canonical JSON and SHA-256 bindings;
@@ -184,8 +185,9 @@ revision, and explicit per-slot publication crosswalks. It intentionally keeps
 venue acceptance outside the derived claim vocabulary and rejects cross-release
 replay or mutation of a signed publication reference.
 
-The post-candidate source gate passes 26/26 checks. A fresh 286-file evidence
-package built from this branch passes all 22 artifact-mode checks, including
+The post-candidate source gate passes 26/26 checks, including 162 Python tests.
+A fresh 288-file evidence package built from this branch passes all 22
+artifact-mode checks, including
 Lean compilation, the three formal differential bridges, manifest stability,
 and source/package byte identity. These results qualify the workflow mechanics;
 they do not establish that a venue accepted, rejected, or received a paper.
@@ -195,4 +197,6 @@ boundary. Exact release binding prevents a disclosure sidecar from granting an
 identity-assent result for another release, but equal public key IDs remain an
 observable link. The recommended privacy default is therefore one independent
 key per unrelated lineage; this is an operational policy, not a universal
-unlinkability guarantee.
+unlinkability guarantee. The read-only `audit-key-reuse` command now checks
+that policy across two or more fully verified releases and can fail closed in
+release CI without treating key equality as proof of a common natural person.
