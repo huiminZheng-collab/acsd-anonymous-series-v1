@@ -92,8 +92,12 @@ The separate lineage profile now has byte-identical Python/Node certificates,
 strict Python/Lean closure checkers, and 15/15 complete differential cases over
 exact parent/child/transition/signature/input/approval-set scope. For both
 profiles, the actual strict canonical-text decoder is connected to a full
-exact-subject `AppraisalDerives` judgment and its coarse abstraction. Production
-CLI certificate emission and a second-domain instance remain open.
+exact-subject `AppraisalDerives` judgment and its coarse abstraction. The
+production release verifier now additionally passes all appraised facts through
+the smaller generic `acsd-appraisal-transcript/v1` wire boundary before granting
+outcomes; its strict Python and Lean decoders agree on 19/19 maintained cases,
+and Lean connects emitted requests to exact and abstract derivations. A second-
+domain instance remains open.
 
 ### P1 — structural simplification
 
@@ -161,7 +165,7 @@ checks should the project describe itself as cross-domain.
 | Route | Evidence | Missing check | Status |
 |---|---|---|---|
 | Continue adding independent verifier-specific grants | Existing paths had manual string grants and vocabulary drift | None; this directly violates the single-kernel objective | ruled out |
-| Typed exact-subject unary kernel | All live grant paths use the Python kernel; Lean has one declarative relation plus exact-to-abstract refinement | Production verifier certificate emission | attempted |
+| Typed exact-subject unary kernel | All live grant paths use the Python kernel; the release verifier's generic transcript is strict-decoded by Python and Lean with exact-to-abstract refinement | Adapter soundness is still assumed at the transcript boundary | implemented for live release verification |
 | General-purpose recursive trust language | Mature systems such as SecPAL and RATS already occupy this space | No ACSD requirement justifies the complexity | ruled out for P0 |
 | Finite multi-premise rules with proof certificates | Needed for quorum and a real second-domain instance | Approval/event/identity/time and authorized-lineage JSON-to-Lean refinement exist; a second domain remains | attempted |
 | Full parser/crypto verification in Lean | Would maximize assurance but dominates current project cost | First establish a narrow transcript and refinement boundary | unexplored P2 |

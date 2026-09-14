@@ -61,6 +61,7 @@
 | M-VER-11 | 非 canonical JSON 的 release.json（键乱序） | `TAMPERED`/`PEC_NONCANONICAL`；exit 1 |
 | M-VER-12 | release.json 含重复键 | 拒绝（字节对比）；exit 1 |
 | M-VER-13 | 路径穿越文件名（manifest 或包内 `..`） | exit 1 `MANIFEST_PATH_INVALID`，且 verify 不读包外文件 |
+| M-VER-14 | `--emit-appraisal-transcript --json` | 输出严格类型化、无 verdict 的中间证据；重新派生的 outcomes 与顶层完全一致；默认 verify 不增加该字段 |
 
 ## 5. inspect / 杂项
 

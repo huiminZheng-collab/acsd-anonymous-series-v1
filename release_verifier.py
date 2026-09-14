@@ -10,6 +10,7 @@ import re
 from pathlib import Path
 
 import approval_set
+import appraisal_transcript
 import claim_derivation as claim_core
 import cose
 import tsa
@@ -69,6 +70,7 @@ def verify_release_dir(
     allow_local_test_tsa=False,
     require_external_time=False,
     expected_parent_release_id=None,
+    include_appraisal_transcript=False,
 ):
     """Verify one release directory without mutating it."""
     root = Path(root)
@@ -142,8 +144,8 @@ def verify_release_dir(
                 "error_code": "APPROVAL_SIGNATURE_INVALID"
             }
     missing = [key_id for key_id in key_ids if not valid.get(key_id)]
-    permitted = set(pec["claim_policy"]["permitted_outcomes"])
-    permitted_claim_kinds = claim_core.permitted_claims(permitted)
+    permitted = pec["claim_policy"]["permitted_outcomes"]
+    claim_core.permitted_claims(permitted)
     appraised_evidence = []
     data = {
         "work_id": adapted["work_id"],
@@ -156,6 +158,15 @@ def verify_release_dir(
         "granted_outcomes": [],
         "non_claims": pec["claim_policy"]["global_non_claims"],
     }
+
+    def refresh_granted_outcomes():
+        transcript = appraisal_transcript.build(permitted, appraised_evidence)
+        derivations = appraisal_transcript.derive(transcript)
+        data["granted_outcomes"] = list(claim_core.wire_outcomes(derivations))
+        if include_appraisal_transcript:
+            data["appraisal_transcript"] = transcript
+
+    refresh_granted_outcomes()
     if missing:
         return EXIT_INCOMPLETE, "INCOMPLETE", data
     if (
@@ -246,10 +257,6 @@ def verify_release_dir(
             lineage_claim_subject(lineage),
             digest(approval_set_obj),
         ))
-
-    def refresh_granted_outcomes():
-        derivations = claim_core.derive(appraised_evidence, permitted_claim_kinds)
-        data["granted_outcomes"] = list(claim_core.wire_outcomes(derivations))
 
     refresh_granted_outcomes()
 

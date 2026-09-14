@@ -6,6 +6,9 @@ import sys
 import tempfile
 import unittest
 
+import appraisal_transcript
+import claim_derivation
+
 
 ROOT = pathlib.Path(__file__).resolve().parent
 ACSD = ROOT / "acsd.py"
@@ -71,15 +74,29 @@ class TestLineageAuthorization(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr or result.stdout)
             data = json.loads(result.stdout)["data"]
             self.assertEqual(data["version"], 2)
-            verified = run("verify", str(child), "--json")
+            verified = run(
+                "verify", str(child), "--emit-appraisal-transcript", "--json"
+            )
             self.assertEqual(verified.returncode, 0, verified.stderr or verified.stdout)
+            verified_data = json.loads(verified.stdout)["data"]
             self.assertEqual(
-                json.loads(verified.stdout)["data"]["lineage_status"],
+                verified_data["lineage_status"],
                 "AUTHORIZED_CONTINUATION",
             )
             self.assertIn(
                 "AUTHORIZED_SUCCESSOR",
-                json.loads(verified.stdout)["data"]["granted_outcomes"],
+                verified_data["granted_outcomes"],
+            )
+            transcript = verified_data["appraisal_transcript"]
+            self.assertIn(
+                "LINEAGE_AUTHORIZATION",
+                [item["kind"] for item in transcript["evidence"]],
+            )
+            self.assertEqual(
+                list(claim_derivation.wire_outcomes(
+                    appraisal_transcript.derive(transcript)
+                )),
+                verified_data["granted_outcomes"],
             )
             parent_release_id = json.loads(
                 (child / "release" / "release.json").read_text(encoding="utf-8")

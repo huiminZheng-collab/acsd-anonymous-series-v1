@@ -10,7 +10,7 @@ acsd init    <paper.pdf> --team team.json [--out release-dir] [--parent parent-d
 acsd authorize <release-dir> --key predecessor-key.pem
 acsd approve <release-dir> --key author-key.pem
 acsd finalize <release-dir> [--tsa https://tsa.example] [--allow-untimestamped]
-acsd verify  <release-dir> [--expected-parent-release-id URN] [--tsa-trust-cert CERT | --tsa-trust-fingerprint HEX]
+acsd verify  <release-dir> [--expected-parent-release-id URN] [--tsa-trust-cert CERT | --tsa-trust-fingerprint HEX] [--emit-appraisal-transcript]
 acsd inspect <release-dir>
 acsd release <paper.pdf> --key author-key.pem [--key coauthor-key.pem] [--tsa URL]
 acsd revise  <parent-dir> <paper.pdf> --key new-author-key.pem [--parent-key old-author-key.pem]
@@ -35,7 +35,9 @@ acsd compare-successors <left-dir> <right-dir>
 - `verify`：从零重算：canonical 校验、COSE 签名、content digest、governance
   绑定、PEC 链、事件链、manifest 覆盖、可选 RFC 3161 离线验证。输出
   granted outcomes + non-claims。对后继版本可用 `--expected-parent-release-id`
-  固定验证者此前认可的 parent；省略时显式报告 `UNPINNED_EXACT_PARENT`。**只读**。
+  固定验证者此前认可的 parent；省略时显式报告 `UNPINNED_EXACT_PARENT`。
+  `--emit-appraisal-transcript` 可额外输出真正驱动这些 outcomes 的严格类型化
+  中间证据，但它本身不替代底层字节验证。**只读**。
 - `inspect`：打印状态机状态、缺哪些签名、WorkID、release digest、TSA 状态、
   文件清单。**只读**。
 - `release`：`init`+全部 `approve`+`finalize` 的一条命令；可重复 `--key`
@@ -148,6 +150,8 @@ release-dir/
 错误时 `data` 含 `error_code`（如 `APPROVALS_INCOMPLETE`）与 `missing_keys`。
 `verify` 的 `data` 必须**同时**携带 granted outcomes 与 non-claims —— 程序化
 消费方不得只读前者。
+只有显式请求 `--emit-appraisal-transcript` 时，`data` 才增加
+`appraisal_transcript`；默认 JSON 合同保持不变。
 
 ## 7. 密钥与多人工作流
 

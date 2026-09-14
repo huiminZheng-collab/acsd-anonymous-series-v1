@@ -1,4 +1,5 @@
 import ACSD.TranscriptJson
+import ACSD.AppraisalTranscriptJson
 import Lean.Data.Json.Printer
 
 set_option autoImplicit false
@@ -68,6 +69,20 @@ private def resultJson
   ("certificate_digest_nat", digestJson certificate),
   ("claims", Json.arr (claims.map (requestJson certificate)).toArray)]
 
+private def appraisalRequestJson
+    (raw : RawAppraisalTranscript) (request : AppraisalRequest) : Json :=
+  Json.mkObj [
+    ("kind", claimName request.kind), ("subject", subjectJson request.subject),
+    ("supporting_certificate_digests_nat", Json.arr
+      ((appraisalSupportingDigests raw request).map digestJson).toArray)]
+
+private def appraisalResultJson
+    (certificate : Digest) (raw : RawAppraisalTranscript) : Json := Json.mkObj [
+  ("schema", "acsd-lean-transcript-result/v1"),
+  ("certificate_digest_nat", digestJson certificate),
+  ("claims", Json.arr
+    ((deriveAppraisalTranscript raw).map (appraisalRequestJson raw)).toArray)]
+
 private def errorJson (message : String) : Json := Json.mkObj [
   ("schema", "acsd-lean-transcript-result/v1"),
   ("error", message)]
@@ -98,8 +113,13 @@ def main (args : List String) : IO UInt32 := do
                     (deriveLineageCertificate raw certificate)).compress
                   pure 0
               | .error _ =>
-                  IO.eprintln <| (errorJson standardError).compress
-                  pure 2
+                  match decodeAppraisalTranscriptText text with
+                  | .ok raw =>
+                      IO.println <| (appraisalResultJson certificate raw).compress
+                      pure 0
+                  | .error _ =>
+                      IO.eprintln <| (errorJson standardError).compress
+                      pure 2
   | _ =>
       IO.eprintln <| (errorJson "USAGE: TranscriptCli <certificate> <sha256>").compress
       pure 2

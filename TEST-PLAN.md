@@ -195,6 +195,11 @@ raw adapter output being evaluated.
     lineage certificates must lead to exact-subject derivations, and those
     derivations must refine the earlier digest-scoped abstraction under an
     arbitrary subject projection.
+16. The production release verifier must derive displayed outcomes from a
+    strictly parsed `acsd-appraisal-transcript/v1`, not from a parallel manual
+    path. Python and Lean must agree on exact subjects and supporting digests;
+    kind/subject confusion, policy/evidence reordering, duplicate atoms, extra
+    fields, unsafe integers, and noncanonical bytes must be rejected.
 
 ## Out-of-scope tests for the deterministic local suite
 

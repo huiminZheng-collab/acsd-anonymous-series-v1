@@ -596,6 +596,9 @@ def cmd_verify(args):
             allow_local_test_tsa=args.allow_local_test_tsa,
             require_external_time=args.require_external_time,
             expected_parent_release_id=args.expected_parent_release_id,
+            include_appraisal_transcript=getattr(
+                args, "emit_appraisal_transcript", False
+            ),
         )
     except FileNotFoundError as e:
         return EXIT_USAGE, f"MISSING:{e.filename}", {}
@@ -804,6 +807,7 @@ def main(argv=None):
     pv.add_argument("--allow-local-test-tsa", action="store_true", help="verify the bundled self-signed local test TSA; never grants external time")
     pv.add_argument("--require-external-time", action="store_true", help="fail unless externally pinned RFC 3161 evidence verifies")
     pv.add_argument("--expected-parent-release-id", help="pin the exact previously accepted parent urn:sha256 identifier")
+    pv.add_argument("--emit-appraisal-transcript", action="store_true", help="include the claim-free typed appraisal transcript in verifier output")
     pv.set_defaults(func=cmd_verify)
 
     pn = sub.add_parser("inspect", parents=[common], help="show state and missing approvals")

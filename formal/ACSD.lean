@@ -6,3 +6,4 @@ import ACSD.Appraisal
 import ACSD.Transcript
 import ACSD.LineageTranscript
 import ACSD.TranscriptJson
+import ACSD.AppraisalTranscriptJson

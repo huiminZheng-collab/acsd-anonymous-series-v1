@@ -49,3 +49,6 @@ import ACSD
 #print axioms ACSD.decodedLineageCertificateClaims_sound
 #print axioms ACSD.decodedLineageCertificateTextClaims_derivable
 #print axioms ACSD.decodedLineageCertificateTextClaims_refine_abstract
+#print axioms ACSD.appraisalTranscriptClaims_sound
+#print axioms ACSD.decodedAppraisalTranscriptClaims_sound
+#print axioms ACSD.decodedAppraisalTranscriptClaims_refine_abstract

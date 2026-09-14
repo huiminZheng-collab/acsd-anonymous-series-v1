@@ -188,9 +188,11 @@ transparency service.
 - **Implemented evidence:** `ACSD.ScopedClaims` shares only signature, exact-
   scope, authorization, policy, and type-compatibility rules; event and identity
   predicates remain distinct. Negative type-confusion theorems and executable
-  tests pass.
-- **Missing checks:** executable-to-Lean refinement and evidence that a richer
-  policy language would improve real workflows.
+  tests pass. The production release verifier now crosses a strict generic
+  appraisal transcript decoded by both Python and Lean.
+- **Missing checks:** a second real disclosure workflow using the production
+  transcript and evidence that a richer policy language would improve real
+  workflows.
 
 ### D-07 — Transparency and gossip for forks and revocation notices
 

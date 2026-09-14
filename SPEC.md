@@ -430,8 +430,11 @@ cannot establish when the author or predecessor signatures were added.
 5. Recompute the approval set from the exact verified signature byte strings.
    Verify every v0.3 time sidecar binds `approval_set_digest` exactly. Keep
    legacy target-only evidence typed separately.
-6. Recompute the claim policy's required capabilities and emit only the
-   allowed outcomes.  Retain all unmet obligations as residual evidence gaps.
+6. Serialize the successfully appraised facts and closed policy through
+   `acsd-appraisal-transcript/v1`, strictly parse that value, and derive only
+   the compatible allowed outcomes. Retain all unmet obligations as residual
+   evidence gaps. The optional emitted transcript is not self-authenticating;
+   it remains bound to the adapter run that constructed it.
 7. For a disclosure, atomically check policy, exact PEC/event scope, commitment
    opening, public-key binding, and all required signatures.
 8. Emit `INDETERMINATE` rather than an accusation when required evidence is

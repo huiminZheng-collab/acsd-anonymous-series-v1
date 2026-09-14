@@ -63,9 +63,9 @@ work toward a later candidate, not a public deployment or venue submission.
 
 ## Acceptance evidence
 
-- Authoritative read-only gate: 23/23 source, package, installed-wheel,
+- Authoritative read-only gate: 24/24 source, package, installed-wheel,
   differential, formal, and workspace-byte-identity checks pass.
-- Python: 148 tests pass locally; the live TSA test and two unavailable Windows
+- Python: 155 tests pass locally; the live TSA test and two unavailable Windows
   capability cases are skipped.
 - Canonical JSON: 64 fixed vectors have no unexpected divergence; 1,000/1,000
   seeded generated cases agree between Python and Node on bytes and text-layer
@@ -93,7 +93,11 @@ work toward a later candidate, not a public deployment or venue submission.
 - Authorized-lineage refinement: Python and Node emit byte-identical canonical
   certificates; Python and Lean agree on all 15 valid, deletion, substitution,
   policy, and structural cases.
-- Lean 4.33.1: build succeeds; 81 PEC/lineage/scoped-appraisal/transcript
+- Production appraisal boundary: `acsd verify` derives its displayed outcomes
+  only after constructing and strictly parsing `acsd-appraisal-transcript/v1`;
+  optional CLI output exposes the same claim-free value, and Python/Lean agree
+  on 19/19 complete derivation/rejection cases.
+- Lean 4.33.1: build succeeds; 84 PEC/lineage/scoped-appraisal/transcript
   theorems; no
   `sorry` or `admit` in the formal sources. The separately published v1 core's
   53 release/team/series theorems remain a distinct inherited model and are not
@@ -148,6 +152,14 @@ from strict canonical JSON decoding through exact input/signature/approval-set
 closure to a parameterized `AUTHORIZED_SUCCESSOR` claim. This closes the
 previous gap between the executable n+1 authorization mechanism and the
 claim-free/Lean appraisal path; adapter refinement remains an explicit boundary.
+
+The production release verifier now serializes its already appraised evidence
+through a small generic transcript before entering the granting kernel. Lean
+strictly decodes the same closed policy, evidence kinds, exact subjects,
+support digests, and consecutive indices. Every Lean-emitted request is proved
+derivable in the exact-subject semantics and refines the abstract model. This
+connects the product decision to the formal kernel; it does not verify the
+filesystem, COSE, RFC 3161, or other adapters inside Lean.
 
 ## Remaining product hardening
 

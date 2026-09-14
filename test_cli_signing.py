@@ -5,6 +5,9 @@ import sys
 import tempfile
 import unittest
 
+import appraisal_transcript
+import claim_derivation
+
 ROOT = pathlib.Path(__file__).resolve().parent
 ACSD = ROOT / "acsd.py"
 
@@ -47,6 +50,20 @@ class TestCLISigning(unittest.TestCase):
             self.assertEqual(
                 verified["data"]["granted_outcomes"],
                 ["KEY_ASSENT", "GOVERNANCE_ASSENT"],
+            )
+            self.assertNotIn("appraisal_transcript", verified["data"])
+            r = run(
+                "verify", str(rel), "--emit-appraisal-transcript", "--json"
+            )
+            self.assertEqual(r.returncode, 0, r.stderr)
+            transcript_data = json.loads(r.stdout)["data"]
+            transcript = transcript_data["appraisal_transcript"]
+            self.assertEqual(transcript["schema"], appraisal_transcript.SCHEMA)
+            self.assertEqual(
+                list(claim_derivation.wire_outcomes(
+                    appraisal_transcript.derive(transcript)
+                )),
+                transcript_data["granted_outcomes"],
             )
             # tamper content -> TAMPERED
             p = next((rel / "paper").iterdir())

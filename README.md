@@ -146,6 +146,17 @@ validly authorized cannot be retroactively made false. Recovery must be
 precommitted in a future policy or handled as a visibly separate social fork;
 transparent ordering remains a deployment-layer option.
 
+For a machine-auditable account of the exact typed facts used to produce the
+release-level outcomes, request the optional appraisal transcript:
+
+```text
+acsd verify release-v2 --emit-appraisal-transcript --json
+```
+
+The verifier strictly parses this claim-free intermediate object and derives
+`granted_outcomes` from it; the transcript is not a substitute for rerunning
+the byte-level COSE, lineage, manifest, and time adapters.
+
 Approval state is derived from verified COSE files, not trusted from mutable
 `state.json`.  COSE uses the registered EdDSA algorithm value `-8`, requires
 tag 18, and is checked by independent Python and Node implementations.
@@ -219,9 +230,9 @@ Linux/macOS:
 The authoritative `check.py` gate is read-only and finishes by comparing all
 source-tree file hashes with its starting snapshot. It contains:
 
-- 23/23 source, package, installed-wheel, differential, formal, and byte-identity
+- 24/24 source, package, installed-wheel, differential, formal, and byte-identity
   checks passing as one command;
-- 148 Python tests passing, with the live-network and two unavailable Windows
+- 155 Python tests passing, with the live-network and two unavailable Windows
   capability cases skipped locally;
 - 64 fixed Python-Node canonical-JSON vectors with no unexpected divergence;
 - 1,000 seeded generated differential cases with 1,000 byte and verdict
@@ -240,6 +251,8 @@ source-tree file hashes with its starting snapshot. It contains:
   certificate schemas;
 - a strict Lean decoder and executable checker for the lineage profile, with
   15/15 complete derivation/rejection differential cases;
+- the production `acsd-appraisal-transcript/v1` decision boundary, strictly
+  decoded by Python and Lean with 19/19 complete derivation/rejection cases;
 - one declarative evidence/claim compatibility relation shared by the coarse
   and exact-subject models, with proved strict-decoder-to-exact-derivation and
   exact-to-arbitrary-digest-projection refinement for both certificate profiles;
@@ -253,7 +266,7 @@ source-tree file hashes with its starting snapshot. It contains:
 - an offline-verified freeTSA fixture over the demo's complete approval set,
   binding its exact request, response, signer certificate, nonce, policy OID,
   serial number, and `2026-09-13T11:37:22+00:00` time;
-- a Lean 4.33.1 build with 81 theorems covering PEC, lineage, scoped claims,
+- a Lean 4.33.1 build with 84 theorems covering PEC, lineage, scoped claims,
   parameterized appraisal/checker correspondence, transcript-group closure,
   selective identity, atomic event disclosure, and typed time subjects with no
   `sorry`/`admit`; the separately published v1 formal core's 53
@@ -272,7 +285,7 @@ remain opt-in because CI must not depend on network availability.
 
 - `acsd.py`: CLI routing and authoring/finalization workflows;
 - `canonical_json.py`, `bundle_validation.py`, `release_adapter.py`,
-  `protocol_objects.py`, and `claim_derivation.py`: the restricted byte format,
+  `protocol_objects.py`, `appraisal_transcript.py`, and `claim_derivation.py`: the restricted byte format,
   single pure PEC/policy validator, release projection, I/O-free protocol
   object layer, and typed granting kernel respectively;
 - `key_identity.py`, `cose.py`, and `tsa.py`: shared key identity and
@@ -295,6 +308,8 @@ remain opt-in because CI must not depend on network availability.
   `design/verify_approval.cjs`: independent tests and checked-in reports;
 - `design/LINEAGE-VERIFICATION-CERTIFICATE-V1.md`: the modular authorized-edge
   transcript, closure rule, and trust boundary;
+- `design/APPRAISAL-TRANSCRIPT-V1.md`: the live verifier-to-kernel wire
+  boundary and its formal trust statement;
 - `formal/`: the Lean model, strict transcript decoder, executable checker, and proofs;
 - `v1-fixture/`: frozen standalone/series/cyclic-citation reference corpus;
 - `paper/acsd-v3.tex`: content-anonymous manuscript source;

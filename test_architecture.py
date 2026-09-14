@@ -3,6 +3,7 @@ import pathlib
 import unittest
 
 import artifact_io
+import appraisal_transcript
 import bundle_validation
 import canonical_json
 import cli_output
@@ -125,6 +126,7 @@ class TestTrustedKernelArchitecture(unittest.TestCase):
             verifier_roots,
             {
                 "approval_set",
+                "appraisal_transcript",
                 "artifact_io",
                 "canonical_json",
                 "claim_derivation",
@@ -144,6 +146,15 @@ class TestTrustedKernelArchitecture(unittest.TestCase):
         )
         for module in (artifact_io, key_material, lineage_adapter, release_verifier):
             self.assertNotIn("acsd", self.imported_roots(module))
+
+    def test_appraisal_transcript_is_a_pure_wire_boundary(self):
+        self.assertEqual(
+            self.imported_roots(appraisal_transcript),
+            {"__future__", "canonical_json", "claim_derivation", "typing"},
+        )
+        source = pathlib.Path(release_verifier.__file__).read_text(encoding="utf-8")
+        self.assertIn("appraisal_transcript.derive(transcript)", source)
+        self.assertNotIn("claim_core.derive(", source)
 
     def test_cli_has_no_embedded_adapter_or_release_verifier_definitions(self):
         source = (ROOT / "acsd.py").read_text(encoding="utf-8")
