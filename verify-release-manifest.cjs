@@ -5,7 +5,7 @@ const crypto = require('crypto');
 
 const root = __dirname;
 const manifestName = 'RELEASE-MANIFEST.sha256';
-const forbiddenDirectory = new RegExp('(^|/)(private-test-keys|[.]deps|node_modules|__pycache__|[.]npm-cache|[.]git)(/|$)');
+const forbiddenDirectory = new RegExp('(^|/)(private-test-keys|[.]deps|[.]lake|node_modules|__pycache__|[.]npm-cache|[.]git)(/|$)');
 const linePattern = /^([0-9a-f]{64})  (.+)$/;
 
 function fail(message) { throw new Error(message); }

@@ -1,0 +1,37 @@
+{
+  "schema": "acsd-v1.6.0-standalone-paper-package/v1",
+  "release_key": "q-v2-amendment",
+  "release_id": "urn:sha256:42621a2e6c31ea4c47c7b0b2461926b78396c5b872de12c8a599bd930c1becf5",
+  "release_path": "artifacts/releases/q-v2-amendment.json",
+  "content_path": "artifacts/contents/q-v2-amendment.txt",
+  "endorsement_ids": [
+    "q-v2-amendment--q-slot-1",
+    "q-v2-amendment--q-slot-2",
+    "q-v2-amendment--q-slot-3"
+  ],
+  "endorsements": [
+    {
+      "id": "q-v2-amendment--q-slot-1",
+      "release_key": "q-v2-amendment",
+      "author_key_id": "q-slot-1",
+      "path": "artifacts/endorsements/q-v2-amendment--q-slot-1.scitt",
+      "sha256": "88ffc57f4bf0816d06865fc18af6861a6b4a8c7a643f63ba9d6f2425d7e97202"
+    },
+    {
+      "id": "q-v2-amendment--q-slot-2",
+      "release_key": "q-v2-amendment",
+      "author_key_id": "q-slot-2",
+      "path": "artifacts/endorsements/q-v2-amendment--q-slot-2.scitt",
+      "sha256": "252b363c74fff69e6af60b54ec61e36a250fca0380493d97a7dc23cc45fe6602"
+    },
+    {
+      "id": "q-v2-amendment--q-slot-3",
+      "release_key": "q-v2-amendment",
+      "author_key_id": "q-slot-3",
+      "path": "artifacts/endorsements/q-v2-amendment--q-slot-3.scitt",
+      "sha256": "516f882e687bde16356bd26d4c69e54b64dc95013503c683809df5542f0c349b"
+    }
+  ],
+  "content_type": "application/vnd.acsd.paper-release+json",
+  "series_required_for_verification": false
+}

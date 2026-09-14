@@ -1,8 +1,10 @@
-# ACSD v1.0.0 - anonymous scholarly release profile
+# ACSD public release archive
 
 This repository is a **content-anonymous** research release. It contains an
-anonymous six-page technical paper and an offline-verifiable prototype for
-anonymous scholarly releases, version lineages, and mutual citations.
+additive sequence of anonymous papers and offline-verifiable prototypes for
+scholarly releases, authorized version lineages, scoped disclosures, external
+time evidence, and mutual citations. The current candidate is
+[`v3.2.0-rc1/`](v3.2.0-rc1/); older releases remain frozen in place.
 
 It is not author-unlinkable double-blind publication: a GitHub account, network
 metadata, timing, or a public signing key can link a release to a person. No
@@ -18,9 +20,24 @@ the work. ACSD provides that intermediate evidence package: signed releases,
 explicit series lineage, citation witnesses, and independently checkable
 manifests.
 
-## Quickstart
+## Current quickstart
 
-To reproduce this release from a clean checkout:
+Verify the exact v3.2.0-rc1 payload, then run its read-only artifact gate:
+
+```powershell
+python .\v3.2.0-rc1\verify_release.py .\v3.2.0-rc1
+Set-Location v3.2.0-rc1
+python .\check.py --artifact --skip-formal
+```
+
+Omit `--skip-formal` when the pinned Lean toolchain is installed and `lake` is
+on `PATH`, or set `ACSD_LAKE` to its executable. The candidate README contains
+the authoring, revision, timestamp, selective-unblinding, and verification
+commands.
+
+## Historical v1 quickstart
+
+To reproduce the original v1 fixture from a clean checkout:
 
 ```powershell
 Set-Location artifact
@@ -53,6 +70,21 @@ Then run its complete gate from `v2.0.0/`. Set `ACSD_LAKE` if `lake` is not on
 `PATH`; the three v1 integration tests discover this repository through the
 parent directory or an explicit `ACSD_V1_ROOT`.
 
+## v3.2.0-rc1 Authorized lineage and typed appraisal
+
+The additive [`v3.2.0-rc1/`](v3.2.0-rc1/) candidate closes the fresh-key
+`n+1` version-capture gap with exact predecessor-authority quorum, supports
+authorized key/team rotation and named branches, and timestamps the completed
+approval set rather than an unsigned target. Its production verifier derives
+outcomes only through a restricted claim-free appraisal transcript shared with
+the Lean model. The package includes 156 Python tests, three maintained
+Python--Lean differential suites, 84 v3 theorem statements with no
+`sorry`/`admit`, and a checked-in real freeTSA interoperability fixture.
+
+This remains a limited evidence system: it proves neither natural-person
+identity nor originality, and its exact TSA signer pin is not general PKIX
+revocation or path validation.
+
 ## Contents
 
 - `paper/acsd-v1.pdf` - the anonymous technical paper.
@@ -65,6 +97,9 @@ parent directory or an explicit `ACSD_V1_ROOT`.
 - `RELEASE-MANIFEST.sha256` - SHA-256 manifest for the exact public payload.
 - `v2.0.0/` - additive PEC paper, implementation, tests, formal model, and its
   own complete SHA-256 manifest.
+- `v3.2.0-rc1/` - current authorized-lineage paper, CLI, adversarial corpus,
+  strict appraisal transcript, Lean sources, and its own complete SHA-256
+  manifest.
 
 ## Claims that can be checked
 
@@ -112,9 +147,11 @@ describes how a separately selected TSA receipt can be checked offline.
 
 ## Release status
 
-- Version: `v1.0.0`
+- Current additive candidate: `v3.2.0-rc1`
+- Historical base release: `v1.0.0`
 - Anonymity level: content-anonymous only
-- Timestamp status: no live TSA request was made for this release
+- Timestamp status: v3 includes one pinned freeTSA response as an
+  interoperability existence check; this is not a service-reliability claim
 - Repository status: public prepublication only; no venue submission,
   acceptance, or peer review is asserted
 - Signing status: this release manifest is hashed but not identity-signed, to
