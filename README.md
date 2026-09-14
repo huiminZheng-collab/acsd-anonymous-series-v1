@@ -312,6 +312,11 @@ source-tree file hashes with its starting snapshot. It contains:
   15/15 complete derivation/rejection differential cases;
 - the production `acsd-appraisal-transcript/v1` decision boundary, strictly
   decoded by Python and Lean with 19/19 complete derivation/rejection cases;
+- a separate, research-only canonical RATS appraisal transcript, strictly
+  decoded by Python and Lean with 22/22 complete, premise-deletion,
+  exact-substitution, policy, ordering, type, and noncanonical-input cases;
+  it is not an ACSD release feature, EAT parser, COSE verifier, or device-safety
+  claim;
 - one declarative evidence/claim compatibility relation shared by the coarse
   and exact-subject models, with proved strict-decoder-to-exact-derivation and
   exact-to-arbitrary-digest-projection refinement for both certificate profiles;
@@ -334,11 +339,11 @@ source-tree file hashes with its starting snapshot. It contains:
 - an offline-verified freeTSA fixture over the demo's complete approval set,
   binding its exact request, response, signer certificate, nonce, policy OID,
   serial number, and `2026-09-13T11:37:22+00:00` time;
-- a Lean 4.33.1 build with 103 theorems covering PEC, lineage and recovery,
+- a Lean 4.33.1 build with 106 theorems covering PEC, lineage and recovery,
   scoped claims, parameterized appraisal/checker correspondence,
   transcript-group closure, selective identity, atomic event disclosure, typed
-  time subjects, and a bounded second-domain appraisal instance, with no
-  `sorry`/`admit`; the separately published v1 formal core's 53
+  time subjects, and a bounded second-domain appraisal instance plus its strict
+  transcript-decision soundness, with no `sorry`/`admit`; the separately published v1 formal core's 53
   release/series/team theorems are a distinct inherited proof surface.
 
 The GitHub workflow runs the Python/Node gate on Windows, macOS, and Linux,
@@ -388,7 +393,13 @@ remain opt-in because CI must not depend on network availability.
   attack obligations, and the explicit non-revocation/view-completeness
   boundary;
   with bare detached Ed25519 policies and an explicit external-validity gap;
-- `formal/`: the Lean model, strict transcript decoder, executable checker, and proofs;
+- `formal/`: the Lean model, shared strict-JSON primitives, production
+  transcript checker, separate research-only RATS transcript checker, and
+  proofs;
+- `design/V5-ROUTE-AUDIT.md` and `design/GENERALIZATION-GATE.md`: the
+  prior-art-bounded v5 theory route and its completed smallest validation;
+- `design/DOUBLE-BLIND-SUBMISSION-PLAN.md`: an isolated future review-package
+  plan that does not alter the public evidence release;
 - `v1-fixture/`: frozen standalone/series/cyclic-citation reference corpus;
 - `paper/acsd-v4.tex`: content-anonymous manuscript source;
 - `release-v4.0.0-rc1/`: current self-contained deterministic release candidate

@@ -525,3 +525,9 @@ view completeness or a transparency-log implementation.
 The formal theorem is therefore: *under these authentication and policy
 assumptions, acceptance does not produce an unauthorized claim*.  It is not a
 theorem that a real person authored a paper.
+
+The live source tree also contains a separate, research-only canonical RATS
+appraisal transcript. It exercises the finite multi-premise kernel with token,
+measurement, nonce, reference-value, and verifier-policy bindings under a
+strict Python--Lean differential. It is not part of the ACSD release format or
+CLI and does not parse EAT, verify COSE, or conclude that a device is safe.

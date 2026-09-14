@@ -7,6 +7,9 @@ import ACSD
 #print axioms ACSD.rats_appraisal_requires_exact_freshness
 #print axioms ACSD.different_nonce_fixture_does_not_satisfy_exact_freshness
 #print axioms ACSD.unpermitted_rats_result_has_no_derivation
+#print axioms ACSD.ratsTranscriptCheckB_sound
+#print axioms ACSD.derivedRatsAppraisalTranscript_sound
+#print axioms ACSD.decodedRatsAppraisalTranscriptOutcome_sound
 #print axioms ACSD.granted_implies_permitted
 #print axioms ACSD.external_time_requires_signer_pin
 #print axioms ACSD.local_test_never_grants_external_time

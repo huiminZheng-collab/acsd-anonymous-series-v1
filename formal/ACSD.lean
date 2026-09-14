@@ -2,6 +2,8 @@ import ACSD.Core
 import ACSD.PEC
 import ACSD.GenericAppraisal
 import ACSD.RatsAppraisal
+import ACSD.StrictJson
+import ACSD.RatsTranscriptJson
 import ACSD.Lineage
 import ACSD.ScopedClaims
 import ACSD.Appraisal

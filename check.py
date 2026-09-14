@@ -266,6 +266,16 @@ def _formal_checks(checks, temp, env):
          "--checker", str(checker)],
         cwd=ROOT, env=lean_env,
     ))
+    rats_checker = formal_copy / ".lake" / "build" / "bin" / (
+        "acsd-rats-transcript-checker.exe" if os.name == "nt"
+        else "acsd-rats-transcript-checker"
+    )
+    checks.append(_run(
+        "lean-rats-transcript-differential",
+        [sys.executable, str(ROOT / "design/lean_rats_transcript_diff.py"),
+         "--checker", str(rats_checker)],
+        cwd=ROOT, env=lean_env,
+    ))
     checks.append(_run(
         "lean-axiom-audit", [str(lake), "env", "lean", "AxiomAudit.lean"],
         cwd=formal_copy, env=lean_env,

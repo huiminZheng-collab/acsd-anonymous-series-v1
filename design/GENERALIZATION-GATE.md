@@ -17,10 +17,15 @@ compact, independently meaningful vocabulary.
 
 Verified local result: `formal/ACSD/GenericAppraisal.lean` compiles a generic
 finite multi-premise derivation relation, and
-`formal/ACSD/RatsAppraisal.lean` instantiates it with five exact facts. The
-Lean build and `formal/AxiomAudit.lean` complete without `sorry` or `admit`.
-This is a **proof/certification** result over an abstract model, not empirical
-evidence of EAT interoperability or a hardware-attestation deployment.
+`formal/ACSD/RatsAppraisal.lean` instantiates it with five exact facts.
+`formal/ACSD/RatsTranscriptJson.lean` then strictly decodes a deliberately
+small canonical transcript, and the separate research-only executable agrees
+with `design/rats_appraisal_transcript.py` on 22/22 complete, deletion,
+substitution, policy, ordering, duplicate/unknown-field, safe-integer, and
+noncanonical-input cases. The Lean build and `formal/AxiomAudit.lean` complete
+without `sorry` or `admit`. This is a **proof/certification** result over an
+abstract model, not empirical evidence of EAT interoperability or a
+hardware-attestation deployment.
 
 ## Exact small instance
 
@@ -48,19 +53,23 @@ checks an EAT or its signature.
 |---|---|---|---|---|---|
 | Keep adding ACSD-specific one-off grant predicates | Would conceal whether the typed kernel has a reusable boundary | Existing roadmap documents vocabulary-drift risk | None; violates the one-kernel objective | low | ruled out |
 | General-purpose recursive trust/policy language | More expressive, but introduces unneeded recursion, delegation, and a larger parser/policy surface | No ACSD or smallest RATS instance needs it | A future use case could reopen this route | high | ruled out for this gate |
-| Generic finite multi-premise calculus plus a compact RATS instance | Test whether permission plus exact prerequisite closure survives outside scholarly release objects | `GenericAppraisal.lean`, `RatsAppraisal.lean`, build, and axiom audit | Claim-free canonical transcript and Python/Lean differential runner | medium | attempted |
+| Generic finite multi-premise calculus plus a compact RATS instance | Test whether permission plus exact prerequisite closure survives outside scholarly release objects | Generic/RATS model, strict decoder, separate checker, 22/22 Python/Lean differential, build, and axiom audit | A second independently motivated profile, if a broader claim becomes necessary | medium | bounded validation complete |
 | Parse full EAT and verify COSE inside this project | Could demonstrate interoperability, but is an adapter project rather than a kernel test | No local EAT parser, COSE profile, or hardware reference-value source is validated | A concrete deployment/use case | high | unexplored |
 | Supply-chain provenance as a second instance | A plausible independent domain, but the current SCITT statement-registration fact is only one premise | Existing ACSD SCITT scope does not constitute a build-provenance instance | A compact provenance policy and source artifact | medium | unexplored |
 
-## Decision and next validation
+## Decision and boundary
 
 The selected route is intentionally one formal module and one five-premise
 instance; it leaves the production ACSD verifier untouched. This prevents a
 premature product abstraction from expanding the security decision surface.
 
-The next smallest informative validation, if a second-domain claim becomes
-useful, is a claim-free canonical RATS appraisal transcript with Python and
-Lean agreement under deletion and substitution of each of the five premises.
-That would validate the adapter-to-kernel boundary. Until then, the supported
-claim is only: the formal multi-premise calculus has one standards-aligned
-abstract second instance.
+The completed smallest validation is a claim-free canonical RATS appraisal
+transcript with Python and Lean agreement under deletion and substitution of
+each of the five premises. It validates one adapter-to-kernel boundary without
+creating an ACSD product feature.
+
+The supported claim is now still deliberately narrow: the finite
+multi-premise calculus has one standards-aligned, strictly decoded abstract
+second instance. It is not a general authorization language, an EAT/COSE
+implementation, or an assertion that a device is safe. The v5 route audit
+records the prior-art comparison and the stop condition for any larger claim.

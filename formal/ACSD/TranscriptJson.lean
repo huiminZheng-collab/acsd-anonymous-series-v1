@@ -1,5 +1,6 @@
 import ACSD.Transcript
 import ACSD.LineageTranscript
+import ACSD.StrictJson
 import Lean.Data.Json.Parser
 import Lean.Data.Json.Printer
 
@@ -10,42 +11,17 @@ namespace ACSD
 
 open Lean
 
-private def maxSafeInteger : Nat := 9007199254740991
-
-private def requireB (condition : Bool) (code : String) : Except String Unit :=
-  if condition then pure () else throw code
-
+/-! Compatibility aliases keep established parser names and error paths while
+centralizing their byte-format primitives in `StrictJson`. -/
+private abbrev requireB := StrictJson.requireB
 private def remap {α : Type} (code : String)
     (result : Except String α) : Except String α :=
-  result.mapError fun _ => code
-
-private def expectFields
-    (json : Json) (fields : List String) (code : String) : Except String Unit := do
-  let object ← remap code json.getObj?
-  let count := object.foldl (fun total _ _ => total + 1) 0
-  requireB (count == fields.length) code
-  for field in fields do
-    let _ ← remap code (json.getObjVal? field)
-
-private def field (json : Json) (name code : String) : Except String Json :=
-  remap code (json.getObjVal? name)
-
-private def stringField
-    (json : Json) (name code : String) : Except String String := do
-  remap code (← field json name code).getStr?
-
-private def natField
-    (json : Json) (name code : String) : Except String Nat := do
-  let value ← remap code (← field json name code).getNat?
-  requireB (decide (value ≤ maxSafeInteger)) code
-  pure value
-
-private def arrayValue (json : Json) (code : String) : Except String (Array Json) :=
-  remap code json.getArr?
-
-private def arrayField
-    (json : Json) (name code : String) : Except String (Array Json) := do
-  arrayValue (← field json name code) code
+  StrictJson.remap code result
+private abbrev expectFields := StrictJson.expectFields
+private abbrev field := StrictJson.field
+private abbrev stringField := StrictJson.stringField
+private abbrev natField := StrictJson.natField
+private abbrev arrayField := StrictJson.arrayField
 
 private def hexNibble : Char → Option Nat
   | '0' => some 0 | '1' => some 1 | '2' => some 2 | '3' => some 3

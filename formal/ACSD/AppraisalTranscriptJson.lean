@@ -1,4 +1,5 @@
 import ACSD.Appraisal
+import ACSD.StrictJson
 import Lean.Data.Json.Parser
 import Lean.Data.Json.Printer
 
@@ -9,41 +10,17 @@ namespace ACSD
 
 open Lean
 
-private def appraisalMaxSafeInteger : Nat := 9007199254740991
-
-private def appraisalRequire
-    (condition : Bool) (code : String) : Except String Unit :=
-  if condition then pure () else throw code
-
+/-! Compatibility aliases keep established parser names and error paths while
+centralizing their byte-format primitives in `StrictJson`. -/
+private abbrev appraisalRequire := StrictJson.requireB
 private def appraisalRemap {α : Type} (code : String)
     (result : Except String α) : Except String α :=
-  result.mapError fun _ => code
-
-private def appraisalFields
-    (json : Json) (fields : List String) (code : String) : Except String Unit := do
-  let object ← appraisalRemap code json.getObj?
-  let count := object.foldl (fun total _ _ => total + 1) 0
-  appraisalRequire (count == fields.length) code
-  for name in fields do
-    let _ ← appraisalRemap code (json.getObjVal? name)
-
-private def appraisalField
-    (json : Json) (name code : String) : Except String Json :=
-  appraisalRemap code (json.getObjVal? name)
-
-private def appraisalString
-    (json : Json) (name code : String) : Except String String := do
-  appraisalRemap code (← appraisalField json name code).getStr?
-
-private def appraisalNat
-    (json : Json) (name code : String) : Except String Nat := do
-  let value ← appraisalRemap code (← appraisalField json name code).getNat?
-  appraisalRequire (decide (value ≤ appraisalMaxSafeInteger)) code
-  pure value
-
-private def appraisalArray
-    (json : Json) (name code : String) : Except String (Array Json) := do
-  appraisalRemap code (← appraisalField json name code).getArr?
+  StrictJson.remap code result
+private abbrev appraisalFields := StrictJson.expectFields
+private abbrev appraisalField := StrictJson.field
+private abbrev appraisalString := StrictJson.stringField
+private abbrev appraisalNat := StrictJson.natField
+private abbrev appraisalArray := StrictJson.arrayField
 
 private def appraisalHexNibble : Char → Option Nat
   | '0' => some 0 | '1' => some 1 | '2' => some 2 | '3' => some 3
