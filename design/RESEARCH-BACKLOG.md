@@ -150,7 +150,7 @@ transparency service.
 
 ### D-04 — Multi-author partial and full unblinding
 
-- **Priority / route status:** P1 / `attempted`.
+- **Priority / route status:** P1 / `implemented`.
 - **Problem:** first author, corresponding author, author order, contribution
   claims, and consent to reveal are separate assertions. One collaborator must
   not be able to create an ACSD-certified identity disclosure for another.
@@ -191,13 +191,18 @@ transparency service.
 - **Smallest experiment:** a parent precommits a recovery threshold, loses its
   online keys, and authorizes one exact successor. Test stolen-key races,
   recovery replay, guardian substitution, and non-precommitted takeover.
-- **Implemented design evidence:** `design/PRECOMMITTED-RECOVERY.md` separates
-  exact alternate authorization from retroactive revocation and global-head
-  selection; `design/SECURITY-ROUTE-LEDGER.md` records TUF, OpenPGP, CT, and
-  Key Transparency boundaries.
-- **Missing checks:** executable fixtures, formal model, public-key privacy and
-  custody review, and a transparency/pinning deployment profile. The current
-  design does not choose a global winner between withheld or competing edges.
+- **Implemented evidence:** `design/PRECOMMITTED-RECOVERY.md` specifies the
+  exact recovery object; `protocol_objects.py`, `lineage_adapter.py`, and
+  `test_recovery_authorization.py` exercise accepted recovery and rejected
+  replay, guardian-substitution, insufficient-quorum, mixed-authorization,
+  recovery-only-rotation, and fresh-key-takeover cases; `formal/ACSD/Lineage.lean`
+  and `formal/AxiomAudit.lean` include the corresponding recovery predicate and
+  axiom audit. `design/recovery_precommit_runner.py` supplies a public-CLI
+  adversarial runner.
+- **Missing checks:** public-key privacy/linkability and custody/usability
+  review, a recovery drill with real teams, and a transparency/pinning
+  deployment profile. The current design deliberately does not choose a global
+  winner between withheld or competing edges.
 
 ### D-06 — One selective-disclosure calculus for identity and evidence
 
@@ -290,8 +295,13 @@ transparency service.
   common checks and reproduces itself. The installable wheel is installed into
   a temporary environment and its console script runs a keygen/release/verify
   flow outside the source checkout.
-- **Missing checks:** completion of the four-job GitHub matrix on the next push
-  and an optional immutable archive transport profile.
+- **Observed release check:** the frozen v3.3 candidate's public GitHub
+  workflow completed successfully on Ubuntu and Windows on 2026-09-14. That
+  release workflow is a two-platform smoke gate, not the source tree's
+  four-platform matrix plus Lean job.
+- **Missing checks:** completion of the source tree's four-job GitHub matrix
+  and Lean job on a future published developer snapshot, and an optional
+  immutable archive transport profile.
 
 ### D-11 — Executable-to-Lean refinement boundary
 
