@@ -174,3 +174,18 @@ filesystem, COSE, RFC 3161, or other adapters inside Lean.
   without one, loss of the predecessor threshold safely freezes the lineage.
 - a second standards-based domain instance for testing how far the appraisal
   kernel generalizes beyond scholarly provenance.
+
+## Post-v3.2 candidate work
+
+The frozen v3.2.0-rc1 candidate remains unchanged on the
+`post-v3.2-lifecycle` branch. A new executable submission-lifecycle experiment
+uses the public CLI to distinguish no-action rejection, authorized scientific
+revision, and explicit per-slot publication crosswalks. It intentionally keeps
+venue acceptance outside the derived claim vocabulary and rejects cross-release
+replay or mutation of a signed publication reference.
+
+The post-candidate source gate passes 25/25 checks. A fresh 283-file evidence
+package built from this branch passes all 21 artifact-mode checks, including
+Lean compilation, the three formal differential bridges, manifest stability,
+and source/package byte identity. These results qualify the workflow mechanics;
+they do not establish that a venue accepted, rejected, or received a paper.

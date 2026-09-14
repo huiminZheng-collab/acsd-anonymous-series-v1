@@ -1,6 +1,6 @@
 # ACSD research backlog and idea ledger
 
-Checked 2026-09-13 against the v3 work tree. This is a working research
+Checked 2026-09-14 against the post-v3.2 work tree. This is a working research
 document, not part of the frozen `release-v3.0.0` payload and not a claim that
 the listed ideas are novel, implemented, secure, or suitable for publication.
 No identity-bearing material, private keys, submission credentials, or private
@@ -87,7 +87,7 @@ transparency service.
 
 ### D-02 — Conference submission and unblinding lifecycle
 
-- **Priority / route status:** P0 / `unexplored`.
+- **Priority / route status:** P0 / `attempted`.
 - **Problem:** a public anonymous version `n`, a private venue submission, a
   rejection, a revision, and an accepted named camera-ready version are
   different states. The protocol must not imply that submission, rejection, or
@@ -105,9 +105,16 @@ transparency service.
 - **Smallest experiment:** simulate accepted, rejected-without-change, and
   rejected-then-revised paths from one anonymous parent and compare verifier
   outcomes.
-- **Missing checks:** state-machine semantics, external venue evidence model,
-  command workflow, privacy review, and official-policy checks for target
-  venues before any real submission.
+- **Implemented evidence:** `design/SUBMISSION-LIFECYCLE.md` defines a workflow
+  without adding self-asserted venue state;
+  `design/submission_lifecycle_runner.py` exercises rejection-as-no-action,
+  authorized revision, explicit full-byline publication crosswalks, and replay
+  or metadata-substitution attacks through the public CLI. The runner is part
+  of the read-only engineering gate.
+- **Missing checks:** a real venue's externally verifiable publication object,
+  withdrawal semantics, privacy/usability review, and official-policy checks
+  before any real submission. No claim is made that the author-signed
+  `publication_ref` proves venue acceptance.
 
 ### D-03 — Cross-paper isolation and the public-key reuse boundary
 

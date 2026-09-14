@@ -97,3 +97,12 @@ implication from accepted succession to predecessor quorum under typed inputs.
 | Snapshot only Git-tracked files during the read-only gate | Ignored or generated payload corruption could escape mutation detection | Whole-tree file/type/mode snapshot before and after the gate | Cross-platform CI completion | low | ruled out |
 | Install a built wheel and exercise the console script outside the checkout | Distinguishes packaging success from source-import success | Temporary venv runs version, keygen, release, and verify | Installer-binary UX | low | attempted |
 | Let an evidence package verifier depend on its source checkout | Archive cannot independently establish its own integrity | Candidate includes the builder and an artifact-mode gate with strict manifest pre/post checks | Independent third-party reproduction | low | ruled out |
+
+## 2026-09-14 submission-lifecycle decisions
+
+| Approach | Target or obstruction | Evidence | Missing check | Cost | Status |
+|---|---|---|---|---|---|
+| Add an author-controlled `accepted: true` or `rejected: true` field | A valid author signature would be misread as evidence of a venue's independent act | The venue is neither a signer nor a checked registry in the current profile | None; self-assertion cannot establish the external fact | low | ruled out |
+| Treat private submission or rejection as no public ACSD transition | Preserves privacy and avoids inventing externally unverifiable state | The lifecycle runner verifies the existing release and confirms its complete tree is unchanged | Venue receipts remain a separate possible evidence profile | low | attempted |
+| Force an unchanged named manuscript to occupy version `n+1` | Conflates identity disclosure with scientific revision and creates a redundant lineage node | Existing per-slot sidecars bind an exact release and publication reference without rewriting it | None; a new release is needed only when committed bytes change | low | ruled out |
+| Use predecessor-authorized revision for changed camera-ready bytes and signed per-slot sidecars for later identity crosswalks | Separates content lineage from selective unblinding while retaining exact release/slot/key scope | Executable two-author workflow derives `AUTHORIZED_SUCCESSOR` and `FULL_BYLINE_KEY_ASSENT`; cross-release replay and publication-reference mutation fail | Real venue policy/usability study and separately authenticated venue evidence | low | attempted |

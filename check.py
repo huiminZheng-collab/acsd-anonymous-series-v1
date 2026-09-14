@@ -120,6 +120,16 @@ def _common_checks(checks, temp, env):
         "lineage-verification-certificate-differential",
         [sys.executable, "design/lineage_verification_certificate_diff.py"], env=env,
     ))
+    checks.append(_run(
+        "submission-lifecycle",
+        [
+            sys.executable,
+            "design/submission_lifecycle_runner.py",
+            "--check-report",
+            "design/submission_lifecycle_report.json",
+        ],
+        env=env,
+    ))
     checks.append(_run("scaling-smoke", [sys.executable, "design/benchmark_core.py"], env=env))
     checks.append(_run("v1-fixture", [sys.executable, "verify_v1_fixture.py"], env=env))
     demo = temp / "demo"
