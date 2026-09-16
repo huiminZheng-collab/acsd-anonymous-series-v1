@@ -47,6 +47,7 @@ abbrev AppraisalRule := Compatible
 def compatibleB : EvidenceKind → ScopedClaim → Bool
   | .unanimousApproval, .keyAssent => true
   | .unanimousApproval, .governanceAssent => true
+  | .authorizedDelegatedApproval, .authorizedTargetApproval => true
   | .eventDisclosure, .committedEvidenceMatch => true
   | .identityDisclosure, .slotKeyIdentityAssent => true
   | .approvalTargetTimestamp, .approvalTargetExistedNotAfter => true
@@ -57,6 +58,7 @@ def compatibleB : EvidenceKind → ScopedClaim → Bool
 
 def evidenceSubjectB : EvidenceKind → ScopedSubject → Bool
   | .unanimousApproval, .approvalTarget _ => true
+  | .authorizedDelegatedApproval, .approvalTarget _ => true
   | .approvalTargetTimestamp, .approvalTargetTime _ time => !time.isEmpty
   | .approvalSetTimestamp, .approvalSetTime _ time => !time.isEmpty
   | .eventDisclosure, .eventWindow _ _ _ _ first last => decide (first ≤ last)
@@ -69,6 +71,7 @@ def evidenceSubjectB : EvidenceKind → ScopedSubject → Bool
 def claimSubjectB : ScopedClaim → ScopedSubject → Bool
   | .keyAssent, .approvalTarget _ => true
   | .governanceAssent, .approvalTarget _ => true
+  | .authorizedTargetApproval, .approvalTarget _ => true
   | .committedEvidenceMatch, .eventWindow _ _ _ _ first last => decide (first ≤ last)
   | .slotKeyIdentityAssent, .identityAssertion _ _ _ _ => true
   | .approvalTargetExistedNotAfter, .approvalTargetTime _ time => !time.isEmpty

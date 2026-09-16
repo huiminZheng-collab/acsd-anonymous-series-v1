@@ -19,6 +19,19 @@ statement, or venue acceptance. Contribution disclosure needs its own typed
 object and authorization rule; adding a contribution field to an identity
 sidecar is rejected rather than silently interpreted.
 
+This narrow result matters under key compromise: a thief holding a slot key can
+create a valid sidecar naming an uninvolved person. Such an object remains only
+slot-key assent to an identity string; it is not authenticated consent by, or
+verification of, the named natural person. A deployment that wants that stronger
+claim needs an additional independently authenticated countersignature or
+credential and its own issuer/revocation assumptions.
+
+Partial disclosure also does not guarantee that undisclosed teammates remain
+anonymous. Collaboration graphs and public context may reveal them by inference.
+All identity disclosures are practically irreversible once published, and a
+valid signature does not establish absence of error or coercion. Authors should
+therefore perform a team-level privacy review before publishing even one slot.
+
 ## CLI
 
 ```text

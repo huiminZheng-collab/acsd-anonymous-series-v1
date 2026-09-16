@@ -48,6 +48,18 @@ transparency service.
 
 ## Research backlog
 
+### H-01 — Sealed discovery and claim scope across revisions
+
+- **Priority / route status:** P1 / `attempted` (source audit and design note).
+- **Note:** [Newton, sealed discovery and later disclosure](NEWTON-SEALED-DISCOVERY.md).
+- **Question:** can the existing version/event evidence model make clear which
+  precise claim and supporting material existed at each stage, without assigning
+  an early timestamp to a stronger claim first introduced by a later version?
+- **Next object:** a conditional v1 result and stronger v2 result, with separate
+  committed dialogue/proof fragments and explicit cross-version replay checks.
+- **Boundary:** formal scope binding is distinct from semantic entailment;
+  anagram-style sealing is not itself a modern zero-knowledge proof.
+
 ### D-01 — Scoped identity disclosure
 
 - **Priority / route status:** P0 / `implemented`.

@@ -12,6 +12,7 @@ same. Cryptographic validity remains an executable-boundary input. -/
 
 inductive EvidenceKind where
   | unanimousApproval
+  | authorizedDelegatedApproval
   | eventDisclosure
   | identityDisclosure
   | approvalTargetTimestamp
@@ -23,6 +24,7 @@ inductive EvidenceKind where
 inductive ScopedClaim where
   | keyAssent
   | governanceAssent
+  | authorizedTargetApproval
   | committedEvidenceMatch
   | slotKeyIdentityAssent
   | approvalTargetExistedNotAfter
@@ -37,6 +39,8 @@ inductive ScopedClaim where
 inductive Compatible : EvidenceKind → ScopedClaim → Prop where
   | keyApproval : Compatible .unanimousApproval .keyAssent
   | governanceApproval : Compatible .unanimousApproval .governanceAssent
+  | delegatedAuthorizedApproval :
+      Compatible .authorizedDelegatedApproval .authorizedTargetApproval
   | event : Compatible .eventDisclosure .committedEvidenceMatch
   | identity : Compatible .identityDisclosure .slotKeyIdentityAssent
   | targetTime : Compatible .approvalTargetTimestamp .approvalTargetExistedNotAfter
@@ -102,6 +106,24 @@ theorem event_evidence_cannot_grant_identity_assent
   intro granted
   have compatible := granted.2.2.2.2
   rw [eventKind] at compatible
+  cases compatible
+
+theorem delegated_approval_cannot_grant_direct_key_assent
+    {policy : ScopedPolicy} {evidence : ScopedEvidence}
+    (delegatedKind : evidence.kind = .authorizedDelegatedApproval) :
+    ¬ ScopedGrant policy evidence .keyAssent := by
+  intro granted
+  have compatible := granted.2.2.2.2
+  rw [delegatedKind] at compatible
+  cases compatible
+
+theorem delegated_approval_cannot_grant_direct_governance_assent
+    {policy : ScopedPolicy} {evidence : ScopedEvidence}
+    (delegatedKind : evidence.kind = .authorizedDelegatedApproval) :
+    ¬ ScopedGrant policy evidence .governanceAssent := by
+  intro granted
+  have compatible := granted.2.2.2.2
+  rw [delegatedKind] at compatible
   cases compatible
 
 /-! Atomic event disclosure: all four predicates are required by the one

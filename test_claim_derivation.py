@@ -39,7 +39,7 @@ LINEAGE_SUBJECT = LineageSubject(
 
 
 def subject_for(kind):
-    if kind == EvidenceKind.UNANIMOUS_APPROVAL:
+    if kind in (EvidenceKind.UNANIMOUS_APPROVAL, EvidenceKind.AUTHORIZED_APPROVAL):
         return TARGET_SUBJECT
     if kind == EvidenceKind.APPROVAL_TARGET_TIMESTAMP:
         return TARGET_TIME_SUBJECT
@@ -58,6 +58,7 @@ def claim_subject_for(kind):
     if kind in (
         ClaimKind.KEY_ASSENT,
         ClaimKind.GOVERNANCE_ASSENT,
+        ClaimKind.AUTHORIZED_TARGET_APPROVAL,
         ClaimKind.ORIGINALITY_VERIFIED,
     ):
         return TARGET_SUBJECT

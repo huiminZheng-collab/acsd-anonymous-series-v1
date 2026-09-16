@@ -77,8 +77,27 @@
     - 防护：keygen 输出时提示备份 seed；文档说明"丢失私钥的 release 无法
       再 approve 新版本"。
 20. **审批顺序被当作贡献顺序**
-    - 误用：把 endorse 的时间戳顺序解释为署名顺序。
-    - 防护：byline 顺序只由 team.json 的 slot 定义；approve 顺序不进包。
+   - 误用：把 endorse 的时间戳顺序解释为署名顺序。
+   - 防护：byline 顺序只由 team.json 的 slot 定义；approve 顺序不进包。
+21. **失陷 slot key 嫁祸无关自然人**
+   - 攻击：持有被盗 slot 私钥的人签署一份把该 slot 映射到无关姓名的
+     identity sidecar；签名在密码学上仍然有效。
+   - 边界：验证器只能输出 `SLOT_KEY_ASSENT_TO_IDENTITY_ASSERTION`，必须同时
+     列出 `natural_person_identity_verified` 为 non-claim。界面和论文不得把它
+     简写为“某自然人身份已验证”。需要更高保证时，应另加经认证的身份主体
+     countersignature/credential，而不能静默升级现有声明。
+22. **部分揭盲造成排除法去匿名**
+   - 误用：把“未公开 slot 2”理解为“slot 2 仍然匿名”，忽略合作者网络、
+     机构、研究方向和时间线等外部线索。
+   - 防护：发布前做团队级隐私检查；协议只保证 sidecar 的精确 scope，不保证
+     抵抗外部推断。
+23. **披露不可撤回或受胁迫**
+   - 边界：后续声明不能让已经公开的名字或对话被观察者遗忘；签名也不能证明
+     自愿性。CLI/文档应把 disclosure 视为不可逆发布，而不是可撤销设置。
+24. **选择性对话披露构造误导叙事**
+   - 攻击/误用：只打开支持结论的已承诺窗口，隐藏相反或削弱结论的上下文。
+   - 边界：Merkle opening 证明“这些字节属于原承诺”，不证明“这些是完整或
+     有代表性的研究记录”。科学充分性和遗漏影响仍须内容审查。
 
 ## E. 建议的 CI 防线（配合 TEST-MATRIX）
 

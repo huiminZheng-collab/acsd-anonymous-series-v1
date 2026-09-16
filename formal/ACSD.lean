@@ -1,11 +1,13 @@
 import ACSD.Core
 import ACSD.PEC
 import ACSD.GenericAppraisal
+import ACSD.SubjectBoundEvidence
 import ACSD.RatsAppraisal
 import ACSD.StrictJson
 import ACSD.RatsTranscriptJson
 import ACSD.Lineage
 import ACSD.ScopedClaims
+import ACSD.DelegatedApproval
 import ACSD.Appraisal
 import ACSD.Transcript
 import ACSD.LineageTranscript

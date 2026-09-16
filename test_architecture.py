@@ -133,6 +133,7 @@ class TestTrustedKernelArchitecture(unittest.TestCase):
             verifier_roots,
             {
                 "approval_set",
+                "approval_delegation_adapter",
                 "appraisal_transcript",
                 "artifact_io",
                 "canonical_json",

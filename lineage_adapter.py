@@ -164,7 +164,23 @@ def verify_lineage_authorization(root, lineage, valid_child_approvals):
         "LINEAGE_AUTHORIZATION_METHOD_AMBIGUOUS",
     )
     if old == new:
-        require(not ordinary_paths and not recovery_paths, "UNEXPECTED_LINEAGE_AUTHORIZATION")
+        require(not recovery_paths, "UNEXPECTED_LINEAGE_AUTHORIZATION")
+        if ordinary_paths:
+            valid = _verify_authorization_quorum(
+                root,
+                transition=lineage["transition"],
+                authority=old,
+                authorization_directory="lineage/authorizations",
+                public_key_directory="lineage/parent-public-keys",
+                unknown_key_code="LINEAGE_AUTHORIZATION_UNKNOWN_KEY",
+            )
+            return {
+                "status": "AUTHORIZED_CONTINUATION",
+                "method": "predecessor-explicit",
+                "required": old["threshold"],
+                "valid": valid,
+                "authorization_directory": "lineage/authorizations",
+            }
         inherited = sorted(old_keys.intersection(valid_child_approvals))
         require(len(inherited) >= old["threshold"], "UNAUTHORIZED_SUCCESSOR")
         return {

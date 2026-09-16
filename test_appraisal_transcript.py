@@ -16,6 +16,11 @@ def complete_evidence():
             DIGESTS[20],
         ),
         claims.AppraisedEvidence(
+            claims.EvidenceKind.AUTHORIZED_APPROVAL,
+            claims.ApprovalTargetSubject(DIGESTS[17]),
+            DIGESTS[27],
+        ),
+        claims.AppraisedEvidence(
             claims.EvidenceKind.EVENT_DISCLOSURE,
             claims.EventSubject(DIGESTS[1], "event-1", 0, DIGESTS[2], 1, 2),
             DIGESTS[21],

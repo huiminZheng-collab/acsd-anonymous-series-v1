@@ -1,6 +1,6 @@
 # ACSD v4.0.0-rc1 live-source status
 
-Checked 2026-09-14 in the local work tree. The public v3.3.0-rc1 candidate and
+Checked 2026-09-16 in the local work tree. The public v3.3.0-rc1 candidate and
 earlier snapshots remain immutable; v4.0.0-rc1 integrates the subsequent
 recovery, encrypted-key, lifecycle, and formal-generalization work locally. A
 release candidate is not a venue submission or deployed service.
@@ -73,10 +73,18 @@ release candidate is not a venue submission or deployed service.
 
 ## Acceptance evidence
 
-- Authoritative read-only gate: 30/30 source, package, installed-wheel,
+- Single-source manuscript: the IEEE planning build ends its scientific body
+  on page 11, starts the excluded LLM statement and references on page 12, and
+  places the detailed capability map in Appendix A; the full technical-report
+  rendering remains available from the same source.
+- Authoritative read-only gate: 31/31 source, package, installed-wheel,
   differential, formal, and workspace-byte-identity checks pass.
-- Python: 176 test methods are discovered locally; the live TSA test and two
+- Python: 195 test methods are discovered locally; the live TSA test and two
   unavailable Windows capability cases are skipped.
+- Scripted roles: a three-author mixed direct/delegated flow completes in seven
+  post-key-setup commands with no JSON edits, private-key transfers, or copied
+  protocol identifiers; a corrupted response with a regenerated transport
+  manifest causes whole-batch rollback. This is not a human usability study.
 - Canonical JSON: 64 fixed vectors have no unexpected divergence; 1,000/1,000
   seeded generated cases agree between Python and Node on bytes and text-layer
   verdicts.

@@ -8,3 +8,14 @@ authors:
   - name: "ACSD contributors"
 repository-code: "https://github.com/huiminZheng-collab/acsd-anonymous-series-v1"
 license: MIT
+keywords:
+  - anonymous research release
+  - scholarly communication
+  - research provenance
+  - authorship governance
+  - digital signatures
+  - RFC 3161
+  - timestamping
+  - formal verification
+  - Lean 4
+  - cryptographic protocol

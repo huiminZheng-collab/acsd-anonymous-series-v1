@@ -1,4 +1,4 @@
-import ACSD.GenericAppraisal
+import ACSD.SubjectBoundEvidence
 
 set_option autoImplicit false
 set_option warningAsError true
@@ -55,6 +55,45 @@ def RatsAppraises
     (subject : RatsSubject) : Prop :=
   MultiPremiseDerives policy evidence [ratsAppraisalRule subject]
     (.appraisalResult subject)
+
+def ratsClaimSubject : RatsClaim → RatsSubject
+  | .appraisalResult subject => subject
+
+def ratsFactMatches (fact : RatsFact) (subject : RatsSubject) : Prop :=
+  match fact with
+  | .tokenSignature token attester =>
+      token = subject.token ∧ attester = subject.attester
+  | .measurementBinding token measurement =>
+      token = subject.token ∧ measurement = subject.measurement
+  | .freshnessBinding token nonce =>
+      token = subject.token ∧ nonce = subject.nonce
+  | .referenceValue measurement reference =>
+      measurement = subject.measurement ∧ reference = subject.reference
+  | .verifierAuthorization verifier policy =>
+      verifier = subject.verifier ∧ policy = subject.policy
+
+def ratsSubjectBoundProfile
+    (policy : MultiPremisePolicy RatsClaim) (subject : RatsSubject) :
+    SubjectBoundProfile RatsSubject RatsFact RatsClaim := {
+  policy := policy
+  rules := [ratsAppraisalRule subject]
+  claimSubject := ratsClaimSubject
+  factMatches := ratsFactMatches
+  nonemptyPremises := by
+    intro rule inRules
+    have onlyRule : rule = ratsAppraisalRule subject := by
+      simpa using inRules
+    subst rule
+    simp [ratsAppraisalRule]
+  exactPremises := by
+    intro rule inRules premise required
+    have onlyRule : rule = ratsAppraisalRule subject := by
+      simpa using inRules
+    subst rule
+    simp [ratsAppraisalRule, ratsFactMatches] at required ⊢
+    rcases required with rfl | rfl | rfl | rfl | rfl <;>
+      simp [ratsClaimSubject]
+}
 
 theorem complete_exact_rats_evidence_derives
     {policy : MultiPremisePolicy RatsClaim} {subject : RatsSubject}
@@ -142,5 +181,25 @@ theorem unpermitted_rats_result_has_no_derivation
     (forbidden : ¬ policy.permits (.appraisalResult subject)) :
     ¬ RatsAppraises policy evidence subject := by
   exact nonpermitted_claim_has_no_derivation forbidden
+
+/-! The generic profile is instantiated here only after the concrete RATS
+rule has fixed five nonempty, exact-subject premises.  This is a structural
+re-use check, not a claim that this abstract model parses or validates EAT. -/
+
+theorem rats_appraisal_has_subject_matched_support
+    {policy : MultiPremisePolicy RatsClaim} {evidence : List RatsFact}
+    {subject : RatsSubject}
+    (derived : RatsAppraises policy evidence subject) :
+    ∃ fact, fact ∈ evidence ∧ ratsFactMatches fact subject := by
+  exact subjectBoundDerives_has_exact_subject_support
+    (profile := ratsSubjectBoundProfile policy subject) derived
+
+theorem no_subject_matched_rats_evidence_blocks_appraisal
+    {policy : MultiPremisePolicy RatsClaim} {evidence : List RatsFact}
+    {subject : RatsSubject}
+    (noMatch : ∀ fact, fact ∈ evidence → ¬ ratsFactMatches fact subject) :
+    ¬ RatsAppraises policy evidence subject := by
+  exact no_subject_matched_evidence_blocks_derivation
+    (profile := ratsSubjectBoundProfile policy subject) rfl noMatch
 
 end ACSD

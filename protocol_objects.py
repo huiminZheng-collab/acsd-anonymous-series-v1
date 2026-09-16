@@ -47,6 +47,44 @@ def new_ai_use_declaration():
 DEFAULT_AI_USE = new_ai_use_declaration()
 
 
+def normalize_ai_use_declaration(ai_use, author_key_ids):
+    """Validate and copy the exact AI-use statement bound into a release."""
+    if ai_use is None:
+        return new_ai_use_declaration()
+    require(isinstance(ai_use, dict), "AI_USE_INVALID")
+    require(
+        set(ai_use) == {"used", "purposes", "tools", "human_review_key_ids"},
+        "AI_USE_FIELDS",
+    )
+    used = ai_use.get("used")
+    purposes = ai_use.get("purposes")
+    tools = ai_use.get("tools")
+    reviewers = ai_use.get("human_review_key_ids")
+    require(isinstance(used, bool), "AI_USE_INVALID")
+    for values in (purposes, tools, reviewers):
+        require(
+            isinstance(values, list)
+            and all(isinstance(value, str) and value.strip() == value and value for value in values)
+            and len(values) == len(set(values)),
+            "AI_USE_INVALID",
+        )
+    require(
+        all(KEY_ID_RE.fullmatch(key_id) for key_id in reviewers),
+        "AI_REVIEWER_KEY_ID_INVALID",
+    )
+    require(set(reviewers).issubset(set(author_key_ids)), "AI_REVIEWER_NOT_AUTHOR")
+    if used:
+        require(bool(purposes) and bool(tools), "AI_USE_DETAILS_REQUIRED")
+    else:
+        require(not purposes and not tools and not reviewers, "AI_USE_FALSE_WITH_DETAILS")
+    return {
+        "used": used,
+        "purposes": list(purposes),
+        "tools": list(tools),
+        "human_review_key_ids": list(reviewers),
+    }
+
+
 def lineage_authority_of(release):
     """Return and validate the authority controlling the next lineage edge."""
     author_keys = sorted(
@@ -157,6 +195,7 @@ def build_release(
     line="main",
     lineage_threshold=None,
     recovery_authority=None,
+    ai_use=None,
 ):
     corresponding_key = next(
         (author["key_id"] for author in team["authors"] if author.get("corresponding")),
@@ -203,6 +242,7 @@ def build_release(
             "threshold": threshold,
             "recovery": recovery_authority,
         }
+    ai_declaration = normalize_ai_use_declaration(ai_use, key_ids)
     release = {
         "schema": RELEASE_SCHEMA,
         "work_id": work_id,
@@ -212,7 +252,7 @@ def build_release(
         "lineage_authority": lineage_authority,
         "citation_witnesses": [],
         "reference_work_ids": [],
-        "ai_use": new_ai_use_declaration(),
+        "ai_use": ai_declaration,
         "parent_release_id": parent_release_id,
         "issued_at": 0,
         "standalone_semantics": (
@@ -224,7 +264,7 @@ def build_release(
     return release
 
 
-def build_governance(work_id, content_sha256, team):
+def build_governance(work_id, content_sha256, team, *, ai_use=None):
     byline = [
         {
             "key_id": author["key_id"],
@@ -237,13 +277,16 @@ def build_governance(work_id, content_sha256, team):
         (author["key_id"] for author in team["authors"] if author.get("corresponding")),
         team["authors"][0]["key_id"],
     )
+    ai_declaration = normalize_ai_use_declaration(
+        ai_use, [author["key_id"] for author in team["authors"]]
+    )
     return {
         "schema": GOVERNANCE_SCHEMA,
         "work_id": work_id,
         "manuscript_sha256": content_sha256,
         "byline": byline,
         "corresponding_author": {"key_id": corresponding},
-        "ai_use_declaration": new_ai_use_declaration(),
+        "ai_use_declaration": ai_declaration,
     }
 
 
@@ -255,7 +298,16 @@ def build_pec(
     ai_digest,
     key_ids,
     predecessor_pec=None,
+    allow_delegated_approval=False,
 ):
+    permitted_outcomes = [
+        "KEY_ASSENT",
+        "GOVERNANCE_ASSENT",
+        "APPROVAL_SET_EXISTED_NOT_AFTER",
+        "AUTHORIZED_SUCCESSOR",
+    ]
+    if allow_delegated_approval:
+        permitted_outcomes.insert(2, "AUTHORIZED_TARGET_APPROVAL")
     return {
         "schema": PEC_SCHEMA,
         "pec_id": "pec-" + uuid.uuid4().hex[:8],
@@ -278,12 +330,7 @@ def build_pec(
         "events": [],
         "disclosure_policy": new_disclosure_policy(),
         "claim_policy": {
-            "permitted_outcomes": [
-                "KEY_ASSENT",
-                "GOVERNANCE_ASSENT",
-                "APPROVAL_SET_EXISTED_NOT_AFTER",
-                "AUTHORIZED_SUCCESSOR",
-            ],
+            "permitted_outcomes": permitted_outcomes,
             "global_non_claims": list(GLOBAL_NON_CLAIMS),
             "required_capabilities": {
                 "APPROVAL_SET_EXISTED_NOT_AFTER": [

@@ -1,12 +1,21 @@
-\documentclass[11pt]{article}
+\ifdefined\ACSDACSAC
+  \documentclass[conference,compsoc]{IEEEtran}
+\else
+  \documentclass[11pt]{article}
+\fi
 \pdfinfoomitdate=1
 \pdftrailerid{}
-\usepackage[margin=1in]{geometry}
+\ifdefined\ACSDACSAC\else
+  \usepackage[margin=1in]{geometry}
+\fi
 \usepackage[T1]{fontenc}
-\usepackage{lmodern}
+\ifdefined\ACSDACSAC\else
+  \usepackage{lmodern}
+\fi
 \usepackage{microtype}
 \usepackage{amsmath,amssymb}
 \usepackage{booktabs}
+\usepackage{array}
 \usepackage{float}
 \usepackage{xcolor}
 \usepackage{tikz}
@@ -25,14 +34,38 @@
 \newcommand{\acsd}{\textsc{ACSD}}
 \newcommand{\sha}{\textsf{SHA-256}}
 \title{\acsd: Authorized Lineage for Anonymous Scholarly Releases}
-\author{Anonymous authors}
-\date{}
+\ifdefined\ACSDACSAC
+  \author{Anonymous submission}
+\else
+  \author{Anonymous authors}
+  \date{}
+\fi
 
 \begin{document}
 \maketitle
 
 \begin{abstract}
-Anonymous scholarly disclosure needs a more precise answer than ``put a signed PDF in a repository.'' A signature identifies a signing key, not necessarily a person; a repository timestamp is not independent time; and an exact predecessor hash does not say who may publish the next version. This paper presents \acsd, a narrow executable profile for content-anonymous scholarly releases and authorized lineage. A compact approval target binds exact release, governance, provenance-policy, and lineage-transition digests before every required pseudonymous key signs it; a second acyclic object closes over the exact signature bytes before optional timestamping. An unchanged predecessor authority can authorize an exact child through those same approvals, while an authority change requires either predecessor-quorum signatures or a predecessor-committed, disjoint recovery quorum over that exact transition. A typed evidence-to-claim rule supports atomic event opening, partial or full per-slot unblinding, and publication crosswalks without silently granting a different claim. The optional series layer remains separate, permitting cyclic semantic citation while exact commitments stay acyclic. Evaluation includes fresh-key n+1, recovery-replay, guardian-substitution, timestamp-completion, and disclosure-scope attacks; a non-strawman same-primitive lineage comparison; 64 fixed and 1,000 generated Python--Node canonical-JSON cases; 176 Python test methods with three environment-dependent skips; and a 103-theorem Lean development whose restricted appraisal-transcript decoder agrees with Python on 19 production cases. None of these mechanisms proves natural-person identity, contribution truth, originality, peer review, venue acceptance, legal nonrepudiation, recovery-key custody, or a globally ordered lineage head.
+Anonymous scholarly releases may change authors, acquire new versions, and
+disclose selected identities or research records after publication. Signatures,
+timestamps, and archives supply essential building blocks, but their composition
+must specify who authorizes each transition, which signatures existed by a
+given time, and what a later disclosure establishes. We present \acsd, an
+executable protocol profile for these decisions. A jointly signed target binds
+the release, author governance, evidence policy, and exact lineage transition.
+A separate approval set closes over the completed signatures before timestamping.
+Predecessor authority controls succession, including a precommitted recovery
+path; typed evidence rules constrain partial disclosure and derived claims.
+Lean proves target and transition non-reuse, required authorization, and scope
+non-amplification, with executable transcript checkers connecting verified
+adapter facts to the model. Evaluation combines adversarial lifecycle cases,
+independent implementation checks, a scripted three-author coordination run,
+and 90 measured local creation/verification samples comparing ACSD, detached
+Ed25519, and actual GnuPG. A manual signed
+transition is a successful authorization control. ACSD adds explicit composition
+rules and their verification at measurable storage and runtime cost.
+The resulting evidence supports pseudonymous assent and authorized evolution;
+historical authorship and the truth of scientific contributions require
+separate assessment.
 \end{abstract}
 
 \section{Introduction}
@@ -47,104 +80,94 @@ and team assent without pretending to replace arXiv's process. We use this as
 an application scenario, not as a claim that arXiv queues have a measured
 backlog or that ACSD should circumvent its rules.
 
+\paragraph{Why signatures and timestamps do not specify the workflow.}
+Consider three pseudonymous authors who release a manuscript, replace one team
+member in its next version, and later disclose only two names. GPG can verify
+each signature, OpenTimestamps can witness a committed object's time, and
+Zenodo can archive a release. These operations do not specify whether the old
+team authorized the replacement, whether the time evidence covers every
+required approval, or whether two disclosures justify a full-byline claim.
+An attacker can sign an apparent next version under a fresh key and obtain
+valid time evidence for it while none of those operations establishes
+predecessor authorization. The missing contract is the relation among signed
+objects, authorized transitions, and permitted conclusions.
+
+\acsd\ (Anonymous Scholarly Claim and Disclosure) makes that contract explicit.
+The authoring path binds a release, its governance statement, its
+\emph{Provenance Evidence Capsule} (PEC), and an exact successor transition to
+one approval target. Verification requires the applicable author authority and
+checks each disclosed claim against evidence of the correct type and scope.
+An independent RFC~3161 timestamp can then cover the completed signature set.
+The public content may omit names while hosting accounts and reused keys
+remain linkable.
+
+Ordinary cryptographic components can implement these rules. Our manual
+predecessor-signature control confirms that an explicitly constructed transition
+can reproduce the core succession decision. That control tests the effect of
+adding the authorization rule; it is not functionality supplied automatically
+by detached signing or archival publication. The contribution is the protocol
+design, its attack-exclusion properties, and an executable implementation.
+
+\paragraph{Contributions.}
 \begin{enumerate}
-  \item What exact bytes did one or more keys approve?
-  \item Can a later verifier distinguish a revision, a legitimate branch, and an equivocation?
-  \item Can a sequence of papers cite one another, including mutual citations, without a circular content-hash dependency?
-  \item What does a time witness establish, and what does it not establish?
-  \item Can later event or identity disclosure remain limited to its exact
-        authorized scope?
+  \item \textbf{An explicit composition protocol.}
+  Joint approval binds manuscript, governance and evidence policy; a second
+  acyclic object binds completed signatures before timestamping. Exact
+  predecessor authorization governs revisions and precommitted recovery.
+  Optional series objects allow mutual citation without circular content hashes.
+  \item \textbf{Formal attack-exclusion results.}
+  Lean proves that approvals and transitions cannot be reused for different
+  targets, accepted successors require the applicable authority, and evidence
+  cannot grant claims beyond its permitted type and exact scope. Executable
+  transcript checking and refinement connect these rules to adapter outputs.
+  These statements quantify over the modeled inputs, beyond the finite
+  adversarial cases exercised by tests.
+  \item \textbf{An evaluated reference implementation.}
+  A command-line workflow supports team approval, authorized revision, recovery,
+  distributed approval collection, exact-target delegation to a coordinator
+  agent, and partial/full identity disclosure. Independent verifiers, adverse
+  transcripts, a successful manual authorization control, actual GnuPG
+  comparisons and a real timestamp receipt make its behavior and costs
+  reproducible.
 \end{enumerate}
 
-\begin{figure}[t]
-\centering
-\begin{minipage}[t]{0.39\linewidth}
-\centering
-\vspace{0pt}
-\begin{tikzpicture}[
-  work/.style={draw, circle, fill=gray!8, minimum size=1.05cm,
-               thick, font=\small},
-  semedge/.style={-{Latex[length=2.4mm]}, thick}
-]
-  \path[use as bounding box] (-0.65,-1.65) rectangle (3.05,1.65);
-  \node[work] (P) at (0,0) {$P$};
-  \node[work] (Q) at (2.4,0) {$Q$};
-  \draw[semedge] (P) to[bend left=25]
-    node[above, font=\scriptsize] {cites} (Q);
-  \draw[semedge] (Q) to[bend left=25]
-    node[below, font=\scriptsize] {cites} (P);
-\end{tikzpicture}
-\par\vspace{0.24cm}\smallskip
-{\small (a) Semantic graph: cycles allowed}\par
-\end{minipage}
-\hfill
-\begin{minipage}[t]{0.57\linewidth}
-\centering
-\vspace{0pt}
-\begin{tikzpicture}[
-  node distance=0.72cm and 1.05cm,
-  bundle/.style={draw, rounded corners, fill=gray!15,
-                 minimum height=0.72cm, minimum width=2.0cm,
-                 thick, font=\scriptsize},
-  release/.style={draw, rectangle, fill=white,
-                  minimum height=0.68cm, minimum width=1.35cm,
-                  thick, font=\scriptsize},
-  dep/.style={-{Latex[length=2.4mm]}, thick}
-]
-  \node[bundle] (B) {signed series bundle $B_k$};
-  \node[release] (P2) [below left=of B] {$P$-v2};
-  \node[release] (Q2) [below right=of B] {$Q$-v2};
-  \node[release] (P1) [below=of P2] {$P$-v1};
-  \node[release] (Q1) [below=of Q2] {$Q$-v1};
+\section{Architecture and Evidence Flow}
+\label{sec:architecture}
 
-  \draw[dep] (B) -- node[above left, font=\tiny] {resolves} (P2);
-  \draw[dep] (B) -- node[above right, font=\tiny] {resolves} (Q2);
-  \draw[dep] (P2) -- node[right, font=\tiny] {parent} (P1);
-  \draw[dep] (Q2) -- node[right, font=\tiny] {parent} (Q1);
-\end{tikzpicture}
-\par\smallskip
-{\small (b) Commitment graph: a DAG}\par
-\end{minipage}
+Figure~\ref{fig:architecture} separates object construction, external evidence
+checking, and the formal claim boundary. The release digest fixes manuscript
+bytes and version metadata. Governance fixes author roles and declarations.
+The PEC commits evidence events and policy. For a successor, the transition
+also fixes the parent, child and proposed authority. All required keys approve
+the same target; finalization then fixes the exact signature set.
+These two stages distinguish assent to an object from evidence that the
+completed assent existed by a particular time.
 
-\caption{ACSD separates cyclic semantic citations over stable WorkIDs (a) from
-acyclic exact-byte commitments through release digests and predecessor links
-(b). Commitment arrows point toward the committed object and indicate neither
-chronology nor priority.}
-\label{fig:two-graphs}
-\end{figure}
+Later timestamp receipts, dialogue openings and identity disclosures are
+separately checked against their original subjects. The adapter checks produce
+facts for the claim layer. The Lean model proves how those facts may compose,
+and the strict transcript checker reconstructs the corresponding derivations.
+The adapter boundary and model assumptions are explicit; Section~\ref{sec:formal}
+states the principal security properties.
 
-The first question is about key control and integrity. It is not, by itself, a proof that a particular natural person wrote the work. The second and third are data-model and verification questions. The fourth requires an external witness such as an RFC~3161 timestamp authority (TSA), not a local clock or a mutable Git field. Conflating these layers produces systems that overclaim.
-
-This paper presents \acsd\ (Anonymous Scholarly Claim and Disclosure), a deliberately narrow application profile. It uses standard content hashing, COSE signatures, and provenance concepts rather than proposing a new primitive. The profile is designed for content-anonymous release: the public paper and artifact do not name authors, but an account hosting them can still be linkable. It is therefore \emph{not} described as author-unlinkable double blind publication.
-
-The main contributions are:
-
-\begin{enumerate}
-  \item a self-contained paper-release object with ordered anonymous author slots and per-author endorsements;
-  \item a two-layer construction that permits cyclic scholarly citations over stable \workid s while keeping content commitments acyclic;
-  \item signed UTF-8 byte-range citation witnesses and a restricted canonical JSON profile to reduce field-interpretation ambiguity;
-  \item explicit classifications for branches, equivocation, and copied content under a fresh lineage;
-  \item an acyclic unanimous-approval target and closed capability calculus that prevent unsigned policy amplification and approval reuse after governance or PEC substitution;
-  \item an exact lineage transition requiring predecessor-quorum signatures, rejecting a fresh-key n+1 claimant while supporting explicit author/key changes and branches;
-  \item an opt-in, predecessor-committed recovery authority that can approve one exact authority-changing transition without post-hoc key substitution, mixed authorization, or silent global precedence over a competing authorized child;
-  \item a signature-complete approval-set timestamp subject and a small typed
-        evidence-composition core for atomic event disclosure, partial/full
-        per-slot unblinding, and exact publication crosswalks, including an
-        evidence-union non-amplification theorem; and
-  \item an executable prototype with encrypted-PKCS\#8 key generation,
-        one-command release, revision, recovery, and unblinding paths, a
-        cross-work key-linkability audit, independent COSE verification,
-        adversarial RFC~3161 checks, generated differential testing, a
-        controlled adjacent-signature comparison, and a production appraisal
-        transcript checked by both the executable and the Lean composition
-        model.
-\end{enumerate}
+\input{paper/architecture.tikz}
 
 \section{Scope and Threat Model}
 
 \paragraph{Assets.} A release contains manuscript bytes, an ordered list of anonymous author keys, roles and contribution declarations, an AI-use declaration, and optional parent-release information. A series package contains references to completed releases, a series key, sequencing information, and cross-paper semantic relations. Public keys are pseudonymous identifiers.
 
-\paragraph{Adversary.} We consider a party that can copy public content, generate fresh keys, reuse the exact WorkID and predecessor digests, claim the next unused version number, reorder or substitute unsigned metadata, timestamp a target before adding signatures, replay a valid disclosure or transition under another scope, substitute an uncommitted recovery guardian, combine ordinary and recovery authorizations, present a partial byline as complete, reuse one public key across unrelated works, present a signed but malformed JSON payload, and claim unsupported cross-paper citations. We also consider a series key that signs two incompatible objects. We do not assume that a signature reveals a human identity, that a contribution declaration is factually true, that recovery guardians remain honest or available, or that a local timestamp is trusted.
+\paragraph{Adversary.} We consider a party that can copy public content,
+generate fresh keys, reuse a WorkID and predecessor digests, or claim the next
+unused version. The party may reorder or substitute unsigned metadata,
+timestamp a target before adding signatures, replay a disclosure or transition
+under another scope, substitute an uncommitted recovery guardian, combine
+ordinary and recovery authorizations, or present a partial byline as complete.
+It may also reuse a key across works, submit signed but malformed JSON, claim
+unsupported cross-paper citations, or cause a series key to sign incompatible
+objects. Finally, a malicious or compromised author-slot key may sign a false
+identity string naming an uninvolved person. We assume neither that signatures
+reveal human identities nor that contribution declarations are true, recovery
+guardians remain honest or available, or local timestamps are trusted.
 
 \paragraph{Non-goals.} \acsd\ does not prove authorship by a natural person, independent discovery, plagiarism, venue acceptance, peer review, or legal nonrepudiation. These are not merely unimplemented features: some require social, institutional, or legal evidence outside the cryptographic object. The profile instead preserves evidence that can be useful in a later dispute.
 
@@ -162,11 +185,20 @@ The content digest is over exact manuscript bytes. The release object uses a del
 
 The \emph{AuthorshipGovernanceStatement} is the exact declaration of the work
 id, manuscript digest, ordered byline slots and roles, corresponding-author key,
-and AI-use field. The CLI derives it from the team configuration and release;
+and AI-use field. The reference builder derives roles from the team configuration and release;
 there is no privileged coordinator whose unsigned word makes it authoritative.
 Instead, every declared author key approves its digest through the common
 target described below. This proves assent to the declaration, not the factual
 truth of its roles or contribution history.
+
+The command-line builder accepts repeatable AI tool and purpose declarations
+and one-based author slots recording human review. It rejects a partial
+declaration that supplies a tool without a purpose or vice versa. These fields,
+like contribution terms, are approved inside the common target. They remain
+author assertions: the package preserves what the team approved but does not
+independently establish that the declaration is exhaustive or factually true.
+Fine-grained links from selected dialogue events to particular version changes
+remain a separate disclosure workflow.
 
 A \emph{Provenance Evidence Capsule} (PEC) binds the release subject and
 governance digest to a digest-linked evidence-event sequence and a claim
@@ -177,18 +209,19 @@ the complete team must still approve the common target.
 
 The current command-line profile constructs an acyclic
 \texttt{acsd-approval-target/v2} object. It points to already complete objects
-and is itself signed only through detached approval envelopes. The following is
-a structurally valid, pretty-printed example with illustrative digest values:
+and is itself signed only through detached approval envelopes. The following
+abbreviated schema excerpt shows its fields; angle-bracketed values are
+presentation placeholders rather than an accepted encoding:
 
 \begingroup\scriptsize
 \begin{verbatim}
 {
  "schema":"acsd-approval-target/v2",
- "work_id":"urn:uuid:12345678-1234-1234-1234-123456789abc",
- "release_digest":"1111111111111111111111111111111111111111111111111111111111111111",
- "governance_digest":"2222222222222222222222222222222222222222222222222222222222222222",
- "pec_digest":"3333333333333333333333333333333333333333333333333333333333333333",
- "required_key_ids":["4444444444444444444444444444444444444444444444444444444444444444"],
+ "work_id":"urn:uuid:<work-id>",
+ "release_digest":"<sha256>",
+ "governance_digest":"<sha256>",
+ "pec_digest":"<sha256>",
+ "required_key_ids":["<key-id>"],
  "lineage_transition_digest":null
 }
 \end{verbatim}
@@ -198,9 +231,11 @@ Every required key issues a tagged COSE Sign1 signature over the same
 canonical target bytes. Verification recomputes all four bindings and each key
 id from the supplied public key. The closed capability calculus is the rule
 \[
- \mathrm{Granted}(P,o) \iff \mathrm{Accepted}(P)
- \land o\in P.\mathrm{permittedOutcomes}
- \land \mathrm{CapabilityEstablished}(P,o).
+\begin{aligned}
+ \mathrm{Granted}(P,o) \iff{}& \mathrm{Accepted}(P) \\
+ &{}\land o\in P.\mathrm{permittedOutcomes} \\
+ &{}\land \mathrm{CapabilityEstablished}(P,o).
+\end{aligned}
 \]
 Policy permission is therefore only an upper bound; it is not evidence. The
 outcome vocabulary is closed and versioned, so an unknown social claim
@@ -224,7 +259,7 @@ valid approval after the recorded time. Finalization therefore constructs an
 \texttt{acsd-approval-set/v1} object containing the target digest and the
 \sha\ digest of every exact author-approval COSE byte string, plus every
 separate predecessor-authorization signature used for an authority change.
-Only this closed object is the v0.3 timestamp subject. Replacing, adding, or
+Only this closed approval-set object is the timestamp subject. Replacing, adding, or
 removing a signature changes the approval-set digest. This is an evidence
 closure rule, not a new signature or timestamp primitive.
 
@@ -243,20 +278,25 @@ Let $P$ be an accepted predecessor, $C$ a proposed child, $A_P$ the authority
 bound by $P$, and $A_C$ the authority proposed by $C$. The verifier accepts a
 lineage edge only if
 \[
- \mathrm{AuthorizedSuccessor}(P,C) = \mathrm{ExactEdge}(P,C) \land
- \mathrm{Authorization}(P,C),
+\begin{aligned}
+ \mathrm{AuthorizedSuccessor}(P,C) ={}& \mathrm{ExactEdge}(P,C)\\
+ &{}\land \mathrm{Authorization}(P,C).
+\end{aligned}
 \]
-where
+For unchanged authority, authorization is
 \[
-\mathrm{Authorization}(P,C)=
- \begin{cases}
-  \mathrm{Quorum}(A_P,\mathrm{ApproveTarget}(C)), & A_P=A_C,\\
-  \begin{gathered}
-  \bigl(\mathrm{Quorum}(A_P,\mathrm{Transition}(P,C))\ \lor\\
-  \mathrm{RecoveryQuorum}(R_P,\mathrm{Transition}(P,C))\bigr)\ \land\\
-  \mathrm{AllApprove}(A_C,C)
-  \end{gathered}, & A_P\ne A_C.
- \end{cases}
+ \mathrm{Authorization}(P,C)=
+ \mathrm{Quorum}_{P}(\mathrm{ApproveTarget}(C)),
+\]
+where $\mathrm{Quorum}_{P}$ applies the author set and threshold fixed by $P$.
+For changed authority, let $T_{P,C}=\mathrm{Transition}(P,C)$; then
+\[
+\begin{aligned}
+ \mathrm{Authorization}(P,C) ={}&
+   \bigl(\mathrm{Quorum}(A_P,T_{P,C})\\
+ &{}\lor \mathrm{RecoveryQuorum}(R_P,T_{P,C})\bigr)\\
+ &{}\land \mathrm{AllApprove}(A_C,C).
+\end{aligned}
 \]
 Here \textsf{ExactEdge} requires the same WorkID, exact parent release and PEC
 digests, and either a same-line increment by one or a new named line beginning
@@ -319,9 +359,9 @@ The published \texttt{reference\_work\_ids} list must equal the ordered de-dupli
 The rule intentionally does not parse PDFs, infer references from natural language, or determine whether a citation is intellectually appropriate. It is an exact byte-binding contract, not a semantic understanding claim.
 
 For example, one UTF-8 source line contains the following token:
-\begin{verbatim}
-urn:uuid:12345678-1234-1234-1234-123456789abc
-\end{verbatim}
+\begin{center}
+\path{urn:uuid:12345678-1234-1234-1234-123456789abc}
+\end{center}
 The witness records that WorkID, the byte offset of the first character of the
 token, and its byte length (45 bytes for this token). An editor that inserts a
 character before the token must regenerate the witness. This is intentionally
@@ -331,10 +371,12 @@ would defeat this scanner.
 
 A minimal release fragment is conceptually:
 \begin{verbatim}
-{"slot":{"line":"main","version":1,"work_id":"urn:uuid:..."},
+{"slot":{"line":"main","version":1,
+         "work_id":"urn:uuid:..."},
  "content":{"sha256":"..."},
  "reference_work_ids":["urn:uuid:..."],
- "citation_witnesses":[{"work_id":"urn:uuid:...",
+ "citation_witnesses":[{
+   "work_id":"urn:uuid:...",
    "byte_offset":35,"byte_length":45}]}
 \end{verbatim}
 The ellipses above are presentation placeholders only. The released demo
@@ -344,13 +386,71 @@ identifiers. Real series releases are produced by the v1 fixture generator.
 
 \section{Series Layer and Cyclic Citations}
 
+\begin{figure*}[t]
+\centering
+\begin{minipage}[t]{0.39\linewidth}
+\centering
+\vspace{0pt}
+\begin{tikzpicture}[
+  work/.style={draw, circle, fill=gray!8, minimum size=1.05cm,
+               thick, font=\small},
+  semedge/.style={-{Latex[length=2.4mm]}, thick}
+]
+  \path[use as bounding box] (-0.65,-1.65) rectangle (3.05,1.65);
+  \node[work] (P) at (0,0) {$P$};
+  \node[work] (Q) at (2.4,0) {$Q$};
+  \draw[semedge] (P) to[bend left=25]
+    node[above, font=\scriptsize] {cites} (Q);
+  \draw[semedge] (Q) to[bend left=25]
+    node[below, font=\scriptsize] {cites} (P);
+\end{tikzpicture}
+\par\vspace{0.24cm}\smallskip
+{\small (a) Semantic graph: cycles allowed}\par
+\end{minipage}
+\hfill
+\begin{minipage}[t]{0.57\linewidth}
+\centering
+\vspace{0pt}
+\begin{tikzpicture}[
+  node distance=0.72cm and 1.05cm,
+  bundle/.style={draw, rounded corners, fill=gray!15,
+                 minimum height=0.72cm, minimum width=2.0cm,
+                 thick, font=\scriptsize},
+  release/.style={draw, rectangle, fill=white,
+                  minimum height=0.68cm, minimum width=1.35cm,
+                  thick, font=\scriptsize},
+  dep/.style={-{Latex[length=2.4mm]}, thick}
+]
+  \node[bundle] (B) {signed series bundle $B_k$};
+  \node[release] (P2) [below left=of B] {$P$-v2};
+  \node[release] (Q2) [below right=of B] {$Q$-v2};
+  \node[release] (P1) [below=of P2] {$P$-v1};
+  \node[release] (Q1) [below=of Q2] {$Q$-v1};
+
+  \draw[dep] (B) -- node[above left, font=\tiny] {resolves} (P2);
+  \draw[dep] (B) -- node[above right, font=\tiny] {resolves} (Q2);
+  \draw[dep] (P2) -- node[right, font=\tiny] {parent} (P1);
+  \draw[dep] (Q2) -- node[right, font=\tiny] {parent} (Q1);
+\end{tikzpicture}
+\par\smallskip
+{\small (b) Commitment graph: a DAG}\par
+\end{minipage}
+
+\caption{ACSD separates cyclic semantic citations over stable WorkIDs (a) from
+acyclic exact-byte commitments through release digests and predecessor links
+(b). Commitment arrows point toward the committed object and indicate neither
+chronology nor priority.}
+\label{fig:two-graphs}
+\end{figure*}
+
 \subsection{Two graphs, two purposes}
 
 A paper remains verifiable after all series packages are removed. The optional series layer records relationships among independently complete releases. A signed series package contains
 \[
 \begin{aligned}
-  B_k = \mathrm{Sign}_{S}(&\textit{seriesId},\textit{epoch},\textit{sequence},\textit{previousBundleHash},\\
-                           &\textit{rotationHash},\textit{rank},\textit{releases},\textit{heads},\textit{semanticEdges}).
+  B_k = \mathrm{Sign}_{S}(&\textit{seriesId},\textit{epoch},\textit{sequence},\\
+                          &\textit{previousBundleHash},\textit{rotationHash},\textit{rank},\\
+                          &\textit{releases},\textit{heads},\textit{semanticEdges}).
 \end{aligned}
 \]
 
@@ -381,6 +481,23 @@ lineage”; deciding plagiarism or authorization remains outside the verifier.
 
 \section{Scoped Post-release Statements}
 
+\paragraph{Research-process evidence.}
+Version lineage and committed dialogue records can preserve complementary
+parts of a research history: a release fixes the manuscript at one stage,
+while a later opening exposes selected records already committed by that
+stage's PEC. For example, authors may reveal the dialogue behind an early
+conditional result while keeping unrelated conversations private, then use
+a later version for a stronger result and its new supporting material.
+Exact event and release bindings prevent moving an opening to a different
+subject. They establish neither that the opened window is representative of
+the complete research process nor that contrary committed material was also
+opened. An author can therefore construct a selective but cryptographically
+valid narrative by revealing only favorable windows. Whether the disclosed
+reasoning scientifically supports the stated result, and whether omitted
+context changes that assessment, remain reviewable content questions. The current prototype supplies
+the commitment and disclosure checks; automatic capture of research history,
+AI-use declarations and contribution-to-event mappings remains incomplete.
+
 Some evidence is necessarily published after the immutable release: authors
 may open a committed dialogue window or reveal one name after review. Treating
 these as arbitrary metadata would reintroduce policy amplification. ACSD uses
@@ -388,10 +505,10 @@ a small common rule for a statement $E$ of type $k$, exact subject $s$, signer
 $a$, and requested claim $c$:
 \[
 \begin{aligned}
- \mathrm{Grant}(E,c) \Rightarrow{}&
- \mathrm{SignatureValid}(E) \land \mathrm{ScopeValid}(E,s) \\
- &{}\land \mathrm{Authorized}(k,s,a)
- \land c\in\mathrm{Permitted}(k)
+ \mathrm{Grant}(E,c) \Rightarrow{}& \mathrm{SignatureValid}(E) \\
+ &{}\land \mathrm{ScopeValid}(E,s)
+ \land \mathrm{Authorized}(k,s,a) \\
+ &{}\land c\in\mathrm{Permitted}(k)
  \land \mathrm{Compatible}(k,c).
 \end{aligned}
 \]
@@ -411,7 +528,11 @@ The slot-key identity assertion is an external per-slot sidecar binding the exac
 and optional publication reference. Its result is deliberately named
 \texttt{SLOT\_KEY\_ASSENT\_TO\_IDENTITY\_ASSERTION}: it says that the release
 slot's pseudonymous key signed the mapping, not that a natural-person identity
-or venue acceptance was independently verified. One slot can be revealed
+or venue acceptance was independently verified. In particular, possession of
+a stolen slot key is sufficient to create a protocol-valid assertion naming an
+uninvolved person. The verifier therefore exposes the narrow key-assent label
+and the unsupported natural-person claim; consumers must not render the result
+as authenticated civil identity without separate identity evidence. One slot can be revealed
 without revealing another. A full-byline result requires a valid sidecar for
 every release slot; conflicting assertions for one slot have no protocol-
 selected winner.
@@ -425,6 +546,16 @@ intentional. A common signed publication-reference string can crosswalk the
 released bytes to a later record, but it remains an author-key assertion: it
 does not derive venue acceptance. Extra contribution fields are rejected
 rather than reinterpreted as contribution evidence.
+
+Selective disclosure is cryptographically scoped but not socially isolating.
+Revealing two members of a three-person team may permit inference about the
+remaining slot from public collaboration networks, so a partial byline is not
+an anonymity guarantee for undisclosed authors. Publication is also practically
+irreversible: neither a later contradictory sidecar nor a protocol status can
+make observers forget an identity string, and the signature alone cannot reveal
+whether assent resulted from error, coercion, or key compromise. Authors should
+therefore treat identity and dialogue disclosure as deliberate publication,
+not as a reversible account-setting operation.
 
 Exact sidecar scope also does not create cross-paper unlinkability. Reusing the
 same public key in two unrelated WorkIDs exposes an equality edge even though a
@@ -443,7 +574,10 @@ only the byline is revealed, per-slot identity sidecars bind the existing
 release directly; manufacturing a redundant n+1 version would conflate
 identity disclosure with scientific revision. In either case, the authors may
 sign a publication reference, but only independently authenticated venue
-evidence could establish receipt or acceptance.
+evidence could establish receipt or acceptance. Before publishing any sidecar,
+each participating author should inspect its exact release, slot and assertion;
+partial disclosure additionally requires a team-level privacy check because it
+may expose non-participating coauthors by inference.
 
 \section{Time Evidence}
 
@@ -469,7 +603,7 @@ governed services can reduce single-service reliance, but their composition
 requires a separate policy.
 
 Legacy releases timestamped only the approval target. They retain a distinct
-target-existence result and are never upgraded to the v0.3 approval-set result.
+target-existence result and are never upgraded to an approval-set-time result.
 This typed distinction closes a temporal-confusion attack while preserving
 backward verification.
 
@@ -478,8 +612,12 @@ backward verification.
 The v1 prototype uses Python for deterministic fixture generation and a zero-dependency Node.js verifier for strict CBOR/COSE and profile validation; the two paths are intentionally separate. The package is designed for offline replay: locked dependencies are included, and the verification driver regenerates fixtures, verifies a standalone release, independently verifies the series profile, builds a manifest, and verifies that manifest.
 
 A command-line tool (\texttt{acsd.py}) turns the profile into an executable
-workflow. Core commands are \texttt{keygen}, \texttt{init}, \texttt{approve},
-\texttt{finalize}, and \texttt{verify}. Lineage uses \texttt{authorize},
+workflow. Core commands are \texttt{keygen}, \texttt{init},
+\texttt{author-approve}, \texttt{finalize}, and \texttt{verify}. Portable
+coauthor collection uses batch request/response directories and
+\texttt{coordinator-finalize}; the latter can exercise exact-target
+delegations addressed to supplied agent keys without receiving author private
+keys or requiring copied author identifiers. Lineage uses \texttt{authorize},
 \texttt{recover}, and \texttt{revise}; a separate \texttt{compare-successors} command detects
 same-slot forks. Unblinding uses \texttt{disclose-identity} and
 \texttt{verify-identity}; the aggregate command
@@ -541,7 +679,7 @@ timeline confirms that a target timestamp obtained before key compromise does
 not establish that approvals added after compromise existed at that earlier
 time.
 
-\begin{table}[H]
+\begin{table*}[t]
 \centering
 \caption{Typed evidence-to-claim confusion matrix. Checkmarks are the only
 derivable combinations; every off-diagonal cell is denied.}
@@ -555,7 +693,7 @@ SCITT inclusion & -- & -- & $\checkmark$ & -- \\
 Slot-identity assent & -- & -- & -- & $\checkmark$ \\
 \bottomrule
 \end{tabular}
-\end{table}
+\end{table*}
 
 The lineage corpus begins with the smallest discriminating attack: a child
 with the exact WorkID and parent release/PEC digests, n+1, a fresh attacker
@@ -577,50 +715,62 @@ fork with no winner. Thus recovery restores conditional liveness without
 claiming guardian custody, retroactive revocation, complete fork visibility, or
 an offline global head.
 
-\begin{table}[H]
+\subsection{Scripted distributed-author workflow}
+
+We additionally execute the production CLI as four isolated roles: three
+authors and one coordinator agent. The coordinator initializes an ordered
+three-author candidate and exports one self-contained request per slot. Two
+authors return direct approvals; the third signs a non-redelegable capability
+for the exact target and the distinct coordinator-agent key. One transactional
+\texttt{coordinator-finalize} invocation imports all responses, discovers the
+delegated slot from that agent key, exercises the capability, and finalizes the
+candidate. Offline verification then derives the narrower authorized-target
+approval outcome for the mixed set.
+
+After key setup, the happy path comprises seven CLI invocations: initialization,
+batch export, three author responses, coordinator finalization, and
+verification. It requires no JSON edits, no private-key transfer, and no manual
+copying of a digest, WorkID, or key identifier. In an adverse run, the final
+returned signature is changed and its transport manifest regenerated. Batch
+import rejects the collection and leaves the live candidate with zero imported
+approvals. The runner contacts no external service and uses an explicit
+untimestamped test-only finalization policy.
+
+This is a scripted role-based integration experiment with zero human
+participants and zero production deployments. It demonstrates executable role
+separation and transactional failure semantics; it does not establish first-time
+human usability, adoption, or safe key-backup behavior.
+
+\begin{table*}[t]
 \centering
-\caption{Executable evaluation corpus. The first seven rows are inherited v1 fixture results; the remaining rows are reproducible from the v4 candidate source tree.}
-\begin{tabular}{p{0.57\linewidth}p{0.32\linewidth}}
+\caption{Executable evaluation summary. The artifact retains the complete
+case-level report, commands, and expected outcomes.}
+\begin{tabular}{p{0.57\linewidth}>{\raggedright\arraybackslash}p{0.32\linewidth}}
 \toprule
-Object or check & Count / result \\
+Evidence family & Count / result \\
 \midrule
-Standalone release versions & 8 / 8 valid without series packages \\
-Author endorsements & 18 / 18 bound to the intended release \\
-Signed series objects & 7 \\
-Closed normal, attack, and indeterminate scenarios & 13 / 13 expected outcomes \\
-Independent profile checks & 30 / 30 passed \\
-Canonical JSON regression cases & 11 / 11 Python--Node agreement \\
-Public-manifest entries & 113 / 113 verified \\
-Fixed canonical-JSON vectors & 64 / 64 accept/reject agreement \\
-Python unit tests & 176 test methods; 3 environment-dependent skips locally \\
-Seeded generated canonical cases & 1000 / 1000 byte and verdict agreement \\
-Typed semantic-confusion matrix & 16 / 16 expected decisions; 3 unsupported claims denied \\
-Independent approval implementations & Python producer / Node verifier \\
-Authorized-lineage scenarios & 8 / 8 expected outcomes \\
-Precommitted recovery & 2/2 accepted quorum; 6 rejection classes plus an unranked fork \\
-Submission lifecycle & rejection, revision, and publication crosswalk reproduced \\
-Multi-author unblinding & 1/3, 2/3, 3/3 plus 3 adverse cases \\
-Cross-work key isolation & replay rejected; reused key reported linkable \\
-Same-primitive lineage baseline & 3 policies; manual exact transition matches core decision \\
-Real-TSA existence check & 1 freeTSA response verified \\
-Strict scoped-certificate differential & 35 / 35 Python--Lean derivations \\
-Authorized-lineage certificate differential & 15 / 15 Python--Lean decisions \\
-Production appraisal-transcript differential & 19 / 19 Python--Lean decisions \\
-PEC, lineage, recovery, scoped-appraisal, transcript, and bounded-generalization theorems & 103; no \texttt{sorry}/\texttt{admit} \\
+Legacy release/series profile & 8 releases, 18 endorsements, 7 series objects; 30/30 checks \\
+Canonicalization and manifests & 64 fixed plus 1000 generated differential cases; 113 entries \\
+Implementation regression suite & 195 tests discovered; 3 conditional skips locally \\
+Authorization and recovery & 8 lineage cases; 6 recovery rejection classes plus an unranked fork \\
+Post-release workflows & submission lifecycle, 1/3--3/3 unblinding, and cross-work isolation \\
+Operational controls & scripted three-author run; manual exact-transition positive control \\
+External-time interoperability & one real freeTSA response verified offline \\
+Executable formal boundary & 35 scoped, 15 lineage, and 19 appraisal Python--Lean decisions \\
+Mechanized model & 110 theorems; no \texttt{sorry}/\texttt{admit} \\
 \bottomrule
 \end{tabular}
-\end{table}
+\end{table*}
 
-To avoid a weak comparison, a controlled adjacent baseline fixes the signature
+To avoid a weak comparison, a controlled mechanism baseline fixes the signature
 primitive to Ed25519 and evaluates three policies over the same parent and
 n+1 candidates. Child-declared-key verification accepts both legitimate
 rotation and fresh-key capture; predecessor-key pinning rejects both. A manual
 predecessor signature over exact parent, child, and successor-key bytes
 correctly accepts the rotation and rejects replay onto the attacker child.
-ACSD reaches the same core decision. Its measured addition is therefore the
-maintained canonical object, threshold-governance, approval-closure, and typed
-claim profile, not a new signature or an assertion that hand-built transition
-statements are impossible.
+ACSD reaches the same core decision. The positive control isolates the effect of explicit predecessor authorization.
+The surrounding canonical object, threshold governance, approval closure and
+typed claim rules specify the remaining application contract.
 
 Three further executable workflows test post-release use. A two-author
 submission lifecycle leaves a rejected release byte-identical, creates an
@@ -632,7 +782,83 @@ contribution field. A cross-paper run rejects sidecar replay across releases
 while reporting that reuse of the same public key makes two WorkIDs publicly
 linkable.
 
-The measurements remain prototype-scale rather than a throughput claim. They
+
+\subsection{Actual-client cost and security comparison}
+\label{sec:comparison}
+
+A separate local experiment compares the production ACSD CLI, an independent
+minimal detached-Ed25519 client, and GnuPG~2.4.9 (libgcrypt~1.12.2).
+The protocol fixes 64~KiB, 1~MiB and 8~MiB manuscripts and one or three authors.
+Each of the 18 configurations receives one warm-up and five measured repetitions,
+with shuffled recipe order: 90 measurements and 18 warm-ups. Timings include
+process startup and file I/O. Key generation and verifier key import are
+excluded setup operations. Both private and public keyrings are isolated test
+directories; GPG verification checks each required signer fingerprint.
+
+\begin{table*}[t]
+\centering\small
+\begin{tabular}{lrrrrr}
+\toprule
+Recipe & Authors & Create (ms) & Verify (ms) & Extra bytes & Files \\
+\midrule
+Detached Ed25519 & 1 & 257 & 262 & 177 & 3 \\
+GnuPG & 1 & 245 & 81 & 348 & 3 \\
+ACSD & 1 & 464 & 362 & 6,284 & 11 \\
+Detached Ed25519 & 3 & 228 & 214 & 531 & 7 \\
+GnuPG & 3 & 682 & 252 & 1,044 & 7 \\
+ACSD & 3 & 480 & 341 & 10,934 & 15 \\
+\bottomrule
+\end{tabular}
+\caption{Median local costs for a 1~MiB manuscript. Extra bytes exclude the
+manuscript. Recipes verify different application relations; this is not a
+ranking at equal security.}
+\label{tab:client-cost}
+\end{table*}
+
+Table~\ref{tab:client-cost} shows the cost of the declared recipes.
+For one author, verification sample standard deviations are 44, 15 and 58~ms
+for detached Ed25519, GPG and ACSD, respectively; for three authors they are
+39, 22 and 96~ms. The complete raw report retains every sample, all sizes,
+minima, maxima, standard deviations, commands and source hashes.
+GPG packaging uses one signing and one public-key export command per author;
+batching exports or changing packaging could reduce that cost. A wrapper's
+single command does not measure human coordination effort. Ordinary host
+activity and nonmonotonic size trends preclude a throughput or scaling claim.
+
+The overhead is the price of application semantics, not stronger signature
+bits. For the one-author 1~MiB case, ACSD takes about 1.8 times the detached
+Ed25519 creation time, 1.4 times its verification time, and stores about 6.1~KiB
+more metadata. With three authors, the corresponding ACSD metadata is about
+10.7~KiB, roughly twenty times the minimal detached-signature sidecars, while
+median creation and verification remain below one second on this host. This
+trade is appropriate when a verifier must later decide team assent, exact
+successor authority, recovery, completed-set time, or scoped disclosure from a
+maintained package. For a one-off claim that selected keys signed immutable
+bytes, detached signatures plus independently chosen time or archive evidence
+are simpler and sufficient; ACSD should not be used merely to reproduce that
+narrow statement.
+
+Actual GPG checks accept the complete three-signer case, reject manuscript
+mutation and a missing signature, and distinguish a self-declared attacker
+key from a pinned predecessor key. A GPG-signed manual transition validates
+successfully and rejects altered child binding. That test is a statement-binding
+control; the Ed25519 baseline additionally reconstructs the transition from the
+candidate child. Lifecycle, partial-disclosure and cross-release replay cases
+were rerun for ACSD. They test additional application semantics, rather than
+defects in the underlying GPG signature algorithm.
+
+The same real 4,649-byte RFC~3161 receipt was also verified in two offline
+paths, each with a warm-up and five measurements. Receipt-only verification
+had median 272~ms (SD~16); checking the ACSD approval-set binding as well had
+median 295~ms (SD~28). Both use the same receipt parser and pinned signer;
+these are incremental time-evidence checks and exclude manuscript-signature
+verification. Sixteen associated receipt and approval-closure tests passed.
+No request was sent to a service during this experiment. OpenTimestamps
+confirmation, archival service latency, independent users and clean-machine
+replication remain unmeasured.
+
+
+The earlier in-memory measurements remain prototype-scale rather than a throughput claim. They
 were recorded under Python 3.12.14 on 64-bit Windows 10.0.26200, a 13th Gen
 Intel Core i7-1360P with 16 logical processors, and 31.7 GiB physical memory.
 In that run, five repetitions of an in-memory workload that canonicalizes
@@ -643,7 +869,34 @@ objects was 7.04 MiB. This excludes filesystem, COSE, and network cost, so it
 is a smoke test for obvious scaling anomalies, not a statistically powered
 performance evaluation; dispersion beyond minimum and median was not retained.
 
-The v4 candidate Lean development has 103 theorem declarations over approval
+\subsection{Formal security properties}
+\label{sec:formal}
+
+Table~\ref{tab:formal-properties} states the main attack-exclusion claims.
+The applicable ordinary or recovery quorum and already verified adapter facts
+are model inputs. Proofs rule out the stated attacks for all modeled instances
+satisfying those assumptions.
+
+\begin{table*}[t]
+\centering\small
+\begin{tabular}{p{0.28\linewidth}p{0.63\linewidth}}
+\toprule
+Attack & Proved property \\
+\midrule
+Reuse an approval & Approval binds its exact target; a different target cannot reuse it. \\
+Capture the next version & Accepted succession has predecessor authorization or the specified precommitted recovery authorization. \\
+Replay a transition & Authorization binds the exact child and cannot authorize another child. \\
+Inflate a partial reveal & Full-byline assent requires every required slot. \\
+Reuse evidence across scopes & Derived claims require compatible evidence for the exact subject. \\
+Backdate completed assent & Target-only time evidence cannot derive approval-set time. \\
+\bottomrule
+\end{tabular}
+\caption{Selected Lean properties. They concern protocol authorization and
+claim composition under the model's declared evidence assumptions.}
+\label{tab:formal-properties}
+\end{table*}
+
+The current Lean development has 110 theorem declarations over approval
 targets, approvals, digest-linked events, a closed outcome type, exact-subject
 scoped statements, lineage transitions, recovery transitions, and claim-free
 appraisal transcripts. They
@@ -652,7 +905,7 @@ reused for a different target; every granted result has policy permission and
 compatible exact-subject evidence; all required approvals are present; and
 external time requires the approval-set subject, signer pin, nonce, RFC profile,
 and a non-local authority. The lineage theorems show that every accepted
-successor has predecessor-quorum evidence, a fresh authority cannot enter
+successor has the applicable authority evidence, a fresh authority cannot enter
 through the unchanged-authority path, and a transition bound to one child
 digest cannot authorize another child. The recovery theorems require a
 predecessor commitment, disjoint recovery authority, changed online authority,
@@ -679,13 +932,15 @@ The formal tree also includes a bounded multi-premise experiment: one abstract
 RATS-style appraisal result requires exact token/attester, measurement, nonce,
 reference-value, and verifier-policy facts. It is a proof that the small
 permission-plus-exact-premises pattern admits an independently meaningful
-second instance, not an EAT parser, a device-safety claim, or an ACSD product
-feature.
+second instance. A finite subject-bound profile also proves that a permitted
+conclusion has subject-matched support when every rule has nonempty,
+subject-matched premises. These are proof-engineering experiments; the ACSD
+instance retains its stronger typed appraisal schema. They do not implement
+EAT parsing or a deployed attestation service.
 
-These 103 are PEC, lineage, recovery, scoped-appraisal, transcript,
+These 110 are PEC, lineage, recovery, scoped-appraisal, transcript,
 cross-layer composition, and bounded-generalization theorems, not a recount
-of the separately published v1 Lean core.\footnote{The v1 proof surface is archived at
-\url{https://github.com/huiminZheng-collab/acsd-anonymous-series-v1/tree/main/formal-core}.}
+of the separately archived v1 Lean core.
 The v1 artifact records 53 theorem statements
 about release catalogs, teams, lineage, series graphs, citation witnesses, and
 lifecycle rules. That earlier model remains an inherited, distinct proof
@@ -704,14 +959,13 @@ explicitly separate tamper validation from judgments about whether an assertion
 is good or true~\cite{c2pa}. The CAWG Identity Assertion adds creator identity
 assertions and validation results for that ecosystem~\cite{cawg}. ClaimChain
 provides privacy-preserving authenticated claim repositories with
-non-equivocation goals~\cite{claimchain}. These systems demonstrate that signed
-provenance, scoped identity, selective disclosure, and conflict resistance are
-established design families. ACSD does not claim those concepts as new; it
-contributes a smaller scholarly-release profile whose closed claim algebra,
-approval completion, revision authority, mutual-citation separation, and
-executable counterexamples are evaluated together.
+non-equivocation goals~\cite{claimchain}. These systems establish signed
+provenance, scoped identity, selective disclosure, and conflict resistance as
+existing design families. ACSD contributes a smaller scholarly-release profile
+that evaluates approval completion, revision authority, mutual-citation
+separation, a closed claim algebra, and executable counterexamples together.
 
-SD-JWT defines selective disclosure for claims in a signed JSON payload~\cite{sdjwt}, while BBS-based verifiable-credential suites additionally target unlinkable derived proofs~\cite{bbs}. ACSD does not reproduce those credential features: its basic unblinding deliberately publishes a link from an already public release-slot key to one identity assertion. The smaller mechanism avoids an issuer/holder credential layer when public linkage is the goal, while the typed claim boundary leaves richer unlinkable credentials as a separable service level rather than an implicit security claim.
+SD-JWT defines selective disclosure for claims in a signed JSON payload~\cite{sdjwt}, while BBS-based verifiable-credential suites additionally target unlinkable derived proofs~\cite{bbs}. For public linkage, ACSD instead publishes a direct link from an already public release-slot key to one identity assertion. This smaller mechanism avoids an issuer/holder credential layer, while the typed claim boundary leaves unlinkable credentials as a separable service level.
 
 A detached signature already authenticates exact bytes under a chosen public
 key. Moreover, a minimal predecessor-signed transition over exact parent,
@@ -722,39 +976,27 @@ integration of this edge with canonical scholarly objects, ordered and
 threshold author authority, signature-complete closure, scoped disclosures,
 and a closed output vocabulary.
 
-\acsd\ does not claim to replace these systems or invent threshold delegation. Its narrow contribution is an executable scholarly profile that combines: self-contained anonymous paper releases; exact predecessor-authorized succession; a separate series layer for mutual citations; exact text-token witnesses; explicit conflict predicates; and counterexamples against common overclaims about signatures, local clocks, and copied content.
-
-\begin{table}[H]
-\centering
-\caption{Capability boundary (not a performance comparison).}
-\begin{tabular}{p{0.23\linewidth}p{0.29\linewidth}p{0.36\linewidth}}
-\toprule
-System & Primary capability & ACSD boundary \\
-\midrule
-OpenTimestamps & Blockchain-anchored timestamp proofs & Optional time sidecar; no author-role or citation semantics \\
-Software Heritage / SWHID & Persistent intrinsic identifiers for archived software objects & ACSD binds scholarly release roles, declarations and paper relations \\
-Zenodo & Versioned archival record and DOI & ACSD's byte-level policy and pseudonymous team assent remain explicit \\
-RFC 3161 & TSA-signed message-imprint time evidence & Exact not-after evidence only; never authorship or originality \\
-SCITT / COSE Receipts & Transparency registration architecture and signed receipt envelopes & Optional registration evidence; statement truth and scholarly authority remain separate \\
-C2PA / CAWG & Asset provenance plus creator identity assertions & Broader media ecosystem; ACSD uses pseudonymous author slots and exact revision authority \\
-SD-JWT / BBS VC & Selective claim disclosure; BBS can add unlinkable derived proofs & ACSD uses direct release-slot assent when public linking is intended \\
-ClaimChain & Privacy-preserving authenticated claims with non-equivocation goals & ACSD disclosures are public sidecars and its fork predicate does not provide a global view \\
-TUF / in-toto & Threshold key update and authorized software-supply-chain functionaries & ACSD scopes old/new authority to exact scholarly child objects \\
-Detached signature + exact transition & Exact-byte key control and hand-built successor authorization & Matches the core edge decision; application must define closure, thresholds, scopes, and claims \\
-ACSD & Release, governance, authorized revision, witness and claim-policy profile & Composes these boundaries while retaining backend trust assumptions \\
-\bottomrule
-\end{tabular}
-\end{table}
+\acsd\ combines these established mechanisms into an executable scholarly profile: self-contained anonymous releases; exact predecessor-authorized succession; a separate series layer for mutual citations; exact text-token witnesses; explicit conflict predicates; and counterexamples against common overclaims about signatures, local clocks, and copied content. Appendix~\ref{app:capability-boundary} summarizes the nearest-neighbor capability boundary.
 
 \section{Limitations and Future Work}
 
-Several extensions are intentionally deferred. First, relations across independently administered series require policy and an interoperable cross-series package model. Second, anti-equivocation evidence from transparency logs or gossip requires deployed service assumptions. Third, although Lean strictly decodes the restricted appraisal transcript, the filesystem, release-object, DER/CBOR, COSE, RFC~3161, canonicalization, hash, and signature adapters remain an explicit trusted implementation boundary rather than proof targets for this profile. Fourth, encrypted PKCS\#8 protects an exported key file at rest, but operating-system-backed storage, hardware signing, backup/migration workflows, and malware resistance remain distinct service levels. Fifth, exact TSA signer pinning does not replace PKIX path construction or revocation when a deployment requires those services. Long-lived evidence also needs an explicit renewal policy, such as renewed timestamps or an evidence-record scheme when algorithms or certificates age~\cite{ers}. Sixth, precommitted recovery avoids post-hoc takeover but does not prove guardian custody, revoke a valid historical transition, discover withheld competing children, or select a global head without transparency, pinning, gossip, or governance. Seventh, the adjacent baseline is a controlled mechanism experiment, not an installed-client comparison with GnuPG, OpenTimestamps, Software Heritage, or Zenodo; no independent users or production deployment were measured. Finally, content-anonymous publication does not hide repository-account, network, timing, or public-key linkage, and richer citation/editor integration remains future work.
+Several extensions are intentionally deferred. First, relations across independently administered series require policy and an interoperable cross-series package model. Second, anti-equivocation evidence from transparency logs or gossip requires deployed service assumptions. Third, although Lean strictly decodes the restricted appraisal transcript, the filesystem, release-object, DER/CBOR, COSE, RFC~3161, canonicalization, hash, and signature adapters remain an explicit trusted implementation boundary rather than proof targets for this profile. Fourth, encrypted PKCS\#8 protects an exported key file at rest, but operating-system-backed storage, hardware signing, backup/migration workflows, and malware resistance remain distinct service levels. Fifth, exact TSA signer pinning does not replace PKIX path construction or revocation when a deployment requires those services. Long-lived evidence also needs an explicit renewal policy, such as renewed timestamps or an evidence-record scheme when algorithms or certificates age~\cite{ers}. Sixth, precommitted recovery avoids post-hoc takeover but does not prove guardian custody, revoke a valid historical transition, discover withheld competing children, or select a global head without transparency, pinning, gossip, or governance. Seventh, the actual-client comparison measures local GnuPG, detached Ed25519 and ACSD creation/verification costs; it does not measure OpenTimestamps or archival services, independent users, or production deployment. Eighth, scoped disclosures provide integrity and exact binding, not authenticated natural-person identity, freedom from coercion, completeness of a selectively opened research record, or resistance to social inference about undisclosed collaborators. A higher-assurance identity service could require an independently authenticated subject countersignature or credential; we deliberately exclude the resulting issuer and revocation trust model from this profile. Finally, content-anonymous publication does not hide repository-account, network, timing, or public-key linkage, and richer citation/editor integration remains future work.
 
 These are reasons to state the present result narrowly, not reasons to weaken the useful evidence it already preserves.
 
 \section{Conclusion}
 
-\acsd\ turns a vague ``anonymous signed paper'' idea into a limited but executable evidence profile. It binds exact released objects to pseudonymous-key approvals, distinguishes a signed object from a predecessor-authorized successor, and permits a narrowly scoped precommitted recovery quorum only for an exact authority-changing transition. It supports ordered roles and branches, permits mutual scholarly citation without cyclic hash dependencies, and detects same-slot authorized forks without inventing a winner. Post-release sidecars support voluntary partial or complete byline disclosure without converting an author-key publication crosswalk into venue acceptance. The positive manual-transition baseline also shows where the contribution stops: predecessor authorization can be assembled from ordinary signatures, while ACSD supplies one closed, threshold-aware, replay-tested profile. It leaves human identity, originality, recovery without prior authority, recovery-key custody, a globally ordered lineage head, and independent time as claims requiring additional evidence. This division of claims is the central design principle: preserve what cryptography can verify, and make the remaining social questions explicit.
+\acsd\ turns a vague ``anonymous signed paper'' idea into an executable evidence profile. It binds exact objects to pseudonymous team approval and composes predecessor-authorized succession, exact recovery, mutual citations, fork detection, and scoped disclosures under a closed claim vocabulary. Ordinary primitives supply individual decisions; ACSD contributes their scholarly composition and modeled attack exclusions. Natural-person identity, originality, global head selection, and independent time remain separate claims.
+
+\ifdefined\ACSDACSAC
+  \clearpage
+\fi
+\section*{LLM Usage Statement}
+Generative AI assistants were used in protocol exploration, implementation,
+test development, manuscript drafting and revision, and preparation of figures.
+Machine-executed tests, cross-implementation comparisons and Lean checking
+provide the specific validation reported here. These checks do not substitute
+for author review of scientific claims, sources and interpretation.
 
 \begin{thebibliography}{9}
 \bibitem{prov}
@@ -780,7 +1022,9 @@ O. Steele et al. \emph{CBOR Object Signing and Encryption (COSE) Receipts}. RFC 
 C. Adams et al. \emph{Internet X.509 Public Key Infrastructure Time-Stamp Protocol (TSP)}. RFC 3161, 2001. \url{https://www.rfc-editor.org/rfc/rfc3161.html}
 
 \bibitem{rfc9921}
-R. Housley et al. \emph{COSE Header Parameter for Timestamp Tokens as Defined in RFC 3161}. RFC 9921, 2026. \url{https://www.rfc-editor.org/rfc/rfc9921.html}
+H. Birkholz, T. Fossati, and M. Riechert. \emph{CBOR Object Signing and
+Encryption (COSE) Header Parameter for Timestamp Tokens as Defined in RFC
+3161}. RFC 9921, 2026. \url{https://www.rfc-editor.org/rfc/rfc9921.html}
 
 \bibitem{sdjwt}
 D. Fett, K. Yasuda, and B. Campbell. \emph{Selective Disclosure for JSON Web Tokens}. RFC 9901, 2025. \url{https://www.rfc-editor.org/rfc/rfc9901.html}
@@ -817,5 +1061,35 @@ in-toto. \emph{in-toto Specification}. \url{https://github.com/in-toto/docs/blob
 T. Gondrom, R. Brandner, and U. Pordesch. \emph{Evidence Record Syntax
 (ERS)}. RFC 4998, 2007. \url{https://www.rfc-editor.org/rfc/rfc4998.html}
 \end{thebibliography}
+
+\ifdefined\ACSDACSAC
+  \appendices
+\else
+  \appendix
+\fi
+\section{Nearest-neighbor capability boundary}
+\label{app:capability-boundary}
+
+Table~\ref{tab:capability-boundary} is a capability map, not a performance
+ranking. Each neighboring system remains preferable when only its native
+claim is required.
+
+\begin{table*}[h]
+\centering
+\caption{Nearest-neighbor capability boundary.}
+\label{tab:capability-boundary}
+\begin{tabular}{p{0.23\linewidth}p{0.29\linewidth}p{0.36\linewidth}}
+\toprule
+System & Primary capability & ACSD boundary \\
+\midrule
+Detached signature + exact transition & Exact-byte key control and hand-built successor authorization & Matches the core edge decision; application must define closure, thresholds, scopes, and claims \\
+OpenTimestamps / RFC 3161 & Independent timestamp evidence & Establishes a committed imprint's time under its trust model, not author roles or succession \\
+Zenodo / SWHID & Versioned archival records and persistent intrinsic identifiers & Archives or identifies objects; ACSD binds pseudonymous team assent and authorized evolution \\
+TUF / in-toto & Threshold key update and authorized supply-chain steps & Closest authorization analogue; ACSD specializes the decision to scholarly releases and disclosure claims \\
+C2PA / CAWG / SD-JWT / BBS / ClaimChain & Provenance, identity assertions, selective or privacy-preserving claims & Broader claim ecosystems; ACSD uses public slot sidecars and a closed scholarly claim boundary \\
+ACSD & Release, governance, revision, witness and disclosure profile & Composes these decisions while retaining each backend's trust assumptions \\
+\bottomrule
+\end{tabular}
+\end{table*}
 
 \end{document}

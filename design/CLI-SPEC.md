@@ -186,8 +186,45 @@ release-dir/
    "authors": [{"slot": 1, "role": "Conceptualization", "key_id": "sha256:<pubkey-hex>",
                 "corresponding": true}]}
   ```
-- 多人：每位作者在自己机器 `keygen` → 公钥发给协调者 → `init` → 协调者把
-  `release-dir` 打包传给每人 → 各自 `approve` → 回传 → `finalize`。
+- 多人：每位作者在自己机器 `keygen` → 公钥发给协调者 → 协调者用重复的
+  `init --public-key` 按署名顺序建立候选包（可用重复的 `--role` 和一基的
+  `--corresponding` 指定角色及通讯作者）→ CLI 自动生成规范 `team.json` →
+  协调者把 `release-dir` 传给每人 → 各作者先运行只读 `review`，核对论文摘要、
+  署名顺序/角色、通讯作者、AI 使用、policy、lineage 与 exact target digest →
+  各自 `approve` → 回传批准 → `finalize`。高级调用方仍可传入已有
+  `--team team.json`，但普通作者无需手写 JSON。
+- 候选包可用重复的 `--contribution SLOT:TERM` 填写贡献；只要声明使用 AI，
+  就必须同时给出至少一个 `--ai-tool` 与 `--ai-purpose`，并可用重复的
+  `--ai-reviewed-by SLOT` 将人工复核绑定到作者 key。缺少 tool/purpose 的半截
+  声明拒绝生成，而不是静默补默认值。
+- 面向真人的推荐签署入口是 `author-approve`：先完整验证候选包，显示
+  `review` 清单，从私钥推导并突出作者 slot，再要求输入 `APPROVE`。带
+  `--delegate-public-key` 时确认词改为 `DELEGATE`，产生的仍只是 exact-target、
+  non-redelegable capability。非交互调用必须显式 `--yes`；机器 JSON 模式不会
+  混入交互式摘要。底层 `approve`、`delegate-approval` 保留给自动化和高级用户。
+- 跨机器流程使用 `export-approval-request` → `respond-approval-request` →
+  `import-approval-response`。request 是不含私钥、由严格 manifest 覆盖的候选
+  快照；response 只返回路由元数据和 exact COSE 证据（直接批准，或 delegation
+  JSON/COSE 与 delegate 公钥）。导入方必须重新匹配 WorkID、Release digest、
+  target digest、author key 与签名，且重复导入 fail closed。transport manifest
+  只负责发现意外/非一致篡改；即使攻击者重写 manifest，候选内部 binding 和
+  COSE exact payload 验证仍分别阻止稿件替换和响应伪造。
+- 当前 exchange 采用目录包，不内建 ZIP 解包器。目录可经外部传输工具压缩后再
+  解压验证；这样避免把 path traversal、重复/大小写冲突条目和压缩炸弹纳入
+  核心可信计算面。
+- `export-approval-requests` 为所有尚无 action 的 author slot 一次性生成独立
+  request 子目录；已经存在 delegation、只等 coordinator 的 agent key 执行的
+  slot 不重复发请求。`import-approval-responses --from-dir` 先在同父目录 staging
+  copy 中验证并导入全部 response，全部成功后才原子替换 live candidate；任一
+  response 失败时原目录保持不变。
+- `coordinator-finalize` 将可选的批量导入和 `finalize` 放在同一 staging 事务。
+  可重复的 `--delegate-key` 会自动发现并执行指向这些代理 key 的全部待办精确
+  委托，不要求通讯作者复制 `--for-author` 的长 key ID；若暂不 finalization，
+  `approve-delegations --key ...` 提供同样的原子批量行为。`approve-as` 保留为
+  高级单槽接口。
+  TSA 网络或验证失败时不提交 staged import。该入口必须给 `--tsa`，或明确写
+  `--allow-untimestamped`；不得把遗漏时间参数解释为默许降级。它只构建本地包，
+  不代表 Git push、公开上传或会议投稿授权。
 - 轮换：需要变更作者集或 threshold 时，创建新版本（`init --parent`），并由
   前序 authority 按其既有 threshold 签署 exact transition。新版本不能自行
   降低前序 threshold。
@@ -241,7 +278,11 @@ release-dir/
   不修改已冻结 release，也不替其他 slot 揭盲。
 - `verify-identity` 的成功结果是
   `SLOT_KEY_ASSENT_TO_IDENTITY_ASSERTION`，不是自然人身份或会议录用验证。
+- `disclose-identity --json` 必须同时返回上述窄类型、`non_claims` 和不可逆
+  发布警告；即使 slot key 已失陷并签了无关姓名，也不得显示为“身份已验证”。
 - 同一 slot 的冲突陈述不自动选赢家；缺少任一 slot 时不得输出完整 byline。
+- 部分揭盲只保证 sidecar 的 exact scope，不保证未披露 slot 抵抗合作网络等
+  外部推断；发布前应执行团队级隐私检查。签名也不证明披露出于自愿。
 - 身份 sidecar 的 exact-release 作用域不会扩张到另一篇论文；但若两篇论文
   复用同一公开密钥，key ID 等值本身已形成可观察链接。无关 lineage 默认
   使用独立密钥，并可在发布前运行 `audit-key-reuse`。

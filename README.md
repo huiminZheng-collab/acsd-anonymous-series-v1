@@ -6,6 +6,14 @@ adversarial corpus, and a Lean model for a narrow question: what exact research
 objects did a declared set of pseudonymous keys jointly approve, and which
 carefully limited conclusions follow from that evidence?
 
+**Discovery terms:** anonymous research release; scholarly communication;
+research provenance; authorship governance; digital signatures; RFC 3161
+timestamping; cryptographic protocol; formal verification; Lean 4.
+For the GitHub repository's separately managed **Topics** field, use:
+`anonymous-research`, `scholarly-communication`, `research-provenance`,
+`authorship`, `digital-signatures`, `rfc3161`, `timestamping`,
+`cryptographic-protocols`, `formal-verification`, and `lean4`.
+
 ## Motivation
 
 During the interval before an arXiv submission becomes publicly available -
@@ -104,15 +112,138 @@ control and a separate backup plan. The current profile is not an OS keystore,
 HSM, malware defense, or unattended-signing solution; see
 [`design/KEY-PROTECTION.md`](design/KEY-PROTECTION.md).
 
-For coauthors signing on separate machines, use the staged flow:
+For coauthors signing on separate machines, the corresponding author supplies
+only their public keys, in byline order. The CLI generates and validates
+`team.json`; nobody has to hand-edit protocol JSON:
 
 ```text
-acsd init paper.pdf --team team.json --out release-dir
-acsd approve release-dir --key author-a.key
-acsd approve release-dir --key author-b.key
+acsd init paper.pdf --public-key author-a.pub --public-key author-b.pub \
+  --role first-author --role senior-author --corresponding 1 \
+  --contribution 1:conceptualization --contribution 2:supervision \
+  --ai-tool ChatGPT --ai-purpose brainstorming --ai-reviewed-by 1 \
+  --out release-dir
+acsd author-approve release-dir --key author-a.key
+acsd author-approve release-dir --key author-b.key
 acsd finalize release-dir
 acsd verify release-dir
 ```
+
+`author-approve` validates the package, shows the same signing checklist as the
+read-only `review` command, identifies the author's exact slot from the private
+key, and requires the author to type `APPROVE` before writing a signature.
+Noninteractive automation must opt out explicitly with `--yes`; `--json`
+without `--yes` fails closed. `review` itself never loads a private key and
+never changes the package. Both commands show the manuscript
+digest and size, ordered byline and roles, corresponding-author choice, AI-use
+declaration, claim policy, lineage edge, and exact approval-target digest. It is
+the recommended signing surface for each author. Existing advanced users may
+still use separate `review` and `approve` commands or pass a reviewed
+`--team team.json` declaration.
+
+AI use is declared only when both a tool and a purpose are supplied. Repeat
+`--ai-tool` and `--ai-purpose` as needed; `--ai-reviewed-by` records a 1-based
+author slot that performed human review. These facts and repeatable
+`SLOT:CONTRIBUTION` declarations are inside the exact approval target, so every
+author sees and approves the same statement.
+
+When authors are on separate machines, the corresponding author need not send
+the mutable working directory or ask anyone to copy signature files by hand:
+
+```text
+# corresponding author
+acsd export-approval-request release-dir --for-author <author-b-key-id> \
+  --out author-b-request
+
+# author B, on another machine
+acsd respond-approval-request author-b-request --key author-b.key \
+  --out author-b-response
+
+# corresponding author
+acsd import-approval-response release-dir author-b-response
+```
+
+The request is a private-key-free snapshot with a strict SHA-256 manifest. The
+response contains only a canonical routing record and the exact COSE approval;
+it does not return the author's private key or a second mutable release tree.
+Both sides revalidate the manuscript, protocol bindings, requested author slot,
+and approval-target digest. Rewriting a transport manifest cannot make a
+modified manuscript satisfy the signed target. An author may add
+`--delegate-public-key coordinator-agent.pub` while responding; the returned
+response then contains the author-signed exact-target delegation. The
+coordinator can exercise it without copying an author key ID by supplying the
+agent key to `coordinator-finalize`.
+
+These are directory packages rather than a custom archive format. They can be
+transported directly or compressed by the user's file-transfer tool and
+extracted before verification. ACSD intentionally does not parse untrusted ZIP
+files in this profile, avoiding a second archive-security surface.
+
+For a larger team, the coordinator can batch the same protocol:
+
+```text
+acsd export-approval-requests release-dir --out requests
+# Send each slot-* child directory to that author; collect returned response
+# directories immediately below responses/.
+acsd import-approval-responses release-dir --from-dir responses
+```
+
+Batch import is transactional: every response is verified in a same-parent
+staging copy, and the live candidate is replaced only after all responses pass.
+A duplicate author, forged signature, wrong target, malformed response, or
+failed manifest leaves the original candidate unchanged.
+
+The coordinator may combine batch import and finalization:
+
+```text
+acsd coordinator-finalize release-dir --responses-dir responses \
+  --delegate-key coordinator-agent.key \
+  --tsa https://tsa.example/tsr
+```
+
+This operation is also transactional across response validation and RFC 3161
+acquisition. It refuses to run without either `--tsa` or the explicit downgrade
+`--allow-untimestamped`; absence of an option never silently becomes a timeless
+release. This command prepares and timestamps a local artifact only. It does
+not upload, push, or submit it.
+
+The corresponding author may perform all package assembly, timestamping, and
+publication without receiving coauthor private keys. If a coauthor explicitly
+wants the corresponding author to exercise a lower-authority key, ACSD supports
+an exact-target, non-redelegable approval capability. The coauthor signs the
+capability with the author key; the coordinator holds only the distinct agent
+key:
+
+```text
+acsd init paper.pdf --public-key author-a.pub --public-key author-b.pub \
+  --out release-dir \
+  --allow-delegated-approval
+acsd author-approve release-dir --key author-b.key \
+  --delegate-public-key coordinator-agent.pub
+acsd coordinator-finalize release-dir \
+  --delegate-key coordinator-agent.key \
+  --tsa https://tsa.example/tsr
+```
+
+`--delegate-key` discovers every still-pending exact delegation addressed to
+that key and signs them in the same staging transaction. Multiple agent keys
+may be supplied by repeating the option. `approve-delegations` provides the
+same automatic discovery as a separate transactional step when finalization is
+not yet desired; `approve-as --for-author` remains an advanced single-slot
+interface.
+
+The capability is bound to the complete approval-target digest, including the
+exact manuscript, WorkID, version, governance, PEC, and optional lineage edge.
+It cannot authorize another draft, lineage transition, identity disclosure, or
+further delegation. Verification reports `direct` versus `delegated` per author.
+An all-direct set may establish `KEY_ASSENT` and `GOVERNANCE_ASSENT`; a mixed set
+establishes the narrower `AUTHORIZED_TARGET_APPROVAL`, not a claim that every
+author personally operated a key on the final target. See
+[`design/DELEGATED-APPROVAL.md`](design/DELEGATED-APPROVAL.md).
+
+For a successor, delegated child approval never substitutes for predecessor
+authority. The old author threshold must additionally run `authorize` on the
+exact lineage transition; a future one-screen client can combine these two
+author confirmations without combining their protocol meanings.
 
 ## Authorized revisions
 
@@ -268,7 +399,11 @@ acsd verify-identity-set release-dir \
 The result means that the exact key assigned to that release slot assented to
 the displayed mapping. It does not verify a natural person or venue status.
 Partial slot disclosure is never reported as a complete byline; conflicting
-same-slot assertions have no automatically selected winner. Without
+assertions do not acquire a protocol-selected winner. A malicious or compromised
+slot key can sign a false name, and external collaboration clues may identify
+undisclosed teammates. Publishing a sidecar is therefore practically irreversible:
+inspect its exact release, slot and assertion, and review team-level privacy,
+before making it public. Without
 `--require-full-byline`, a valid partial set exits 0 and is explicitly labeled
 `PARTIAL_BYLINE_KEY_ASSENT`; with it, a missing slot exits 5.
 
@@ -289,10 +424,14 @@ Linux/macOS:
 The authoritative `check.py` gate is read-only and finishes by comparing all
 source-tree file hashes with its starting snapshot. It contains:
 
-- 30/30 source, package, installed-wheel, differential, formal, and byte-identity
+- 31/31 source, package, installed-wheel, differential, formal, and byte-identity
   checks passing as one command;
-- 176 Python test methods, with three environment-dependent capability cases
+- 195 Python test methods, with three environment-dependent capability cases
   skipped locally;
+- a scripted three-author role evaluation with two direct approvals, one exact
+  delegation, seven post-key-setup commands, no JSON edits, no private-key
+  transfers, no copied protocol identifiers, and atomic rollback after a
+  returned signature is corrupted and its transport manifest regenerated;
 - 64 fixed Python-Node canonical-JSON vectors with no unexpected divergence;
 - 1,000 seeded generated differential cases with 1,000 byte and verdict
   agreements;
@@ -348,8 +487,10 @@ source-tree file hashes with its starting snapshot. It contains:
 
 The GitHub workflow runs the Python/Node gate on Windows, macOS, and Linux,
 including the declared Python 3.9 minimum dependency set, builds a wheel and
-executes its installed console script outside the source tree, builds and
-self-verifies a temporary immutable evidence package, verifies the frozen v3
+executes its installed console script outside the source tree through genesis,
+authorized revision, exact-parent verification, same-line key audit, and
+successor-sidecar verification; it then builds and self-verifies a temporary
+immutable evidence package, verifies the frozen v3
 manifests, and uses the
 official Lean action with an axiom audit. The checked-in freeTSA receipt is
 verified offline in ordinary CI; acquisition and any fresh live-service probe
@@ -400,8 +541,12 @@ remain opt-in because CI must not depend on network availability.
   prior-art-bounded v5 theory route and its completed smallest validation;
 - `design/DOUBLE-BLIND-SUBMISSION-PLAN.md`: an isolated future review-package
   plan that does not alter the public evidence release;
+- `design/CLI-PRODUCTIZATION-AUDIT.md`: the bounded installed-command workflow
+  and its explicit key-custody/usability boundary;
 - `v1-fixture/`: frozen standalone/series/cyclic-citation reference corpus;
 - `paper/acsd-v4.tex`: content-anonymous manuscript source;
+- `paper/acsd-acsac.tex`: thin IEEE conference-format entry point over the
+  same source (no duplicated manuscript);
 - `release-v4.0.0-rc1/`: current self-contained deterministic release candidate
   once built locally; `release-v3.3.0-rc1/`, `release-v3.2.0-rc1/`,
   `release-v3.1.0-rc1/`, `release-v3.0.0/`, and the earlier
@@ -426,8 +571,28 @@ The benchmark prints fresh measurements without modifying the frozen release
 report.  A maintainer can deliberately refresh that report with
 `python design/benchmark_core.py --output design/performance_report.json`.
 
+The manuscript has two local renderings from one scientific source:
+
+```text
+latexmk -pdf -outdir=paper/build paper/acsd-v4.tex
+latexmk -pdf -outdir=paper/build paper/acsd-acsac.tex
+```
+
+The second is a planning build against the verified ACSAC 2026 format, not a
+claim about a future call and not a submission action.
+
 No command in this README uploads a paper, pushes Git, creates a DOI, or submits
 to a venue.  Those remain separate, explicitly authorized actions.
+
+## Comparative evaluation
+
+The [security and operational-cost report](design/COMPARATIVE-EVALUATION.md)
+includes actual GnuPG 2.4.9, an independent detached-Ed25519 client, and ACSD:
+18 input/team/recipe configurations, 90 measured samples plus 18 warm-ups,
+full command logs, artifact sizes, and adversarial successor/disclosure cases.
+A separate experiment measures offline verification of a real RFC 3161 receipt.
+The report distinguishes measured client costs from unmeasured archival/network
+services and records a successful manual-signature authorization baseline.
 
 ## License and citation
 

@@ -100,6 +100,47 @@ as did the RATS differential, and the final read-only gate passed all 30
 checks. Future grammar-specific parsing remains local; only shape/type
 primitives are shared.
 
+## Subject-bound theorem gate
+
+Checked 2026-09-15. The generic multi-premise calculus originally established
+only that a selected rule has all of its named premises. It did not state why
+those premises could not support a different subject. The smallest meaningful
+addition is therefore a profile whose finite rules have two explicit side
+conditions: each rule has a premise, and every premise matches the subject of
+that rule's conclusion.
+
+`ACSD.SubjectBoundEvidence` proves, for every derivation in such a profile:
+
+1. at least one evidence fact in the supplied closed evidence list matches the
+   exact subject of the derived conclusion; and
+2. if no supplied fact matches that subject, the conclusion is not derivable.
+
+The abstract RATS appraisal instance satisfies those side conditions and
+therefore reuses both theorems. Its existing five-premise theorems remain the
+stronger domain result: the generic theorem only supplies “some
+subject-matched support”, while the RATS rule proves the necessity of each
+named token, measurement, nonce, reference, and verifier-policy fact.
+
+| Route | Target or obstruction | Evidence | Missing check | Cost | Status |
+|---|---|---|---|---|---|
+| Add a finite subject-bound profile theorem | Make the exact-subject invariant explicit outside one hand-written instance | Lean build; RATS instantiates both the support and no-support theorems; each new theorem has no `sorry`/`admit` and its audit reports only `propext` | An independently motivated third profile, if a broader reuse claim is ever needed | low | attempted |
+| Re-encode every ACSD appraisal witness as a finite generic rule | The rules would have to be generated from the supplied evidence, because `AppraisedAtom` contains unbounded digests and certificates | Inspection of `AppraisalDerives` and `AppraisedAtom` | None: this would mechanically restate an evidence member as its own rule | low | ruled out |
+| Replace ACSD's typed appraisal schema with a predicate-rule language | Could express the existing ACSD witness schema directly, but would mostly rename `AppraisalDerives` and enlarge the model | The concrete schema already proves exact support, component support, typed incompatibility, and checker soundness | A distinct security property that the current typed schema cannot state | medium | ruled out |
+| Claim a new authorization logic or theorem contribution | Existing trust-management and provenance work remains substantially broader | Prior-art boundary above; the two new statements are conditional invariants, not a new primitive | A genuine new property and a third non-isomorphic use case | high | ruled out |
+
+This gate therefore treats the profile as a useful formal-engineering boundary,
+not as a v5 paper contribution. It has no wire-format, CLI, or frozen-v4
+release effect.
+
+### Subject-bound pre-mortem
+
+| Likely failure | Early warning | Mitigation / stop rule |
+|---|---|---|
+| The profile is described as a new authorization language | Draft prose says it supersedes SecPAL, RT, or FLAC | Keep the module and manuscript language to finite nondelegating profiles and conditional invariants |
+| An ACSD “instance” is only generated from its own evidence list | Each purported generic rule contains a concrete `AppraisedAtom` from the input | Do not add or count that mapping; retain the direct typed ACSD proof |
+| Generic support weakens a stronger domain claim | A RATS or ACSD theorem is replaced by merely existential support | Keep the existing named-premise and typed-incompatibility theorems alongside the generic result |
+| Formal work leaks into the release protocol | New JSON fields, CLI flags, or verification outcomes appear | Stop; this module is proof-only infrastructure |
+
 ## Pre-mortem
 
 | Likely failure | Early warning | Mitigation / stop rule |

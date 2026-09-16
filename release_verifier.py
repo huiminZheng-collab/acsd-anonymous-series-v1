@@ -10,6 +10,7 @@ import re
 from pathlib import Path
 
 import approval_set
+from approval_delegation_adapter import verify_approval_records
 import appraisal_transcript
 import claim_derivation as claim_core
 import cose
@@ -115,35 +116,27 @@ def verify_release_dir(
         return EXIT_VERIFY_FAIL, "TAMPERED", {"error_code": str(exc)}
 
     key_ids = sorted(adapted["author_key_ids"])
-    target_bytes = canonical(target)
+    try:
+        for key_id in key_ids:
+            load_bound_public_key(root, key_id)
+    except (OSError, ValueError) as exc:
+        return EXIT_VERIFY_FAIL, "TAMPERED", {"error_code": str(exc)}
     valid = {}
     approval_certificate_digests = {}
-    for key_id in key_ids:
-        approval_path = root / f"approvals/{key_id}.cose"
-        try:
-            public_key = load_bound_public_key(root, key_id)
-        except ValueError as exc:
-            return EXIT_VERIFY_FAIL, "TAMPERED", {"error_code": str(exc)}
-        if not approval_path.exists():
-            continue
-        try:
-            approval_bytes = approval_path.read_bytes()
-            cose.cose_verify(
-                approval_bytes,
-                public_key,
-                expected_payload=target_bytes,
-            )
-            valid[key_id] = True
-            approval_certificate_digests[key_id] = hashlib.sha256(
-                approval_bytes
-            ).hexdigest()
-        except ValueError as exc:
-            return EXIT_VERIFY_FAIL, "TAMPERED", {"error_code": str(exc)}
-        except Exception:
-            return EXIT_VERIFY_FAIL, "TAMPERED", {
-                "error_code": "APPROVAL_SIGNATURE_INVALID"
-            }
-    missing = [key_id for key_id in key_ids if not valid.get(key_id)]
+    try:
+        approval_records, missing = verify_approval_records(root, key_ids, target)
+    except (OSError, ValueError) as exc:
+        return EXIT_VERIFY_FAIL, "TAMPERED", {"error_code": str(exc)}
+    except Exception:
+        return EXIT_VERIFY_FAIL, "TAMPERED", {
+            "error_code": "APPROVAL_SIGNATURE_INVALID"
+        }
+    for record in approval_records:
+        key_id = record["author_key_id"]
+        valid[key_id] = True
+        approval_certificate_digests[key_id] = hashlib.sha256(
+            record["approval_bytes"]
+        ).hexdigest()
     permitted = pec["claim_policy"]["permitted_outcomes"]
     claim_core.permitted_claims(permitted)
     appraised_evidence = []
@@ -155,6 +148,13 @@ def verify_release_dir(
         "approval_target_digest": digest(target),
         "state": state.get("state"),
         "missing_approvals": missing,
+        "approval_modes": {
+            record["author_key_id"]: {
+                "mode": record["mode"],
+                "signer_key_id": record["signer_key_id"],
+            }
+            for record in approval_records
+        },
         "granted_outcomes": [],
         "non_claims": pec["claim_policy"]["global_non_claims"],
     }
@@ -178,7 +178,13 @@ def verify_release_dir(
             "error_code": "PARENT_PIN_MISMATCH",
         }
     try:
-        lineage_result = verify_lineage_authorization(root, lineage, set(valid))
+        direct_approvals = {
+            record["author_key_id"] for record in approval_records
+            if record["mode"] == "direct"
+        }
+        lineage_result = verify_lineage_authorization(
+            root, lineage, direct_approvals
+        )
     except ValueError as exc:
         if str(exc) == "UNAUTHORIZED_SUCCESSOR":
             data["lineage_status"] = "UNAUTHORIZED_SUCCESSOR"
@@ -202,26 +208,31 @@ def verify_release_dir(
     )
     separate_lineage_keys = (
         lineage_result["valid"]
-        if lineage is not None
-        and lineage["parent_authority"] != lineage["child_authority"]
-        else []
+        if lineage_result["authorization_directory"] is not None else []
     )
     approval_set_path = root / "approval/approval-set.json"
     approval_set_obj = None
     if approval_set_path.exists():
         try:
             approval_set_obj = read_canonical(approval_set_path)
-            approval_set.verify(
-                approval_set_obj,
-                root,
-                target,
-                key_ids,
-                separate_lineage_keys,
-                lineage_directory=(
-                    lineage_result["authorization_directory"]
-                    or "lineage/authorizations"
-                ),
-            )
+            if approval_set_obj.get("schema") == approval_set.DELEGATION_AWARE_SCHEMA:
+                approval_set.verify_with_approval_records(
+                    approval_set_obj, root, target, approval_records,
+                    separate_lineage_keys,
+                    lineage_directory=(
+                        lineage_result["authorization_directory"]
+                        or "lineage/authorizations"
+                    ),
+                )
+            else:
+                approval_set.verify(
+                    approval_set_obj, root, target, key_ids,
+                    separate_lineage_keys,
+                    lineage_directory=(
+                        lineage_result["authorization_directory"]
+                        or "lineage/authorizations"
+                    ),
+                )
         except (OSError, ValueError) as exc:
             return EXIT_VERIFY_FAIL, "TAMPERED", {
                 **data,
@@ -242,17 +253,30 @@ def verify_release_dir(
         if approval_set_obj is not None
         else digest({
             "target_digest": digest(target),
-            "approval_certificate_digests": [
+            "approval_records": [
                 {
-                    "key_id": key_id,
-                    "sha256": approval_certificate_digests[key_id],
+                    "author_key_id": record["author_key_id"],
+                    "signer_key_id": record["signer_key_id"],
+                    "mode": record["mode"],
+                    "approval_sha256": hashlib.sha256(
+                        record["approval_bytes"]
+                    ).hexdigest(),
+                    "delegation_sha256": (
+                        hashlib.sha256(record["delegation_bytes"]).hexdigest()
+                        if record["delegation_bytes"] is not None else None
+                    ),
                 }
-                for key_id in key_ids
+                for record in approval_records
             ],
         })
     )
+    approval_evidence_kind = (
+        claim_core.EvidenceKind.UNANIMOUS_APPROVAL
+        if all(record["mode"] == "direct" for record in approval_records)
+        else claim_core.EvidenceKind.AUTHORIZED_APPROVAL
+    )
     appraised_evidence.append(claim_core.AppraisedEvidence(
-        claim_core.EvidenceKind.UNANIMOUS_APPROVAL,
+        approval_evidence_kind,
         claim_core.ApprovalTargetSubject(digest(target)),
         approval_support_digest,
     ))

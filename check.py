@@ -17,7 +17,7 @@ import venv
 
 ROOT = pathlib.Path(__file__).resolve().parent
 WHEEL_INPUTS = (
-    "pyproject.toml", "README.md", "LICENSE", "acsd.py", "acsd_version.py", "approval_set.py", "appraisal_transcript.py", "artifact_io.py",
+    "pyproject.toml", "README.md", "LICENSE", "acsd.py", "acsd_version.py", "approval_set.py", "approval_delegation.py", "approval_delegation_adapter.py", "approval_exchange.py", "appraisal_transcript.py", "artifact_io.py",
     "bundle_validation.py", "canonical_json.py", "claim_derivation.py", "cli_output.py", "cose.py", "event_disclosure.py", "identity_disclosure.py", "key_identity.py",
     "key_material.py", "legacy_adapter.py", "lineage_adapter.py", "linkability_audit.py", "package_manifest.py", "pec_core.py", "protocol_objects.py", "release_adapter.py", "release_verifier.py", "tsa.py", "verification_transcript.py",
     "lineage_verification_transcript.py",
@@ -65,6 +65,9 @@ def _acsd_in(venv_dir: pathlib.Path) -> pathlib.Path:
 
 
 def _installed_cli_e2e(temp: pathlib.Path, wheel: pathlib.Path, env):
+    from key_identity import key_id_of
+    from key_material import load_public_key_bytes
+
     venv_dir = temp / "venv"
     venv.EnvBuilder(with_pip=True, system_site_packages=True).create(venv_dir)
     python = _python_in(venv_dir)
@@ -103,11 +106,43 @@ def _installed_cli_e2e(temp: pathlib.Path, wheel: pathlib.Path, env):
         cwd=e2e,
         env=env,
     )
+    revision_paper = e2e / "paper-v2.txt"
+    revision_paper.write_text(
+        "Installed ACSD command-line revision check.\n", encoding="utf-8"
+    )
+    revision = e2e / "release-v2"
+    _run(
+        "installed-cli-revise",
+        [
+            str(acsd), "revise", str(release), str(revision_paper),
+            "--key", str(keys / "author.key"), "--out", str(revision),
+        ],
+        cwd=e2e,
+        env=env,
+    )
+    parent_release_id = json.loads(
+        (revision / "release" / "release.json").read_text(encoding="utf-8")
+    )["parent_release_id"]
+    _run(
+        "installed-cli-revision-verify-pinned-parent",
+        [
+            str(acsd), "verify", str(revision),
+            "--expected-parent-release-id", parent_release_id,
+        ],
+        cwd=e2e,
+        env=env,
+    )
+    _run(
+        "installed-cli-same-line-key-audit",
+        [str(acsd), "audit-key-reuse", str(release), str(revision)],
+        cwd=e2e,
+        env=env,
+    )
     identity_dir = e2e / "identity-sidecars"
     _run(
         "installed-cli-disclose-identity",
         [
-            str(acsd), "disclose-identity", str(release),
+            str(acsd), "disclose-identity", str(revision),
             "--key", str(keys / "author.key"),
             "--display-name", "Installed Example Author",
             "--out", str(identity_dir),
@@ -118,7 +153,7 @@ def _installed_cli_e2e(temp: pathlib.Path, wheel: pathlib.Path, env):
     _run(
         "installed-cli-verify-identity-set",
         [
-            str(acsd), "verify-identity-set", str(release),
+            str(acsd), "verify-identity-set", str(revision),
             "--disclosure", str(identity_dir / "identity-slot-1.json"),
             "--signature", str(identity_dir / "identity-slot-1.cose"),
             "--require-full-byline",
@@ -149,6 +184,78 @@ def _installed_cli_e2e(temp: pathlib.Path, wheel: pathlib.Path, env):
     _run(
         "installed-cli-key-reuse-audit",
         [str(acsd), "audit-key-reuse", str(release), str(second_release)],
+        cwd=e2e,
+        env=env,
+    )
+    _run(
+        "installed-cli-agent-keygen",
+        [str(acsd), "keygen", "--name", "coordinator-agent", "--out-dir", str(keys)],
+        cwd=e2e,
+        env=env,
+    )
+    author_public_text = (keys / "author.pub").read_text(encoding="ascii")
+    author_key_id = key_id_of(load_public_key_bytes(author_public_text.encode("ascii")))
+    delegated_paper = e2e / "delegated-paper.txt"
+    delegated_paper.write_text(
+        "Installed exact-target delegated approval check.\n", encoding="utf-8"
+    )
+    delegated_release = e2e / "delegated-release"
+    _run(
+        "installed-cli-delegated-init",
+        [
+            str(acsd), "init", str(delegated_paper),
+            "--public-key", str(keys / "author.pub"),
+            "--contribution", "1:conceptualization",
+            "--ai-tool", "installed-test-model",
+            "--ai-purpose", "workflow-testing",
+            "--ai-reviewed-by", "1",
+            "--out", str(delegated_release), "--allow-delegated-approval",
+        ],
+        cwd=e2e,
+        env=env,
+    )
+    approval_requests = e2e / "approval-requests"
+    approval_responses = e2e / "approval-responses"
+    _run(
+        "installed-cli-export-approval-requests",
+        [
+            str(acsd), "export-approval-requests", str(delegated_release),
+            "--out", str(approval_requests),
+        ],
+        cwd=e2e,
+        env=env,
+    )
+    request_entry = json.loads(
+        (approval_requests / "requests.json").read_text(encoding="utf-8")
+    )["requests"][0]
+    approval_request = approval_requests / request_entry["path"]
+    approval_responses.mkdir()
+    approval_response = approval_responses / request_entry["path"]
+    _run(
+        "installed-cli-respond-approval-request",
+        [
+            str(acsd), "respond-approval-request", str(approval_request),
+            "--key", str(keys / "author.key"),
+            "--delegate-public-key", str(keys / "coordinator-agent.pub"),
+            "--out", str(approval_response), "--yes",
+        ],
+        cwd=e2e,
+        env=env,
+    )
+    _run(
+        "installed-cli-coordinator-finalize",
+        [
+            str(acsd), "coordinator-finalize", str(delegated_release),
+            "--responses-dir", str(approval_responses),
+            "--delegate-key", str(keys / "coordinator-agent.key"),
+            "--allow-untimestamped",
+        ],
+        cwd=e2e,
+        env=env,
+    )
+    _run(
+        "installed-cli-delegated-verify",
+        [str(acsd), "verify", str(delegated_release)],
         cwd=e2e,
         env=env,
     )
@@ -218,6 +325,10 @@ def _common_checks(checks, temp, env):
             "design/recovery_precommit_report.json",
         ],
         env=env,
+    ))
+    checks.append(_run(
+        "scripted-role-evaluation",
+        [sys.executable, "design/scripted_role_evaluation.py"], env=env,
     ))
     checks.append(_run("scaling-smoke", [sys.executable, "design/benchmark_core.py"], env=env))
     checks.append(_run("v1-fixture", [sys.executable, "verify_v1_fixture.py"], env=env))

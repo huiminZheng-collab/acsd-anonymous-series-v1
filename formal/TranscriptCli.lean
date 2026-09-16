@@ -14,6 +14,7 @@ private def keyJson (key : KeyId) : Json := key.value.repr
 private def claimName : ScopedClaim → String
   | .keyAssent => "KEY_ASSENT"
   | .governanceAssent => "GOVERNANCE_ASSENT"
+  | .authorizedTargetApproval => "AUTHORIZED_TARGET_APPROVAL"
   | .committedEvidenceMatch => "COMMITTED_EVIDENCE_MATCH"
   | .slotKeyIdentityAssent => "SLOT_KEY_ASSENT_TO_IDENTITY_ASSERTION"
   | .approvalTargetExistedNotAfter => "EXTERNALLY_NOT_AFTER"

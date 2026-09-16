@@ -225,6 +225,10 @@ class TestCLISigning(unittest.TestCase):
             )
             self.assertEqual(r.returncode, 0, r.stderr)
             created = json.loads(r.stdout)["data"]
+            self.assertIn(
+                "natural_person_identity_verified", created["non_claims"]
+            )
+            self.assertIn("practically irreversible", created["safety_notice"])
             self.assertEqual((rel / "MANIFEST.sha256").read_bytes(), manifest_before)
             r = run(
                 "verify-identity", str(rel),

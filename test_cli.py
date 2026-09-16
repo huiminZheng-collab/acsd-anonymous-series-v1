@@ -1,3 +1,4 @@
+import hashlib
 import json
 import pathlib
 import subprocess
@@ -54,6 +55,105 @@ class TestCLI(unittest.TestCase):
             # no outcome has been established.
             self.assertEqual(out["data"]["granted_outcomes"], [])
             self.assertEqual(run("inspect", str(rel)).returncode, 0)
+
+    def test_init_from_ordered_public_keys_and_review(self):
+        with tempfile.TemporaryDirectory() as d:
+            d = pathlib.Path(d)
+            keys = d / "keys"
+            alice = json.loads(run(
+                "keygen", "--name", "alice", "--out-dir", str(keys), "--json"
+            ).stdout)["data"]
+            bob = json.loads(run(
+                "keygen", "--name", "bob", "--out-dir", str(keys), "--json"
+            ).stdout)["data"]
+            paper = d / "paper.txt"
+            paper.write_text("Review these exact manuscript bytes.", encoding="utf-8")
+            rel = d / "release-dir"
+            result = run(
+                "init", str(paper),
+                "--public-key", str(keys / "alice.pub"),
+                "--public-key", str(keys / "bob.pub"),
+                "--role", "first-author", "--role", "senior-author",
+                "--corresponding", "2", "--out", str(rel), "--json",
+                "--contribution", "1:conceptualization",
+                "--contribution", "2:supervision",
+                "--ai-tool", "ChatGPT",
+                "--ai-purpose", "brainstorming",
+                "--ai-reviewed-by", "1",
+            )
+            self.assertEqual(result.returncode, 0, result.stdout)
+            team = json.loads((rel / "team.json").read_text(encoding="utf-8"))
+            self.assertEqual(
+                [author["key_id"] for author in team["authors"]],
+                [alice["key_id"], bob["key_id"]],
+            )
+            self.assertEqual(
+                [author["role"] for author in team["authors"]],
+                ["first-author", "senior-author"],
+            )
+            self.assertFalse(team["authors"][0]["corresponding"])
+            self.assertTrue(team["authors"][1]["corresponding"])
+
+            result = run(
+                "review", str(rel), "--for-author", alice["key_id"], "--json"
+            )
+            self.assertEqual(result.returncode, 0, result.stdout)
+            review = json.loads(result.stdout)["data"]
+            self.assertEqual(review["verification_status"], "INCOMPLETE")
+            self.assertEqual(review["selected_author"]["slot"], 1)
+            self.assertEqual(review["manuscript_sha256"], hashlib.sha256(
+                paper.read_bytes()
+            ).hexdigest())
+            self.assertEqual(len(review["authors"]), 2)
+            self.assertIn("ordered byline", review["signature_scope"])
+            self.assertEqual(
+                review["authors"][0]["contributions"], ["conceptualization"]
+            )
+            self.assertEqual(review["ai_use_declaration"]["tools"], ["ChatGPT"])
+            self.assertEqual(
+                review["ai_use_declaration"]["human_review_key_ids"],
+                [alice["key_id"]],
+            )
+            human = run("review", str(rel), "--for-author", alice["key_id"])
+            self.assertEqual(human.returncode, 0, human.stdout)
+            self.assertIn("Ordered byline:", human.stdout)
+            self.assertIn("[selected]", human.stdout)
+            self.assertIn("AI use declared: yes", human.stdout)
+            self.assertIn("Explicit non-claims:", human.stdout)
+
+            unconfirmed = run(
+                "author-approve", str(rel), "--key", alice["private_key"], "--json"
+            )
+            self.assertEqual(unconfirmed.returncode, 2)
+            self.assertEqual(
+                json.loads(unconfirmed.stdout)["message"],
+                "APPROVAL_CONFIRMATION_REQUIRED",
+            )
+            approved = run(
+                "author-approve", str(rel), "--key", alice["private_key"],
+                "--yes", "--json",
+            )
+            self.assertEqual(approved.returncode, 0, approved.stdout)
+            approval_data = json.loads(approved.stdout)["data"]
+            self.assertEqual(approval_data["action"], "direct-approval")
+            self.assertEqual(approval_data["author_slot"], 1)
+
+    def test_public_key_team_options_fail_closed(self):
+        with tempfile.TemporaryDirectory() as d:
+            d = pathlib.Path(d)
+            keys = d / "keys"
+            run("keygen", "--name", "alice", "--out-dir", str(keys), "--json")
+            paper = d / "paper.txt"
+            paper.write_text("x", encoding="utf-8")
+            result = run(
+                "init", str(paper), "--public-key", str(keys / "alice.pub"),
+                "--role", "first", "--role", "extra", "--out", str(d / "rel"),
+                "--json",
+            )
+            self.assertEqual(result.returncode, 2)
+            self.assertEqual(
+                json.loads(result.stdout)["message"], "TEAM_ROLE_COUNT_MISMATCH"
+            )
 
     def test_tamper_detected(self):
         with tempfile.TemporaryDirectory() as d:

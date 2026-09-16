@@ -1,0 +1,81 @@
+% Data-flow diagram: arrows show construction/checking, not hash references.
+\begin{figure*}[t]
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[
+  x=1cm,y=1cm,
+  box/.style={draw=black!65,rounded corners=2pt,line width=0.65pt,
+    align=center,font=\footnotesize,inner sep=6pt,minimum height=1.05cm},
+  inputbox/.style={box,fill=blue!5,text width=3.7cm},
+  core/.style={box,fill=blue!9,text width=8.7cm},
+  side/.style={box,fill=orange!8,text width=3.7cm},
+  wide/.style={box,text width=13.7cm},
+  flow/.style={-{Latex[length=2.2mm]},line width=0.7pt,draw=black!75},
+  optional/.style={flow,dashed},
+  note/.style={font=\scriptsize,fill=white,inner sep=2pt,align=center}
+]
+  \node[inputbox] (release) at (0,0)
+    {\textbf{Release}\\Manuscript hash and version\\WorkID and author slots};
+  \node[inputbox] (gov) at (5,0)
+    {\textbf{Governance}\\Roles and corresponding author\\AI-use declaration};
+  \node[inputbox] (pec) at (10,0)
+    {\textbf{PEC}\\Event commitments\\and signed claim policy};
+
+  \node[core] (target) at (2.5,-1.9)
+    {\textbf{1.\ Joint approval target}\\Exact release, governance, PEC and transition digests};
+  \node[side] (transition) at (10,-1.9)
+    {\textbf{Successor transition}\\Exact parent and child\\Predecessor authority};
+  \draw[flow] (release.south) -- (release.south |- target.north);
+  \draw[flow] (gov.south) -- (gov.south |- target.north);
+  \draw[flow] (pec.south west) -- (target.north east);
+  \draw[flow] (transition.west) -- (target.east);
+
+  \node[core] (signatures) at (2.5,-3.6)
+    {\textbf{2.\ Required approvals}\\Author signatures or exact-target delegated approvals;\\applicable predecessor or recovery authorization};
+  \node[side] (opening) at (10,-3.6)
+    {\textbf{Later disclosure}\\Signed dialogue window\\or identity assertion};
+  \draw[flow] (target.south) -- (signatures.north);
+
+  \node[core] (closed) at (2.5,-5.3)
+    {\textbf{3.\ Completed approval set}\\Binds the exact target and all required signature bytes};
+  \node[side] (time) at (10,-5.3)
+    {\textbf{Independent time}\\RFC 3161 receipt\\Completed-set digest};
+  \draw[flow] (signatures.south) -- (closed.north);
+  \draw[optional] (closed.east) -- (time.west);
+
+  \node[wide,fill=gray!8] (adapters) at (5,-7.3)
+    {\textbf{4.\ Evidence adapters and package checks}\\
+     Canonical objects, digests, signatures, authority, timestamp and disclosure checks\\
+     \textit{Produce evidence facts for the exact subjects; retain explicit trust inputs}};
+  \draw[flow] (closed.south) -- (closed.south |- adapters.north);
+  \draw[optional] (time.south) -- (time.south |- adapters.north);
+  \draw[optional] (opening.east) -- ++(0.48,0) |- (adapters.east);
+
+  \node[wide,fill=teal!8,draw=teal!65!black,line width=1pt] (lean) at (5,-9.3)
+    {\textbf{5.\ Formal claim boundary (Lean)}\\
+     Strict transcript decoding $\longrightarrow$ executable checks
+     $\longrightarrow$ typed derivations\\
+     Policy permission $\land$ compatible evidence $\land$ exact subject\\
+     \textit{Theorems: authorization, non-reuse and scope non-amplification}};
+  \draw[flow] (adapters.south) -- node[note,right]{claim-free transcript} (lean.north);
+
+  \node[wide,fill=teal!3] (claims) at (5,-11.25)
+    {\textbf{Precisely scoped outcomes}\\
+     Joint key assent \quad Authorized successor \quad Approval-set not-after time\\
+     Committed dialogue match \quad Partial or full byline key assent};
+  \draw[flow] (lean.south) -- (claims.north);
+  \node[font=\scriptsize,align=center] at (5,-12.65)
+    {Solid arrows: construction or verification flow.\quad
+     Dashed arrows: optional time/disclosure paths.\\
+     The optional series layer resolves completed releases; it does not gate single-paper verification.};
+\end{tikzpicture}
+}
+\caption{ACSD architecture from committed objects to justified claims.
+Successors use an exact predecessor-authorized transition; genesis has no
+transition. The completed approval set is the timestamp subject.
+Later disclosures retain their original PEC/event or release/slot scope.
+The Lean boundary consumes checked adapter facts; it does not independently
+establish those facts. Diagram arrows show data flow, unlike the commitment
+arrows in Figure~\ref{fig:two-graphs}.}
+\label{fig:architecture}
+\end{figure*}

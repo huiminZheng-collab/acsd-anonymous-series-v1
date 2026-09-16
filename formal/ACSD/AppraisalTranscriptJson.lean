@@ -70,6 +70,7 @@ private def appraisalClaim (json : Json) : Except String ScopedClaim := do
   match ← appraisalRemap "APPRAISAL_TRANSCRIPT_POLICY" json.getStr? with
   | "KEY_ASSENT" => pure .keyAssent
   | "GOVERNANCE_ASSENT" => pure .governanceAssent
+  | "AUTHORIZED_TARGET_APPROVAL" => pure .authorizedTargetApproval
   | "COMMITTED_EVIDENCE_MATCH" => pure .committedEvidenceMatch
   | "EXTERNALLY_NOT_AFTER" => pure .approvalTargetExistedNotAfter
   | "APPROVAL_SET_EXISTED_NOT_AFTER" => pure .approvalSetExistedNotAfter
@@ -81,6 +82,7 @@ private def appraisalClaim (json : Json) : Except String ScopedClaim := do
 def appraisalClaimOrder : List ScopedClaim := [
   .keyAssent,
   .governanceAssent,
+  .authorizedTargetApproval,
   .committedEvidenceMatch,
   .approvalTargetExistedNotAfter,
   .approvalSetExistedNotAfter,
@@ -92,6 +94,7 @@ def appraisalClaimOrder : List ScopedClaim := [
 private def appraisalEvidenceKind (json : Json) : Except String EvidenceKind := do
   match ← appraisalRemap "APPRAISAL_TRANSCRIPT_EVIDENCE_KIND" json.getStr? with
   | "UNANIMOUS_APPROVAL" => pure .unanimousApproval
+  | "AUTHORIZED_APPROVAL" => pure .authorizedDelegatedApproval
   | "EVENT_DISCLOSURE" => pure .eventDisclosure
   | "APPROVAL_TARGET_TIMESTAMP" => pure .approvalTargetTimestamp
   | "APPROVAL_SET_TIMESTAMP" => pure .approvalSetTimestamp

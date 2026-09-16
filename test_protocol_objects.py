@@ -63,6 +63,32 @@ class TestProtocolObjects(unittest.TestCase):
         )
         self.assertEqual(team["authors"][0]["contributions"], ["conceptualization"])
 
+    def test_custom_ai_declaration_is_exact_and_validated(self):
+        declaration = {
+            "used": True,
+            "purposes": ["brainstorming"],
+            "tools": ["model-x"],
+            "human_review_key_ids": ["a" * 64],
+        }
+        release = protocol_objects.build_release(
+            "urn:uuid:ai", "4" * 64, "paper/ai.txt", self.team(),
+            ai_use=declaration,
+        )
+        governance = protocol_objects.build_governance(
+            "urn:uuid:ai", "4" * 64, self.team(), ai_use=declaration
+        )
+        self.assertEqual(release["ai_use"], declaration)
+        self.assertEqual(governance["ai_use_declaration"], declaration)
+        declaration["tools"].append("later-mutation")
+        self.assertEqual(release["ai_use"]["tools"], ["model-x"])
+        with self.assertRaisesRegex(ValueError, "AI_USE_DETAILS_REQUIRED"):
+            protocol_objects.normalize_ai_use_declaration({
+                "used": True,
+                "purposes": [],
+                "tools": ["model-x"],
+                "human_review_key_ids": [],
+            }, ["a" * 64])
+
 
 if __name__ == "__main__":
     unittest.main()

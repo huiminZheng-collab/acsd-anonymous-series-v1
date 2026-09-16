@@ -1,0 +1,186 @@
+{
+  "scope": "offline real RFC3161 receipt; same parser and signer pin; process startup included",
+  "network_requests": 0,
+  "samples": [
+    {
+      "recipe": "acsd-binding-plus-receipt",
+      "repetition": -1,
+      "warmup": true,
+      "ms": 286.9078000076115,
+      "command": [
+        "<PYTHON>",
+        "design/timestamp_comparison.py",
+        "--worker",
+        "acsd-binding-plus-receipt"
+      ],
+      "returncode": 0
+    },
+    {
+      "recipe": "receipt-only",
+      "repetition": -1,
+      "warmup": true,
+      "ms": 287.93449999648146,
+      "command": [
+        "<PYTHON>",
+        "design/timestamp_comparison.py",
+        "--worker",
+        "receipt-only"
+      ],
+      "returncode": 0
+    },
+    {
+      "recipe": "receipt-only",
+      "repetition": 0,
+      "warmup": false,
+      "ms": 289.32360000908375,
+      "command": [
+        "<PYTHON>",
+        "design/timestamp_comparison.py",
+        "--worker",
+        "receipt-only"
+      ],
+      "returncode": 0
+    },
+    {
+      "recipe": "acsd-binding-plus-receipt",
+      "repetition": 0,
+      "warmup": false,
+      "ms": 336.66879998054355,
+      "command": [
+        "<PYTHON>",
+        "design/timestamp_comparison.py",
+        "--worker",
+        "acsd-binding-plus-receipt"
+      ],
+      "returncode": 0
+    },
+    {
+      "recipe": "acsd-binding-plus-receipt",
+      "repetition": 1,
+      "warmup": false,
+      "ms": 324.9842999794055,
+      "command": [
+        "<PYTHON>",
+        "design/timestamp_comparison.py",
+        "--worker",
+        "acsd-binding-plus-receipt"
+      ],
+      "returncode": 0
+    },
+    {
+      "recipe": "receipt-only",
+      "repetition": 1,
+      "warmup": false,
+      "ms": 290.4497999988962,
+      "command": [
+        "<PYTHON>",
+        "design/timestamp_comparison.py",
+        "--worker",
+        "receipt-only"
+      ],
+      "returncode": 0
+    },
+    {
+      "recipe": "receipt-only",
+      "repetition": 2,
+      "warmup": false,
+      "ms": 258.3710999751929,
+      "command": [
+        "<PYTHON>",
+        "design/timestamp_comparison.py",
+        "--worker",
+        "receipt-only"
+      ],
+      "returncode": 0
+    },
+    {
+      "recipe": "acsd-binding-plus-receipt",
+      "repetition": 2,
+      "warmup": false,
+      "ms": 294.93569998885505,
+      "command": [
+        "<PYTHON>",
+        "design/timestamp_comparison.py",
+        "--worker",
+        "acsd-binding-plus-receipt"
+      ],
+      "returncode": 0
+    },
+    {
+      "recipe": "acsd-binding-plus-receipt",
+      "repetition": 3,
+      "warmup": false,
+      "ms": 274.70540002104826,
+      "command": [
+        "<PYTHON>",
+        "design/timestamp_comparison.py",
+        "--worker",
+        "acsd-binding-plus-receipt"
+      ],
+      "returncode": 0
+    },
+    {
+      "recipe": "receipt-only",
+      "repetition": 3,
+      "warmup": false,
+      "ms": 272.15100001194514,
+      "command": [
+        "<PYTHON>",
+        "design/timestamp_comparison.py",
+        "--worker",
+        "receipt-only"
+      ],
+      "returncode": 0
+    },
+    {
+      "recipe": "receipt-only",
+      "repetition": 4,
+      "warmup": false,
+      "ms": 259.4816999917384,
+      "command": [
+        "<PYTHON>",
+        "design/timestamp_comparison.py",
+        "--worker",
+        "receipt-only"
+      ],
+      "returncode": 0
+    },
+    {
+      "recipe": "acsd-binding-plus-receipt",
+      "repetition": 4,
+      "warmup": false,
+      "ms": 279.1338000097312,
+      "command": [
+        "<PYTHON>",
+        "design/timestamp_comparison.py",
+        "--worker",
+        "acsd-binding-plus-receipt"
+      ],
+      "returncode": 0
+    }
+  ],
+  "summary": {
+    "receipt-only": {
+      "median_ms": 272.15100001194514,
+      "min_ms": 258.3710999751929,
+      "max_ms": 290.4497999988962,
+      "stdev_ms": 15.52305592774853
+    },
+    "acsd-binding-plus-receipt": {
+      "median_ms": 294.93569998885505,
+      "min_ms": 274.70540002104826,
+      "max_ms": 336.66879998054355,
+      "stdev_ms": 27.60402925974374
+    }
+  },
+  "receipt_bytes": 4649,
+  "fixture_hashes": {
+    "report.json": "391eb2bfc474b8b9601b1fbfdeeb52deb1514376dc58462ed95bdd0d6b2e8b4d",
+    "request.tsq": "5946b415eb1fe9b2ab37e35773387ed2d49d8c64a106e25c3cf1d6e5cd0808dc",
+    "response.tsr": "b19285ed4e8680df7b3f04e0060311abe649d15ca07d51dae4961f44e7aecd2f",
+    "tsa-cert.der": "32e841a95cc1164101ffde41298ef2fc75c1c4372ef095e88a6bbd47dfb191fc"
+  },
+  "runner_sha256": "c94f338834c997ddcb67e5dac0649ca86b5cb61d3ab8fa6a5a9fbcd3dff2979a",
+  "security_check_stdout": "",
+  "security_check_stderr": "test_real_fixture_verifies_offline_with_explicit_pin (test_time_evidence.TestTimeEvidence.test_real_fixture_verifies_offline_with_explicit_pin) ... ok\r\ntest_response_mutation_is_rejected (test_time_evidence.TestTimeEvidence.test_response_mutation_is_rejected) ... ok\r\ntest_wrong_trust_pin_is_rejected (test_time_evidence.TestTimeEvidence.test_wrong_trust_pin_is_rejected) ... ok\r\ntest_non_tstinfo_econtent_is_rejected_before_signature_use (test_tsa_security.TestTSASecurity.test_non_tstinfo_econtent_is_rejected_before_signature_use) ... ok\r\ntest_package_certificate_is_not_implicitly_trusted (test_tsa_security.TestTSASecurity.test_package_certificate_is_not_implicitly_trusted) ... ok\r\ntest_request_and_response_nonce_are_bound (test_tsa_security.TestTSASecurity.test_request_and_response_nonce_are_bound) ... ok\r\ntest_signature_algorithm_identifier_must_match_key_and_digest (test_tsa_security.TestTSASecurity.test_signature_algorithm_identifier_must_match_key_and_digest) ... ok\r\ntest_timestamping_eku_must_be_present_critical_and_exclusive (test_tsa_security.TestTSASecurity.test_timestamping_eku_must_be_present_critical_and_exclusive) ... ok\r\ntest_wrong_exact_signer_pin_is_rejected (test_tsa_security.TestTSASecurity.test_wrong_exact_signer_pin_is_rejected) ... ok\r\ntest_wrong_nonce_is_rejected (test_tsa_security.TestTSASecurity.test_wrong_nonce_is_rejected) ... ok\r\ntest_path_like_key_id_is_rejected_before_file_access (test_approval_set.TestApprovalSet.test_path_like_key_id_is_rejected_before_file_access) ... ok\r\ntest_pure_builder_matches_filesystem_adapter (test_approval_set.TestApprovalSet.test_pure_builder_matches_filesystem_adapter) ... ok\r\ntest_round_trip_closes_exact_signature_bytes (test_approval_set.TestApprovalSet.test_round_trip_closes_exact_signature_bytes) ... ok\r\ntest_signature_added_after_timestamp_changes_set_digest (test_approval_set.TestApprovalSet.test_signature_added_after_timestamp_changes_set_digest) ... ok\r\ntest_target_or_membership_substitution_is_rejected (test_approval_set.TestApprovalSet.test_target_or_membership_substitution_is_rejected) ... ok\r\ntest_unlisted_signature_file_is_rejected (test_approval_set.TestApprovalSet.test_unlisted_signature_file_is_rejected) ... ok\r\n\r\n----------------------------------------------------------------------\r\nRan 16 tests in 0.965s\r\n\r\nOK\r\n"
+}

@@ -10,6 +10,7 @@ from canonical_json import HEX, digest, require
 
 
 SCHEMA = "acsd-approval-set/v1"
+DELEGATION_AWARE_SCHEMA = "acsd-approval-set/v2"
 
 
 def _validated_key_ids(key_ids: Iterable[str]) -> List[str]:
@@ -80,6 +81,70 @@ def verify_from_signatures(
     return {"approval_set_digest": digest(obj)}
 
 
+def build_from_approval_records(
+    approval_target,
+    approval_records,
+    lineage_signatures: Mapping[str, bytes],
+):
+    """Close direct or delegated approvals over their exact evidence bytes."""
+    records = []
+    author_ids = []
+    for item in approval_records:
+        author_key_id = item["author_key_id"]
+        signer_key_id = item["signer_key_id"]
+        mode = item["mode"]
+        approval_bytes = item["approval_bytes"]
+        require(
+            isinstance(author_key_id, str) and HEX.fullmatch(author_key_id),
+            "APPROVAL_SET_KEY_ID_INVALID",
+        )
+        require(
+            isinstance(signer_key_id, str) and HEX.fullmatch(signer_key_id),
+            "APPROVAL_SET_KEY_ID_INVALID",
+        )
+        require(mode in {"direct", "delegated"}, "APPROVAL_SET_MODE_INVALID")
+        require(isinstance(approval_bytes, bytes), "APPROVAL_SET_SIGNATURE_BYTES_INVALID")
+        record = {
+            "author_key_id": author_key_id,
+            "signer_key_id": signer_key_id,
+            "mode": mode,
+            "approval_cose_sha256": hashlib.sha256(approval_bytes).hexdigest(),
+            "delegation_cose_sha256": None,
+        }
+        if mode == "direct":
+            require(author_key_id == signer_key_id, "APPROVAL_SET_DIRECT_SIGNER_MISMATCH")
+            require(item.get("delegation_bytes") is None, "APPROVAL_SET_DIRECT_HAS_DELEGATION")
+        else:
+            delegation_bytes = item.get("delegation_bytes")
+            require(author_key_id != signer_key_id, "APPROVAL_SET_DELEGATE_NOT_DISTINCT")
+            require(isinstance(delegation_bytes, bytes), "APPROVAL_SET_DELEGATION_BYTES_INVALID")
+            record["delegation_cose_sha256"] = hashlib.sha256(delegation_bytes).hexdigest()
+        records.append(record)
+        author_ids.append(author_key_id)
+    _validated_key_ids(author_ids)
+    records.sort(key=lambda item: item["author_key_id"])
+    return {
+        "schema": DELEGATION_AWARE_SCHEMA,
+        "approval_target_digest": digest(approval_target),
+        "author_approvals": records,
+        "lineage_authorizations": entries_from_signatures(lineage_signatures),
+    }
+
+
+def verify_from_approval_records(
+    obj,
+    approval_target,
+    approval_records,
+    lineage_signatures: Mapping[str, bytes],
+):
+    require(obj.get("schema") == DELEGATION_AWARE_SCHEMA, "APPROVAL_SET_SCHEMA")
+    expected = build_from_approval_records(
+        approval_target, approval_records, lineage_signatures
+    )
+    require(obj == expected, "APPROVAL_SET_EVIDENCE_MISMATCH")
+    return {"approval_set_digest": digest(obj)}
+
+
 def _require_exact_files(root: pathlib.Path, directory: str, key_ids, code: str) -> None:
     key_ids = _validated_key_ids(key_ids)
     location = root / directory
@@ -143,6 +208,54 @@ def verify(
             key_id: (root / "approvals" / f"{key_id}.cose").read_bytes()
             for key_id in author_key_ids
         },
+        {
+            key_id: (root / lineage_directory / f"{key_id}.cose").read_bytes()
+            for key_id in lineage_key_ids
+        },
+    )
+
+
+def build_with_approval_records(
+    root: pathlib.Path,
+    approval_target,
+    approval_records,
+    lineage_key_ids,
+    *,
+    lineage_directory="lineage/authorizations",
+):
+    root = pathlib.Path(root)
+    _require_exact_files(
+        root, lineage_directory, lineage_key_ids,
+        "APPROVAL_SET_LINEAGE_FILE_SET_MISMATCH",
+    )
+    return build_from_approval_records(
+        approval_target,
+        approval_records,
+        {
+            key_id: (root / lineage_directory / f"{key_id}.cose").read_bytes()
+            for key_id in lineage_key_ids
+        },
+    )
+
+
+def verify_with_approval_records(
+    obj,
+    root: pathlib.Path,
+    approval_target,
+    approval_records,
+    lineage_key_ids,
+    *,
+    lineage_directory="lineage/authorizations",
+):
+    root = pathlib.Path(root)
+    _require_exact_files(
+        root, lineage_directory, lineage_key_ids,
+        "APPROVAL_SET_LINEAGE_FILE_SET_MISMATCH",
+    )
+    return verify_from_approval_records(
+        obj,
+        approval_target,
+        approval_records,
         {
             key_id: (root / lineage_directory / f"{key_id}.cose").read_bytes()
             for key_id in lineage_key_ids
