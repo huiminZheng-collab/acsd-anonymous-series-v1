@@ -6,6 +6,10 @@ adversarial corpus, and a Lean model for a narrow question: what exact research
 objects did a declared set of pseudonymous keys jointly approve, and which
 carefully limited conclusions follow from that evidence?
 
+**New to ACSD?** Follow the [hands-on tutorial](docs/TUTORIAL.md): a five-minute
+single-author release, a corresponding-author workflow that never collects
+coauthor private keys, and independent third-party verification.
+
 **Discovery terms:** anonymous research release; scholarly communication;
 research provenance; authorship governance; digital signatures; RFC 3161
 timestamping; cryptographic protocol; formal verification; Lean 4.

@@ -1885,7 +1885,10 @@ def cmd_export_approval_requests(args):
     try:
         for author in request_authors:
             key_id = author["key_id"]
-            name = f"slot-{author['slot']:02d}-{key_id}"
+            # The request body and collection index already bind the full key
+            # identifier.  Keeping it out of the directory name avoids making
+            # otherwise portable exchanges exceed legacy Windows path limits.
+            name = f"slot-{author['slot']:02d}"
             code, message, data = cmd_export_approval_request(argparse.Namespace(
                 release_dir=str(root), for_author=key_id, out=str(staging / name)
             ))

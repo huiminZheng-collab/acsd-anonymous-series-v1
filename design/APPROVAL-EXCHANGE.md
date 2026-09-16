@@ -47,7 +47,10 @@ before ACSD verification; archive parsing is not part of the acceptance path.
 ## Coordinator batching and commit semantics
 
 `export-approval-requests` emits one child request per author who is still
-missing an action. A slot with an imported delegation but no delegated approval
+missing an action. Children use short slot-only names such as `slot-01`; the
+full author key identifier remains bound inside the request and collection
+manifest instead of lengthening every transported path. A slot with an
+imported delegation but no delegated approval
 is reported separately because the next action belongs to the coordinator's
 agent key, not to that author.
 

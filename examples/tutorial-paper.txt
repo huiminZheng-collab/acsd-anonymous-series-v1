@@ -1,0 +1,8 @@
+ACSD tutorial manuscript
+========================
+
+This is a fictional, identity-free manuscript used only to exercise the ACSD
+command-line tutorial. It makes no scientific claim and is not a publication.
+
+Claim under test: the exact bytes of this file can be bound to a pseudonymous
+author approval and checked later by an independent verifier.

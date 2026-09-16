@@ -222,6 +222,10 @@ class TestApprovalExchange(unittest.TestCase):
         )
         self.assertEqual(exported.returncode, 0, exported.stdout)
         request_entries = json.loads(exported.stdout)["data"]["requests"]
+        self.assertEqual(
+            {entry["path"] for entry in request_entries},
+            {"slot-01", "slot-02"},
+        )
         by_key = {author["key_id"]: author for author in authors}
         for entry in request_entries:
             response = responses / entry["path"]
@@ -240,10 +244,7 @@ class TestApprovalExchange(unittest.TestCase):
             responses = self._batch_responses(
                 root, release, [alice, bob], "bad-batch"
             )
-            bob_response = next(
-                child for child in responses.iterdir()
-                if bob["key_id"] in child.name
-            )
+            bob_response = responses / "slot-02"
             approval = bob_response / "approval.cose"
             damaged = bytearray(approval.read_bytes())
             damaged[-1] ^= 1
