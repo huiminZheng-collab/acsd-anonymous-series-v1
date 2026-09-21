@@ -6,6 +6,14 @@ scholarly releases, authorized version lineages, scoped disclosures, external
 time evidence, and mutual citations. The current candidate is
 [`v3.3.0-rc1/`](v3.3.0-rc1/); older releases remain frozen in place.
 
+The latest content-anonymous manuscript snapshot now has independent external
+time evidence in
+[`timestamped-paper-2026-09-21/`](timestamped-paper-2026-09-21/). Its RFC 3161
+receipt binds the exact PDF through a dedicated SHA-256 manifest and verifies
+offline against the included Sigstore TSA certificate chain. Because the
+receipt was obtained on 2026-09-21, it does not backdate the manuscript to an
+earlier repository commit.
+
 It is not author-unlinkable double-blind publication: a GitHub account, network
 metadata, timing, or a public signing key can link a release to a person. No
 claim of natural-person authorship, originality, independent discovery, peer
@@ -172,8 +180,9 @@ describes how a separately selected TSA receipt can be checked offline.
 - Current additive candidate: `v3.3.0-rc1`
 - Historical base release: `v1.0.0`
 - Anonymity level: content-anonymous only
-- Timestamp status: v3 includes one pinned freeTSA response as an
-  interoperability existence check; this is not a service-reliability claim
+- Timestamp status: the latest anonymous manuscript snapshot has a verified
+  external Sigstore RFC 3161 receipt dated 2026-09-21 05:30:27 UTC; v3 also
+  retains a pinned freeTSA response as an interoperability existence check
 - Repository status: public prepublication only; no venue submission,
   acceptance, or peer review is asserted
 - Signing status: this release manifest is hashed but not identity-signed, to
