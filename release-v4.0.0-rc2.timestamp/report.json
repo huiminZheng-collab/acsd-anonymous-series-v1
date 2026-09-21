@@ -1,0 +1,17 @@
+{
+  "authority": "DigiCert public RFC 3161 service",
+  "endpoint": "http://timestamp.digicert.com",
+  "generation_time_utc": "2026-09-21T13:38:52Z",
+  "nonce_hex": "20f22a89d9b99785",
+  "policy_oid": "2.16.840.1.114412.7.1",
+  "request_sha256": "4222c3f36ea63f5529dfc7293eeed58cf538b0e0fc839af41104b9b6c2b5d55b",
+  "response_sha256": "5d32e20fd3fbe5dd2de7ec6aa8a084bdffe5ec94f2337a14cd38406af18fc833",
+  "schema": "acsd-release-rfc3161-evidence/v1",
+  "serial_hex": "9ea95e6abc7d6eccc96d6e84642bc1ff",
+  "signer_certificate_sha256_fingerprint": "2da09da7f4131f9fe72db6c5e6e9c9656755af043f1ea742cc0d2120e141ebfc",
+  "subject": "release-v4.0.0-rc2/MANIFEST.sha256",
+  "subject_sha256": "22a41aedb7fc4737d584833e593fdcb825345acea7f1f9c6aee7aafe589a753c",
+  "trust_anchor_pem_sha256": "b52fae9cd8dcf49285f0337cd815deca13fedd31f653bf07f61579451517e18c",
+  "trust_anchor_sha256_fingerprint": "3e9099b5015e8f486c00bcea9d111ee721faba355a89bcf1df69561e3dc6325c",
+  "verification": "OK"
+}

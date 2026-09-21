@@ -1,0 +1,131 @@
+{
+  "schema": "acsd-v1.6.0-series-scenarios/v1",
+  "scenarios": [
+    {
+      "id": "standalone-p-v1-without-series",
+      "type": "standalone",
+      "release_keys": [
+        "p-v1"
+      ],
+      "expected": "ACCEPTED",
+      "expected_code": "STANDALONE_VALID"
+    },
+    {
+      "id": "mutual-citation-bundle1",
+      "type": "bundle",
+      "bundle_ids": [
+        "bundle1"
+      ],
+      "expected": "ACCEPTED",
+      "expected_code": "SERIES_VALID"
+    },
+    {
+      "id": "semantic-cycle-crypto-dag",
+      "type": "graph",
+      "expected": "ACCEPTED",
+      "expected_code": "SEMANTIC_CYCLE_DAG_VALID"
+    },
+    {
+      "id": "signed-bundle-with-low-commitment-rank",
+      "type": "commitment_rank",
+      "bundle_ids": [
+        "bundle-rank-too-low"
+      ],
+      "expected": "INVALID",
+      "expected_code": "COMMITMENT_RANK_INVALID"
+    },
+    {
+      "id": "signed-bundle-with-unsupported-semantic-edge",
+      "type": "semantic_edge",
+      "bundle_ids": [
+        "bundle-unsupported-semantic-edge"
+      ],
+      "expected": "INVALID",
+      "expected_code": "SEMANTIC_EDGE_UNSUPPORTED"
+    },
+    {
+      "id": "late-amendment-not-backdated",
+      "type": "late_amendment",
+      "release_keys": [
+        "q-v1",
+        "q-v2-amendment"
+      ],
+      "bundle_ids": [
+        "bundle1"
+      ],
+      "expected": "ACCEPTED",
+      "expected_code": "LATE_AMENDMENT"
+    },
+    {
+      "id": "substitute-amendment-into-old-bundle",
+      "type": "substitution",
+      "release_keys": [
+        "q-v2-amendment"
+      ],
+      "bundle_ids": [
+        "bundle1"
+      ],
+      "expected": "INVALID",
+      "expected_code": "BUNDLE_RELEASE_MISMATCH"
+    },
+    {
+      "id": "copy-and-resign-later-lineage",
+      "type": "copy",
+      "bundle_ids": [
+        "bundle1",
+        "copy-bundle"
+      ],
+      "expected": "INDETERMINATE",
+      "expected_code": "CONTENT_REUSE_DIFFERENT_LINEAGE"
+    },
+    {
+      "id": "legitimate-parallel-branches",
+      "type": "paper_pair",
+      "release_keys": [
+        "p-v2-main",
+        "p-v2-companion"
+      ],
+      "expected": "ACCEPTED",
+      "expected_code": "LEGITIMATE_BRANCH"
+    },
+    {
+      "id": "same-slot-paper-double-release",
+      "type": "paper_pair",
+      "release_keys": [
+        "p-v2-main",
+        "p-v2-conflict"
+      ],
+      "expected": "EQUIVOCATION",
+      "expected_code": "PAPER_SLOT_CONFLICT"
+    },
+    {
+      "id": "same-sequence-series-double-bundle",
+      "type": "bundle_pair",
+      "bundle_ids": [
+        "bundle-epoch1-seq2",
+        "bundle-epoch1-seq2-conflict"
+      ],
+      "expected": "EQUIVOCATION",
+      "expected_code": "SERIES_SEQUENCE_CONFLICT"
+    },
+    {
+      "id": "epoch1-without-rotation",
+      "type": "missing_rotation",
+      "bundle_ids": [
+        "bundle-epoch1-seq2"
+      ],
+      "expected": "INVALID",
+      "expected_code": "UNAUTHORIZED_SERIES_KEY"
+    },
+    {
+      "id": "cross-paper-author-link-not-proven",
+      "type": "author_link",
+      "release_keys": [
+        "p-v1",
+        "q-v1"
+      ],
+      "expected": "INDETERMINATE",
+      "expected_code": "AUTHOR_LINK_UNPROVEN"
+    }
+  ]
+}

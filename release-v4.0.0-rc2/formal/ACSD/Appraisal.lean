@@ -1,0 +1,267 @@
+import ACSD.ScopedClaims
+
+set_option autoImplicit false
+set_option warningAsError true
+
+namespace ACSD
+
+/-! Parameterized subjects for the pure appraisal boundary.  Unlike the
+earlier enum-only skeleton, exact event windows, author slots, assertion
+digests, and timestamp subjects are part of the claim itself. -/
+
+inductive ScopedSubject where
+  | approvalTarget (target : Digest)
+  | approvalTargetTime (target : Digest) (notAfterUtc : String)
+  | approvalSetTime (set : Digest) (notAfterUtc : String)
+  | eventWindow (pec : Digest) (eventId : String) (eventSequence : Nat)
+      (commitment : Digest) (firstIndex lastIndex : Nat)
+  | identityAssertion (release : Digest) (slot : Nat) (key : KeyId)
+      (assertion : Digest)
+  | registeredStatement (statement : Digest)
+  | lineageEdge (work parentRelease parentPec parentLine : Digest)
+      (parentVersion : Nat) (childRelease childPec childLine : Digest)
+      (childVersion : Nat) (transition : Digest)
+  deriving DecidableEq, Repr
+
+structure AppraisedAtom where
+  kind : EvidenceKind
+  subject : ScopedSubject
+  certificateDigest : Digest
+  deriving DecidableEq, Repr
+
+structure AppraisalRequest where
+  kind : ScopedClaim
+  subject : ScopedSubject
+  deriving DecidableEq, Repr
+
+structure AppraisalPolicy where
+  permittedClaims : List ScopedClaim
+  deriving Repr
+
+/-! The exact-subject appraisal layer reuses the single declarative
+compatibility relation from `ScopedClaims`.  The earlier implementation copied
+the same eight constructors into a second inductive relation, making semantic
+drift possible even though the two tables happened to agree. -/
+abbrev AppraisalRule := Compatible
+
+def compatibleB : EvidenceKind → ScopedClaim → Bool
+  | .unanimousApproval, .keyAssent => true
+  | .unanimousApproval, .governanceAssent => true
+  | .authorizedDelegatedApproval, .authorizedTargetApproval => true
+  | .eventDisclosure, .committedEvidenceMatch => true
+  | .identityDisclosure, .slotKeyIdentityAssent => true
+  | .approvalTargetTimestamp, .approvalTargetExistedNotAfter => true
+  | .approvalSetTimestamp, .approvalSetExistedNotAfter => true
+  | .scittInclusion, .statementRegistered => true
+  | .lineageAuthorization, .authorizedSuccessor => true
+  | _, _ => false
+
+def evidenceSubjectB : EvidenceKind → ScopedSubject → Bool
+  | .unanimousApproval, .approvalTarget _ => true
+  | .authorizedDelegatedApproval, .approvalTarget _ => true
+  | .approvalTargetTimestamp, .approvalTargetTime _ time => !time.isEmpty
+  | .approvalSetTimestamp, .approvalSetTime _ time => !time.isEmpty
+  | .eventDisclosure, .eventWindow _ _ _ _ first last => decide (first ≤ last)
+  | .identityDisclosure, .identityAssertion _ _ _ _ => true
+  | .scittInclusion, .registeredStatement _ => true
+  | .lineageAuthorization, .lineageEdge _ _ _ _ parentVersion _ _ _ childVersion _ =>
+      decide (0 < parentVersion ∧ 0 < childVersion)
+  | _, _ => false
+
+def claimSubjectB : ScopedClaim → ScopedSubject → Bool
+  | .keyAssent, .approvalTarget _ => true
+  | .governanceAssent, .approvalTarget _ => true
+  | .authorizedTargetApproval, .approvalTarget _ => true
+  | .committedEvidenceMatch, .eventWindow _ _ _ _ first last => decide (first ≤ last)
+  | .slotKeyIdentityAssent, .identityAssertion _ _ _ _ => true
+  | .approvalTargetExistedNotAfter, .approvalTargetTime _ time => !time.isEmpty
+  | .approvalSetExistedNotAfter, .approvalSetTime _ time => !time.isEmpty
+  | .statementRegistered, .registeredStatement _ => true
+  | .authorizedSuccessor,
+      .lineageEdge _ _ _ _ parentVersion _ _ _ childVersion _ =>
+      decide (0 < parentVersion ∧ 0 < childVersion)
+  | .naturalPersonIdentityVerified, .identityAssertion _ _ _ _ => true
+  | .originalityVerified, .approvalTarget _ => true
+  | .signersUncompromisedAtTime, .approvalSetTime _ time => !time.isEmpty
+  | _, _ => false
+
+theorem compatibleB_of_rule
+    {kind : EvidenceKind} {claim : ScopedClaim}
+    (rule : AppraisalRule kind claim) : compatibleB kind claim = true := by
+  cases rule <;> rfl
+
+theorem rule_of_compatibleB
+    {kind : EvidenceKind} {claim : ScopedClaim}
+    (compatible : compatibleB kind claim = true) :
+    AppraisalRule kind claim := by
+  cases kind <;> cases claim <;> simp [compatibleB] at compatible
+  all_goals constructor
+
+theorem compatibleB_iff_rule (kind : EvidenceKind) (claim : ScopedClaim) :
+    compatibleB kind claim = true ↔ AppraisalRule kind claim :=
+  ⟨rule_of_compatibleB, compatibleB_of_rule⟩
+
+/-! `Checkable` is the finite executable condition. `Derives` is the
+independent declarative meaning. Their only bridge is the proved correspondence
+between the Boolean table and `AppraisalRule`. -/
+def AppraisalCheckable
+    (policy : AppraisalPolicy) (evidence : List AppraisedAtom)
+    (request : AppraisalRequest) : Prop :=
+  request.kind ∈ policy.permittedClaims ∧
+  claimSubjectB request.kind request.subject = true ∧
+  ∃ item, item ∈ evidence ∧
+    evidenceSubjectB item.kind item.subject = true ∧
+    item.subject = request.subject ∧ compatibleB item.kind request.kind = true
+
+def AppraisalDerives
+    (policy : AppraisalPolicy) (evidence : List AppraisedAtom)
+    (request : AppraisalRequest) : Prop :=
+  request.kind ∈ policy.permittedClaims ∧
+  claimSubjectB request.kind request.subject = true ∧
+  ∃ item, item ∈ evidence ∧
+    evidenceSubjectB item.kind item.subject = true ∧
+    item.subject = request.subject ∧ AppraisalRule item.kind request.kind
+
+def checkClaim
+    (policy : AppraisalPolicy) (evidence : List AppraisedAtom)
+    (request : AppraisalRequest) : Bool :=
+  policy.permittedClaims.contains request.kind &&
+  claimSubjectB request.kind request.subject &&
+  evidence.any fun item =>
+    evidenceSubjectB item.kind item.subject &&
+    decide (item.subject = request.subject) &&
+    compatibleB item.kind request.kind
+
+theorem checkClaim_iff_checkable
+    {policy : AppraisalPolicy} {evidence : List AppraisedAtom}
+    {request : AppraisalRequest} :
+    checkClaim policy evidence request = true ↔
+      AppraisalCheckable policy evidence request := by
+  simp [checkClaim, AppraisalCheckable, and_assoc]
+
+theorem checkable_iff_derives
+    {policy : AppraisalPolicy} {evidence : List AppraisedAtom}
+    {request : AppraisalRequest} :
+    AppraisalCheckable policy evidence request ↔
+      AppraisalDerives policy evidence request := by
+  constructor
+  · rintro ⟨permitted, scopeOk, item, member, itemScoped, exactSubject, compatible⟩
+    exact ⟨permitted, scopeOk, item, member, itemScoped, exactSubject,
+      (compatibleB_iff_rule item.kind request.kind).mp compatible⟩
+  · rintro ⟨permitted, scopeOk, item, member, itemScoped, exactSubject, rule⟩
+    exact ⟨permitted, scopeOk, item, member, itemScoped, exactSubject,
+      (compatibleB_iff_rule item.kind request.kind).mpr rule⟩
+
+theorem checkClaim_sound
+    {policy : AppraisalPolicy} {evidence : List AppraisedAtom}
+    {request : AppraisalRequest}
+    (accepted : checkClaim policy evidence request = true) :
+    AppraisalDerives policy evidence request := by
+  have checkable : AppraisalCheckable policy evidence request :=
+    checkClaim_iff_checkable.mp accepted
+  exact checkable_iff_derives.mp checkable
+
+theorem checkClaim_complete
+    {policy : AppraisalPolicy} {evidence : List AppraisedAtom}
+    {request : AppraisalRequest}
+    (derived : AppraisalDerives policy evidence request) :
+    checkClaim policy evidence request = true := by
+  exact checkClaim_iff_checkable.mpr (checkable_iff_derives.mpr derived)
+
+theorem derives_has_exact_support
+    {policy : AppraisalPolicy} {evidence : List AppraisedAtom}
+    {request : AppraisalRequest}
+    (derived : AppraisalDerives policy evidence request) :
+    ∃ item, item ∈ evidence ∧ item.subject = request.subject ∧
+      AppraisalRule item.kind request.kind := by
+  rcases derived with ⟨_, _, item, member, _, exactSubject, rule⟩
+  exact ⟨item, member, exactSubject, rule⟩
+
+theorem derivation_over_append_has_component_support
+    {policy : AppraisalPolicy} {left right : List AppraisedAtom}
+    {request : AppraisalRequest}
+    (derived : AppraisalDerives policy (left ++ right) request) :
+    AppraisalDerives policy left request ∨
+      AppraisalDerives policy right request := by
+  rcases derived with ⟨permitted, scopeOk, item, member, itemScoped, exactSubject, rule⟩
+  rw [List.mem_append] at member
+  rcases member with inLeft | inRight
+  · exact Or.inl ⟨permitted, scopeOk, item, inLeft, itemScoped, exactSubject, rule⟩
+  · exact Or.inr ⟨permitted, scopeOk, item, inRight, itemScoped, exactSubject, rule⟩
+
+theorem target_time_cannot_derive_approval_set_time
+    {policy : AppraisalPolicy} {item : AppraisedAtom}
+    {setDigest : Digest}
+    (targetKind : item.kind = .approvalTargetTimestamp) :
+    ¬ AppraisalDerives policy [item] {
+      kind := .approvalSetExistedNotAfter,
+      subject := .approvalSetTime setDigest "1970-01-01T00:00:00+00:00"
+    } := by
+  intro derived
+  rcases derives_has_exact_support derived with ⟨witness, member, _, rule⟩
+  simp only [List.mem_singleton] at member
+  subst witness
+  have impossible := compatibleB_of_rule rule
+  rw [targetKind] at impossible
+  simp [compatibleB] at impossible
+
+theorem unsupported_natural_identity_has_no_rule
+    {policy : AppraisalPolicy} {evidence : List AppraisedAtom}
+    {subject : ScopedSubject} :
+    ¬ AppraisalDerives policy evidence {
+      kind := .naturalPersonIdentityVerified,
+      subject := subject
+    } := by
+  intro derived
+  rcases derives_has_exact_support derived with ⟨item, _, _, rule⟩
+  have impossible := compatibleB_of_rule rule
+  cases item.kind <;> simp [compatibleB] at impossible
+
+/-! The exact-subject model is a strengthening of the original digest-scoped
+model, not a second unrelated semantics.  For any caller-chosen projection of
+structured subjects to a coarse digest, every exact derivation remains a valid
+coarse derivation.  The converse is intentionally not claimed: a projection
+may forget an event window, author slot, UTC instant, or lineage endpoint. -/
+
+def abstractAtom
+    (project : ScopedSubject → Digest) (item : AppraisedAtom) : EvidenceAtom := {
+  kind := item.kind
+  subject := project item.subject
+  verified := true
+}
+
+def abstractRequest
+    (project : ScopedSubject → Digest) (request : AppraisalRequest) : ClaimRequest := {
+  kind := request.kind
+  subject := project request.subject
+}
+
+def abstractPolicy (policy : AppraisalPolicy) : DerivationPolicy := {
+  permittedClaims := policy.permittedClaims
+}
+
+theorem appraisalDerives_refines_abstract
+    (project : ScopedSubject → Digest)
+    {policy : AppraisalPolicy} {evidence : List AppraisedAtom}
+    {request : AppraisalRequest}
+    (derived : AppraisalDerives policy evidence request) :
+    Derives (abstractPolicy policy)
+      (fun item => item ∈ evidence.map (abstractAtom project))
+      (abstractRequest project request) := by
+  rcases derived with
+    ⟨permitted, _requestScoped, item, member, _itemScoped, exactSubject, rule⟩
+  refine ⟨permitted, abstractAtom project item, ?_, rfl, ?_, rule⟩
+  · exact List.mem_map_of_mem member
+  · exact congrArg project exactSubject
+
+theorem checkClaim_refines_abstract
+    (project : ScopedSubject → Digest)
+    {policy : AppraisalPolicy} {evidence : List AppraisedAtom}
+    {request : AppraisalRequest}
+    (accepted : checkClaim policy evidence request = true) :
+    Derives (abstractPolicy policy)
+      (fun item => item ∈ evidence.map (abstractAtom project))
+      (abstractRequest project request) := by
+  exact appraisalDerives_refines_abstract project (checkClaim_sound accepted)
+
+end ACSD

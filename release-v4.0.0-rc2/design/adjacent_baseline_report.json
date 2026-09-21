@@ -1,0 +1,70 @@
+{
+  "acsd": {
+    "artifact_counts": {
+      "parent_release_files": 11,
+      "rotated_key_child_files": 16,
+      "same_key_child_files": 15,
+      "unfinalized_attacker_child_files": 13
+    },
+    "authorized_key_rotation": "AUTHORIZED_TRANSITION",
+    "exact_bytes": {
+      "mutated_content": "MANIFEST_HASH_MISMATCH",
+      "original_content": "VALID"
+    },
+    "fresh_key_capture": {
+      "finalization": "LINEAGE_AUTHORIZATION_INCOMPLETE",
+      "verification": "UNAUTHORIZED_SUCCESSOR"
+    },
+    "same_key_successor": "AUTHORIZED_CONTINUATION"
+  },
+  "bare_signature": {
+    "artifact_counts": {
+      "files_per_self_contained_signed_object": 3,
+      "manual_transition_additional_files": 2,
+      "total_files_for_four_objects": 14
+    },
+    "authorized_key_rotation": {
+      "manual_predecessor_transition_policy": "AUTHORIZED_TRANSITION",
+      "predecessor_key_pin_policy": "INVALID_SIGNATURE",
+      "self_declared_child_key_policy": "VALID_SIGNATURE"
+    },
+    "exact_bytes": {
+      "mutated_content": "INVALID_SIGNATURE",
+      "original_content": "VALID_SIGNATURE"
+    },
+    "fresh_key_capture": {
+      "manual_predecessor_transition_policy": "UNAUTHORIZED_SUCCESSOR",
+      "predecessor_key_pin_policy": "INVALID_SIGNATURE",
+      "self_declared_child_key_policy": "VALID_SIGNATURE"
+    },
+    "same_key_successor": {
+      "predecessor_key_pin_policy": "VALID_SIGNATURE",
+      "self_declared_child_key_policy": "VALID_SIGNATURE"
+    }
+  },
+  "baseline": {
+    "name": "minimal-detached-ed25519",
+    "policies": [
+      "verify against the child-declared public key",
+      "pin the predecessor public key",
+      "require a predecessor-signed exact transition"
+    ],
+    "same_signature_primitive": true
+  },
+  "evidence_classification": "empirical-controlled-mechanism-comparison",
+  "non_claims": [
+    "not a GnuPG usability or performance benchmark",
+    "not an OpenTimestamps, RFC3161-provider, Software Heritage, or Zenodo comparison run",
+    "not a user study or production deployment",
+    "not a proof that every possible detached-signature composition has this tradeoff"
+  ],
+  "observations": [
+    "both mechanisms reject mutation of signed exact bytes",
+    "a child-declared-key policy accepts both legitimate rotation and fresh-key capture at the signature layer",
+    "a predecessor-key pin rejects both legitimate rotation and fresh-key capture",
+    "a manual exact predecessor-signed transition and ACSD both distinguish the authorized rotation from transition replay onto the attacker child",
+    "ACSD packages this authorization with canonical objects, threshold governance, approval-set closure, and typed claims rather than inventing a new signature primitive"
+  ],
+  "schema": "acsd-adjacent-baseline-evaluation/v1",
+  "smallest_discriminating_object": "one parent plus same-key, authorized-rotation, and fresh-attacker-key n+1 candidates"
+}
