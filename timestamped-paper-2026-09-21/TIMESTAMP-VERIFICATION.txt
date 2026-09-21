@@ -1,0 +1,48 @@
+RFC 3161 TIMESTAMP VERIFICATION RECORD
+
+Timestamped object: RELEASE-MANIFEST.sha256
+Object SHA-256: ccca1bf58dd5584059f976494032fc559e06b1c9c0a009e3bc65f2f04cc3d7c1
+
+Manifest-bound paper: acsd-profile.pdf
+Paper SHA-256: b2677f3b272c21aab6b902ea6e999a978a57919b2daef068ca70919a5355127f
+Paper size: 484239 bytes
+
+Timestamp authority: Sigstore Timestamp Authority
+Request URL: https://timestamp.sigstore.dev/api/v1/timestamp
+Certificate-chain URL: https://timestamp.sigstore.dev/api/v1/timestamp/certchain
+Policy OID: 1.3.6.1.4.1.57264.2
+Serial number: 0x24D4CAA7F59BBE4C3256D45F9102A52D06B65938
+RFC 3161 time: 2026-09-21 05:30:27 UTC
+Accuracy: 1 second
+Hash algorithm: SHA-256
+Message imprint: ccca1bf58dd5584059f976494032fc559e06b1c9c0a009e3bc65f2f04cc3d7c1
+Response status: Granted
+
+Query file: RELEASE-MANIFEST.sha256.tsq
+Query SHA-256: 9d909b1e8912fcae01987f26c6e3a115685faaf73151b0804ebaa8a5253a6643
+Response file: RELEASE-MANIFEST.sha256.tsr
+Response SHA-256: d1d8328365566b189bb0adb4ed7c445571534d2439143cda9553fd47930dc76e
+Certificate-chain file: sigstore-tsa-certchain.pem
+Certificate-chain SHA-256: 16a57780dbc92f75ba62ff6cd740f7a6d11c458f985e75cf879d07681928d421
+
+TSA certificate:
+Subject: O=sigstore.dev, CN=sigstore-tsa
+Issuer: O=sigstore.dev, CN=sigstore-tsa-selfsigned
+SHA-256 fingerprint: 85f927bc07ab62cac3b44356c10efc81b2c6883fda7ab9e6d870d9d13acd05b7
+Validity: 2025-04-08 06:59:43 UTC through 2035-04-06 06:59:43 UTC
+
+Pinned trusted root:
+Subject: O=sigstore.dev, CN=sigstore-tsa-selfsigned
+Issuer: O=sigstore.dev, CN=sigstore-tsa-selfsigned
+SHA-256 fingerprint: 2aca8fea5d3ce48b01cc77076293c280e6c23ffe44034757ee7833ca9f45d633
+Validity: 2025-04-08 06:59:43 UTC through 2035-04-06 06:59:43 UTC
+
+Verification command:
+openssl ts -verify -queryfile RELEASE-MANIFEST.sha256.tsq -in RELEASE-MANIFEST.sha256.tsr -CAfile sigstore-tsa-certchain.pem
+
+Verification result: OK
+
+This timestamp proves that the timestamp authority received the manifest's
+SHA-256 message imprint no later than the recorded time. It does not prove an
+earlier creation date, authorship, originality, correctness, peer review, or
+venue acceptance.
