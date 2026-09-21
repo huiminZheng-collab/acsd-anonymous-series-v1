@@ -104,6 +104,25 @@ and are automated in `test_cli_signing.py`, `test_cose.py`,
 | provide mismatched new-key passphrase confirmations | `PRIVATE_KEY_PASSPHRASE_CONFIRMATION_MISMATCH`, no private key is written |
 | add evidence sets whose components support no requested claim | union grants no claim without one matching verified atom |
 
+## Exact submission-link regression matrix
+
+These cases are automated in `test_submission_link.py` and
+`test_submission_link_cli.py`. They exercise an optional external profile and
+do not mutate the frozen anonymous release.
+
+| Attack or condition | Required result |
+|---|---|
+| verify the challenge against different submitted bytes | `SUBMITTED_MANUSCRIPT_MISMATCH` |
+| present a different private submission handle | `SUBMISSION_HANDLE_MISMATCH` |
+| substitute the venue verification key | `VENUE_KEY_ID_MISMATCH` |
+| change round, nonce, expiry, venue, or ordered byline after venue signing | reject the challenge signature or exact-context check |
+| combine author responses from distinct challenges | `SUBMISSION_CHALLENGE_MISMATCH` |
+| omit one required author response | partial status only; `--require-full-byline` exits 5 |
+| repeat one author slot | `VERIFIED_SUBMISSION_SLOT_EQUIVOCATION` |
+| respond before issue or after expiry | `SUBMISSION_CHALLENGE_NOT_CURRENT` |
+| present an editor-confidential response as public authorization | `DISCLOSURE_AUTHORIZATION_MISMATCH` |
+| complete venue challenge and every release slot response | `FULL_BYLINE_SUBMISSION_LINEAGE_LINKED` and narrow claim `SUBMISSION_LINEAGE_LINKED` |
+
 ## Verification-certificate differential matrix
 
 `acsd-verification-certificate/v1` contains appraised byte-level facts, not a

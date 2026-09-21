@@ -34,7 +34,7 @@ class TestCLI(unittest.TestCase):
     def test_version_comes_from_package_version_source(self):
         result = run("--version")
         self.assertEqual(result.returncode, 0)
-        self.assertEqual(result.stdout.strip(), "acsd 4.0.0rc1")
+        self.assertEqual(result.stdout.strip(), "acsd 4.0.0rc2")
 
     def test_init_verify_inspect(self):
         with tempfile.TemporaryDirectory() as d:

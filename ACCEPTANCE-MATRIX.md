@@ -1,4 +1,4 @@
-# ACSD v4.0.0-rc1 acceptance matrix
+# ACSD v4.0.0-rc2 acceptance matrix
 
 | Requirement | Evidence | Status |
 |---|---|---|
@@ -19,6 +19,7 @@
 | Single public-key identifier definition | CLI, event, identity, and certificate adapters import `key_identity.py` | PASS |
 | Cross-paper public-key reuse audit | I/O-free grouping plus `audit-key-reuse`; same-WorkID continuity separated from cross-WorkID warning | PASS; optional fail-closed exit 1 |
 | Partial/full multi-author unblinding | `verify-identity-set` delegates to exact per-slot verification and requires every slot for full status | PASS; partial/full and duplicate-slot CLI tests |
+| Exact submission-link profile | authenticated venue challenge plus per-slot responses bind one release, submitted file, venue, handle commitment, round, nonce, validity interval, disclosure mode, and ordered byline | PASS; manuscript replacement, context replay/mixing, missing/duplicate slot, expiry, wrong venue key, and disclosure downgrade tests |
 | Same-primitive adjacent baseline | Bare detached Ed25519 and ACSD both reject byte mutation; a manual exact transition and ACSD both separate authorized rotation from replay onto a fresh-key child | PASS; fixed executable report avoids a strawman baseline and states ACSD's added profile surface |
 | I/O-free protocol-object boundary | `protocol_objects.py` owns live schemas/builders/binding checks; `acsd.py` only re-exports the compatibility names | PASS; import-graph and identity tests |
 | Fresh nested defaults | separate builds cannot share mutable AI-use or contribution lists | PASS |
@@ -41,12 +42,13 @@
 | Installed wheel execution | temporary venv exercises keygen, release, verify, identity-set verification, and key-reuse audit outside source | PASS |
 | Encrypted private-key handling | `test_key_protection.py`, interactive encrypted PKCS\#8 use and fail-closed noninteractive/wrong-passphrase cases | PASS; no passphrase command-line, JSON, or release-object field |
 | Independent one-command gate | `run_all.ps1`, `run_all.sh` | PASS; reports formal status explicitly |
-| Complete live-source gate | `check.py` source mode | PASS; 30/30 checks including artifact self-check and workspace byte identity |
+| Complete live-source gate | `check.py` source mode | PASS; 31/31 checks including artifact self-check and workspace byte identity |
 | Lean formal compilation | PEC, lineage, recovery, scoped-claim, transcript, and bounded generic-appraisal modules; pinned 4.33.1 project | PASS |
 
-The formal row contains 103 PEC/composition/lineage/recovery/scoped-appraisal/
-transcript/bounded-generalization theorems; the explicit axiom audit checks 64
-central boundary theorems. It proves soundness after strict decoding and
+The formal row includes PEC/composition/lineage/recovery/scoped-appraisal/
+transcript/bounded-generalization theorems plus the submission-context module;
+the explicit axiom audit covers the central boundary theorems. It proves
+soundness after strict decoding and
 empirically checks the restricted JSON projection; it does not claim
 cryptographic implementation correctness or natural-person truth. The
 separately published v1 formal core's 53 release/team/series theorems are not

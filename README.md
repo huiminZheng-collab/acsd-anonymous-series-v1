@@ -1,4 +1,4 @@
-# ACSD v4.0.0-rc1 Authorized Scholarly Lineage and Provenance Evidence Capsule
+# ACSD v4.0.0-rc2 Authorized Scholarly Lineage and Provenance Evidence Capsule
 
 ACSD expands to **Anonymous Scholarly Claim and Disclosure**.  This repository
 contains a content-anonymous paper, an executable command-line prototype, an
@@ -411,6 +411,35 @@ before making it public. Without
 `--require-full-byline`, a valid partial set exits 0 and is explicitly labeled
 `PARTIAL_BYLINE_KEY_ASSENT`; with it, a missing slot exits 5.
 
+### Link a discovered anonymous release to an exact submission
+
+When an editor discovers a related anonymous release during review, the
+optional submission-link profile prevents a generic identity sidecar from
+being reused for another PDF, venue, round, or ordered byline. The venue signs
+an exact challenge, each requested author slot signs that same challenge, and
+the editor verifies the resulting set:
+
+```text
+acsd create-submission-challenge release-dir named-paper.pdf \
+  --venue-key venue.key --venue-domain journal.example \
+  --submission-handle SUB-42 --round 1 \
+  --expires-at 2026-09-24T00:00:00+00:00 \
+  --byline "1:Alice Example" --byline "2:Bob Example" --out challenge
+
+acsd respond-submission-challenge release-dir named-paper.pdf \
+  --challenge challenge/submission-challenge.json \
+  --venue-signature challenge/submission-challenge.cose \
+  --venue-public-key venue.pub --submission-handle SUB-42 \
+  --key alice.key --out alice-opening
+```
+
+The complete verification command and security boundary are in
+[`design/SUBMISSION-LINK.md`](design/SUBMISSION-LINK.md). The resulting narrow
+claim is `SUBMISSION_LINEAGE_LINKED`: it does not authenticate civil identity,
+prove originality or acceptance, or guarantee that a reviewer will discover
+the anonymous release. `editor-confidential` responses also do not authorize
+public disclosure.
+
 ## Reproduce the evidence
 
 PowerShell:
@@ -430,7 +459,7 @@ source-tree file hashes with its starting snapshot. It contains:
 
 - 31/31 source, package, installed-wheel, differential, formal, and byte-identity
   checks passing as one command;
-- 195 Python test methods, with three environment-dependent capability cases
+- 203 Python test methods, with three environment-dependent capability cases
   skipped locally;
 - a scripted three-author role evaluation with two direct approvals, one exact
   delegation, seven post-key-setup commands, no JSON edits, no private-key
@@ -551,8 +580,8 @@ remain opt-in because CI must not depend on network availability.
 - `paper/acsd-v4.tex`: content-anonymous manuscript source;
 - `paper/acsd-acsac.tex`: thin IEEE conference-format entry point over the
   same source (no duplicated manuscript);
-- `release-v4.0.0-rc1/`: current self-contained deterministic release candidate
-  once built locally; `release-v3.3.0-rc1/`, `release-v3.2.0-rc1/`,
+- `release-v4.0.0-rc2/`: current self-contained deterministic release candidate
+  once built locally; `release-v4.0.0-rc1/`, `release-v3.3.0-rc1/`, `release-v3.2.0-rc1/`,
   `release-v3.1.0-rc1/`, `release-v3.0.0/`, and the earlier
   `release-v2.0.0/`, `release-v2.1.0/`, and `release-v2.1.1/` trees are retained rather than
   overwritten.
@@ -560,14 +589,15 @@ remain opt-in because CI must not depend on network availability.
 Build a new evidence snapshot, or verify a frozen snapshot's manifest, with:
 
 ```text
-python build_release.py --out release-v4.0.0-rc1
-python verify_release.py release-v4.0.0-rc1
-python release-v4.0.0-rc1/check.py --artifact
-python build_release.py --check release-v4.0.0-rc1
+python build_release.py --out release-v4.0.0-rc2
+python verify_release.py release-v4.0.0-rc2
+python release-v4.0.0-rc2/check.py --artifact
+python build_release.py --check release-v4.0.0-rc2
 ```
 
 The installable wheel and the immutable paper/evidence snapshot are separate
-artifacts. The root tree and v4 candidate identify as `4.0.0rc1`; all v3 and
+artifacts. The root tree and current v4 candidate identify as `4.0.0rc2`;
+the rc1, v3, and
 earlier release trees remain frozen historical
 packages and are not rebuilt from later source.
 

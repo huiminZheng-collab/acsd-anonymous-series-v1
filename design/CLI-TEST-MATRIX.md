@@ -1,4 +1,4 @@
-# CLI 测试矩阵（配套 CLI-SPEC.md v4.0.0-rc1）
+# CLI 测试矩阵（配套 CLI-SPEC.md v4.0.0-rc2）
 
 > 任务 B 交付物。每个 case：ID / 命令序列 / 前置 / 期望结果与退出码。
 > "M" = 必须自动化（CI）；"O" = 可选（手工/后续）。
@@ -78,7 +78,7 @@
 
 - 差分 canonical 测试（`design/canonical_diff_runner.py`）作为
   M-VER-11/12 的底层依赖，CI 中必须先跑且 exit 0。
-- 当前 v4.0.0-rc1 unittest（176 个测试方法；本地 3 个环境相关 skip）、1,000 个生成式
+- 当前 v4.0.0-rc2 unittest（203 个测试方法；本地 3 个环境相关 skip）、1,000 个生成式
   差分样本与 demo/v1 复验保持通过。
 
 ## 7. 授权谱系回归

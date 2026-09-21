@@ -1,6 +1,6 @@
 # ACSD PEC and authorized-lineage profile v0.3
 
-Status: v0.3 research profile with an executable v4.0.0-rc1 candidate
+Status: v0.3 research profile with an executable v4.0.0-rc2 candidate
 implementation. The terms **MUST** and **MUST NOT** describe the profile
 contract, not a deployed standard. The Python CLI implements the binding and
 cryptographic packaging rules. Lean directly decodes the restricted appraisal

@@ -1,15 +1,17 @@
-# ACSD v4.0.0-rc1 live-source status
+# ACSD v4.0.0-rc2 live-source status
 
-Checked 2026-09-16 in the local work tree. The public v3.3.0-rc1 candidate and
-earlier snapshots remain immutable; v4.0.0-rc1 integrates the subsequent
-recovery, encrypted-key, lifecycle, and formal-generalization work locally. A
+Checked 2026-09-21 in the local work tree. Earlier candidates remain
+immutable; v4.0.0-rc2 adds the optional exact submission-link profile to the
+recovery, encrypted-key, lifecycle, and formal-generalization work. A
 release candidate is not a venue submission or deployed service.
 
 ## Implemented
 
 - installable Python CLI: `keygen`, `init`, `approve`, `authorize`, `recover`,
   `finalize`, `release`, `revise`, `verify`, `inspect`, `disclose-identity`, `verify-identity`,
-  `verify-identity-set`, and `audit-key-reuse`;
+  `verify-identity-set`, `create-submission-challenge`,
+  `respond-submission-challenge`, `verify-submission-link`, and
+  `audit-key-reuse`;
 - one-command single- or local multi-author release, plus distributed staged
   approval;
 - restricted canonical JSON and SHA-256 bindings;
@@ -25,6 +27,11 @@ release candidate is not a venue submission or deployed service.
   Merkle-opening, key-binding, and real COSE signature verification;
 - external per-author-slot identity sidecars, partial/full-byline separation,
   cross-release replay rejection, and no mutation of the frozen release;
+- a venue-authenticated, release-external submission-link profile binding one
+  source release, submitted manuscript, private submission-handle commitment,
+  round, nonce, validity window, disclosure mode, and ordered byline; each
+  author response covers the same complete challenge, and only complete
+  release-slot coverage yields `SUBMISSION_LINEAGE_LINKED`;
 - RFC 3161 request and CMS verification with nonce, imprint, TSTInfo content
   type, signer id, critical/exclusive timeStamping EKU, ESS certificate id,
   signature algorithm, and exact externally supplied signer pin;
@@ -79,7 +86,7 @@ release candidate is not a venue submission or deployed service.
   rendering remains available from the same source.
 - Authoritative read-only gate: 31/31 source, package, installed-wheel,
   differential, formal, and workspace-byte-identity checks pass.
-- Python: 195 test methods are discovered locally; the live TSA test and two
+- Python: 203 test methods are discovered locally; the live TSA test and two
   unavailable Windows capability cases are skipped.
 - Scripted roles: a three-author mixed direct/delegated flow completes in seven
   post-key-setup commands with no JSON edits, private-key transfers, or copied

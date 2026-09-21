@@ -2,7 +2,9 @@
 """ACSD CLI — anonymous scholarly claim and disclosure tool.
 
 Commands: keygen / init / review / authorize / recover / approve / finalize /
-release / revise / verify / inspect / verify-identity-set / audit-key-reuse.
+release / revise / verify / inspect / verify-identity-set /
+create-submission-challenge / respond-submission-challenge /
+verify-submission-link / audit-key-reuse.
 
 Signing uses Ed25519 via `cryptography` and a minimal COSE Sign1 encoding
 (`cose.py`). Canonical bytes, protocol objects, and claim derivation live in
@@ -11,6 +13,7 @@ separate I/O-free modules.
 from __future__ import annotations
 
 import argparse
+from datetime import datetime, timezone
 import getpass
 import hashlib
 import json
@@ -43,6 +46,7 @@ import approval_delegation  # noqa: E402
 import approval_exchange  # noqa: E402
 from approval_delegation_adapter import verify_approval_records  # noqa: E402
 import identity_disclosure  # noqa: E402
+import submission_link  # noqa: E402
 import linkability_audit  # noqa: E402
 from acsd_version import __version__  # noqa: E402
 from artifact_io import path_is_within, read_canonical, write_canonical  # noqa: E402
@@ -2125,6 +2129,193 @@ def cmd_verify_identity_set(args):
     return EXIT_OK, result["status"], result
 
 
+def _sha256_path(path):
+    hasher = hashlib.sha256()
+    with pathlib.Path(path).open("rb") as source:
+        for block in iter(lambda: source.read(1024 * 1024), b""):
+            hasher.update(block)
+    return hasher.hexdigest()
+
+
+def _submission_byline(specs):
+    byline = []
+    for position, spec in enumerate(specs, 1):
+        parts = spec.split(":", 2)
+        require(len(parts) >= 2, "SUBMISSION_BYLINE_FORMAT")
+        try:
+            slot = int(parts[0])
+        except ValueError as exc:
+            raise ValueError("SUBMISSION_AUTHOR_SLOT_INVALID") from exc
+        byline.append({
+            "position": position,
+            "author_slot": slot,
+            "display_name": parts[1],
+            "persistent_identifier": parts[2] if len(parts) == 3 else None,
+        })
+    return byline
+
+
+def _load_external_public_key(path, code):
+    try:
+        key = load_public_key_bytes(pathlib.Path(path).read_bytes())
+    except (OSError, TypeError, ValueError) as exc:
+        raise ValueError(code) from exc
+    require(isinstance(key, Ed25519PublicKey), code)
+    return key
+
+
+def cmd_create_submission_challenge(args):
+    """Create the venue-authenticated half of an exact submission link."""
+    root = pathlib.Path(args.release_dir)
+    code, message, verification = verify_release_dir(root)
+    if code != EXIT_OK:
+        return code, "RELEASE_NOT_ACCEPTED", {
+            "verifier_message": message, "verifier_data": verification
+        }
+    if path_is_within(args.venue_key, root):
+        return EXIT_USAGE, "PRIVATE_KEY_INSIDE_RELEASE", {}
+    out = pathlib.Path(args.out)
+    if path_is_within(out, root):
+        return EXIT_USAGE, "SUBMISSION_LINK_OUTPUT_INSIDE_RELEASE", {}
+    manuscript = pathlib.Path(args.submission)
+    require(manuscript.is_file(), "SUBMITTED_MANUSCRIPT_NOT_FILE")
+    try:
+        venue_key = load_signing_key(args.venue_key)
+    except (TypeError, ValueError) as exc:
+        return EXIT_USAGE, private_key_error_code(exc), {}
+    release = read_canonical(root / "release/release.json")
+    issued = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+    challenge = submission_link.build_challenge(
+        release,
+        _sha256_path(manuscript),
+        args.venue_domain,
+        key_id_of(venue_key.public_key()),
+        args.submission_handle,
+        args.round,
+        issued,
+        args.expires_at,
+        args.disclosure_mode,
+        _submission_byline(args.byline),
+    )
+    body_path = out / "submission-challenge.json"
+    signature_path = out / "submission-challenge.cose"
+    if body_path.exists() or signature_path.exists():
+        return EXIT_STATE_CONFLICT, "SUBMISSION_CHALLENGE_EXISTS", {}
+    out.mkdir(parents=True, exist_ok=True)
+    write_canonical(body_path, challenge)
+    signature_path.write_bytes(cose.cose_sign1(canonical(challenge), venue_key))
+    return EXIT_OK, "submission challenge created", {
+        "status": "AUTHENTICATED_SUBMISSION_CHALLENGE",
+        "challenge_digest": digest(challenge),
+        "challenge": str(body_path),
+        "signature": str(signature_path),
+        "venue_key_id": key_id_of(venue_key.public_key()),
+        "disclosure_mode": args.disclosure_mode,
+    }
+
+
+def cmd_respond_submission_challenge(args):
+    """Let one exact author-slot key assent to an authenticated challenge."""
+    root = pathlib.Path(args.release_dir)
+    code, message, verification = verify_release_dir(root)
+    if code != EXIT_OK:
+        return code, "RELEASE_NOT_ACCEPTED", {
+            "verifier_message": message, "verifier_data": verification
+        }
+    if path_is_within(args.key, root):
+        return EXIT_USAGE, "PRIVATE_KEY_INSIDE_RELEASE", {}
+    out = pathlib.Path(args.out)
+    if path_is_within(out, root):
+        return EXIT_USAGE, "SUBMISSION_LINK_OUTPUT_INSIDE_RELEASE", {}
+    manuscript = pathlib.Path(args.submission)
+    require(manuscript.is_file(), "SUBMITTED_MANUSCRIPT_NOT_FILE")
+    release = read_canonical(root / "release/release.json")
+    challenge = read_canonical(pathlib.Path(args.challenge))
+    venue_public_key = _load_external_public_key(
+        args.venue_public_key, "VENUE_PUBLIC_KEY_INVALID"
+    )
+    submission_link.verify_challenge(
+        challenge,
+        pathlib.Path(args.venue_signature).read_bytes(),
+        release,
+        venue_public_key,
+        _sha256_path(manuscript),
+        args.submission_handle,
+    )
+    try:
+        author_key = load_signing_key(args.key)
+    except (TypeError, ValueError) as exc:
+        return EXIT_USAGE, private_key_error_code(exc), {}
+    author_key_id = key_id_of(author_key.public_key())
+    slots = [
+        author["slot"] for author in release["authors"]
+        if author["key_id"] == author_key_id
+    ]
+    require(len(slots) == 1, "UNKNOWN_AUTHOR_KEY")
+    opening = submission_link.build_opening(challenge, release, slots[0])
+    body_path = out / f"submission-opening-slot-{slots[0]}.json"
+    signature_path = out / f"submission-opening-slot-{slots[0]}.cose"
+    if body_path.exists() or signature_path.exists():
+        return EXIT_STATE_CONFLICT, "SUBMISSION_OPENING_EXISTS", {
+            "author_slot": slots[0]
+        }
+    out.mkdir(parents=True, exist_ok=True)
+    write_canonical(body_path, opening)
+    signature_path.write_bytes(cose.cose_sign1(canonical(opening), author_key))
+    return EXIT_OK, "submission opening created", {
+        "status": "SUBMISSION_SLOT_ASSENT",
+        "author_slot": slots[0],
+        "author_key_id": author_key_id,
+        "opening": str(body_path),
+        "signature": str(signature_path),
+        "disclosure_authorization": opening["disclosure_authorization"],
+    }
+
+
+def cmd_verify_submission_link(args):
+    """Verify one exact venue challenge and its author-slot responses."""
+    if len(args.opening) != len(args.signature):
+        return EXIT_USAGE, "SUBMISSION_OPENING_COUNT_MISMATCH", {
+            "opening_count": len(args.opening),
+            "signature_count": len(args.signature),
+        }
+    root = pathlib.Path(args.release_dir)
+    code, message, verification = verify_release_dir(root)
+    if code != EXIT_OK:
+        return code, "RELEASE_NOT_ACCEPTED", {
+            "verifier_message": message, "verifier_data": verification
+        }
+    manuscript = pathlib.Path(args.submission)
+    require(manuscript.is_file(), "SUBMITTED_MANUSCRIPT_NOT_FILE")
+    release = read_canonical(root / "release/release.json")
+    venue_public_key = _load_external_public_key(
+        args.venue_public_key, "VENUE_PUBLIC_KEY_INVALID"
+    )
+    author_public_keys = {
+        author["key_id"]: load_bound_public_key(root, author["key_id"])
+        for author in release["authors"]
+    }
+    result = submission_link.verify_set(
+        read_canonical(pathlib.Path(args.challenge)),
+        pathlib.Path(args.venue_signature).read_bytes(),
+        [
+            (
+                read_canonical(pathlib.Path(body_path)),
+                pathlib.Path(signature_path).read_bytes(),
+            )
+            for body_path, signature_path in zip(args.opening, args.signature)
+        ],
+        release,
+        venue_public_key,
+        author_public_keys,
+        _sha256_path(manuscript),
+        args.submission_handle,
+    )
+    if args.require_full_byline and not result["full_byline"]:
+        return EXIT_INCOMPLETE, result["status"], result
+    return EXIT_OK, result["status"], result
+
+
 def cmd_compare_successors(args):
     """Detect a same-parent, same-slot fork without choosing a winner."""
     left_root = pathlib.Path(args.left)
@@ -2489,6 +2680,61 @@ def main(argv=None):
         help="exit 5 unless every author slot has one valid disclosure",
     )
     pdis.set_defaults(func=cmd_verify_identity_set)
+
+    psc = sub.add_parser(
+        "create-submission-challenge", parents=[common],
+        help="bind a venue-authenticated challenge to one release and submitted manuscript",
+    )
+    psc.add_argument("release_dir")
+    psc.add_argument("submission", help="exact named manuscript file submitted to the venue")
+    psc.add_argument("--venue-key", required=True, help="venue/editor Ed25519 private key")
+    psc.add_argument("--venue-domain", required=True, help="lowercase venue domain identifier")
+    psc.add_argument("--submission-handle", required=True, help="private venue submission identifier")
+    psc.add_argument("--round", type=int, required=True, help="review round, beginning at 1")
+    psc.add_argument("--expires-at", required=True, help="UTC expiry, e.g. 2026-09-24T00:00:00+00:00")
+    psc.add_argument(
+        "--disclosure-mode", choices=sorted(submission_link.DISCLOSURE_MODES),
+        default="editor-confidential",
+    )
+    psc.add_argument(
+        "--byline", action="append", required=True,
+        metavar="SLOT:NAME[:IDENTIFIER]",
+        help="ordered named byline entry; repeat in displayed author order",
+    )
+    psc.add_argument("--out", required=True, help="external challenge directory")
+    psc.set_defaults(func=cmd_create_submission_challenge)
+
+    psr = sub.add_parser(
+        "respond-submission-challenge", parents=[common],
+        help="sign one exact venue challenge with one release author-slot key",
+    )
+    psr.add_argument("release_dir")
+    psr.add_argument("submission", help="exact named manuscript file")
+    psr.add_argument("--challenge", required=True)
+    psr.add_argument("--venue-signature", required=True)
+    psr.add_argument("--venue-public-key", required=True)
+    psr.add_argument("--submission-handle", required=True)
+    psr.add_argument("--key", required=True, help="private key for one exact author slot")
+    psr.add_argument("--out", required=True, help="external opening directory")
+    psr.set_defaults(func=cmd_respond_submission_challenge)
+
+    psv = sub.add_parser(
+        "verify-submission-link", parents=[common],
+        help="verify an exact challenge and its author-slot responses",
+    )
+    psv.add_argument("release_dir")
+    psv.add_argument("submission", help="exact named manuscript file")
+    psv.add_argument("--challenge", required=True)
+    psv.add_argument("--venue-signature", required=True)
+    psv.add_argument("--venue-public-key", required=True)
+    psv.add_argument("--submission-handle", required=True)
+    psv.add_argument("--opening", action="append", required=True)
+    psv.add_argument("--signature", action="append", required=True)
+    psv.add_argument(
+        "--require-full-byline", action="store_true",
+        help="exit 5 unless every release author slot assented to the exact byline",
+    )
+    psv.set_defaults(func=cmd_verify_submission_link)
 
     pc = sub.add_parser("compare-successors", parents=[common], help="detect a same-parent, same-slot authorized fork")
     pc.add_argument("left", help="first finalized successor directory")

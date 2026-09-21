@@ -7,6 +7,7 @@ import ACSD.StrictJson
 import ACSD.RatsTranscriptJson
 import ACSD.Lineage
 import ACSD.ScopedClaims
+import ACSD.SubmissionLink
 import ACSD.DelegatedApproval
 import ACSD.Appraisal
 import ACSD.Transcript

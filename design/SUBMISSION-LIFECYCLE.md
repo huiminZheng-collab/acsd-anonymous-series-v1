@@ -20,6 +20,7 @@ mutates the frozen anonymous release.
 | Publicly reveal one author | `acsd disclose-identity` | Slot key assented to one exact identity mapping | Civil identity independently verified |
 | Publicly reveal a full byline | One sidecar per slot | All release slots supplied valid mappings | Joint venue statement or contribution truth |
 | Bind a proceedings/DOI reference | Signed `publication_ref` in each sidecar | Keys assented to that exact string | Venue acceptance or registry truth |
+| Editor challenges a discovered anonymous release | Exact submission-link profile | Venue challenge and release-slot keys agree on one release, submitted file, round, and ordered byline | Discovery, civil identity, originality, or acceptance |
 
 If the camera-ready manuscript bytes differ, it is an authorized successor.
 If the bytes are unchanged and only a public identity crosswalk is needed, a
@@ -61,3 +62,9 @@ This is executable validation of the existing choreography, not proof that a
 venue made any decision. The remaining external-evidence question is whether a
 specific venue exposes a stable signed or registry-backed object worth adding
 as a separately typed evidence profile.
+
+The optional review-time challenge path is specified separately in
+`SUBMISSION-LINK.md`. It is a thin interoperability profile, not a venue-status
+field: the venue authenticates the submission context, while ACSD slot keys
+assent to that exact context. ACSD still does not guarantee that an editor will
+discover a public anonymous release.

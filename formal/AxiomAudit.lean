@@ -78,3 +78,10 @@ import ACSD
 #print axioms ACSD.appraisalTranscriptClaims_sound
 #print axioms ACSD.decodedAppraisalTranscriptClaims_sound
 #print axioms ACSD.decodedAppraisalTranscriptClaims_refine_abstract
+#print axioms ACSD.accepted_link_has_exact_challenge_context
+#print axioms ACSD.accepted_link_requires_current_challenge
+#print axioms ACSD.opening_cannot_cross_context
+#print axioms ACSD.missing_slot_prevents_submission_link
+#print axioms ACSD.confidential_opening_is_not_public_authorization
+#print axioms ACSD.manuscript_substitution_changes_context
+#print axioms ACSD.byline_substitution_changes_context

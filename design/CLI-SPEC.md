@@ -1,4 +1,4 @@
-# ACSD 开箱即用 CLI 规格（v4.0.0-rc1）
+# ACSD 开箱即用 CLI 规格（v4.0.0-rc2）
 
 > 目标：作者本地可用的 CLI 候选。本规格只描述接口与状态机，
 > 不绑定实现语言细节；实现与安全边界以同仓库的测试和规范为准。
@@ -19,6 +19,9 @@ acsd revise  <parent-dir> <paper.pdf> --key new-author-key.pem [--parent-key old
 acsd compare-successors <left-dir> <right-dir>
 acsd audit-key-reuse <release-dir> <release-dir> [...] [--fail-on-cross-work]
 acsd verify-identity-set <release-dir> --disclosure D --signature S [...] [--require-full-byline]
+acsd create-submission-challenge <release-dir> <submission.pdf> --venue-key K --venue-domain D --submission-handle H --round N --expires-at T --byline SLOT:NAME [...] --out DIR
+acsd respond-submission-challenge <release-dir> <submission.pdf> --challenge C --venue-signature S --venue-public-key K --submission-handle H --key AUTHOR --out DIR
+acsd verify-submission-link <release-dir> <submission.pdf> --challenge C --venue-signature S --venue-public-key K --submission-handle H --opening O --signature S [...] [--require-full-byline]
 ```
 
 通用选项：`--json`（机器可读输出）。
@@ -62,6 +65,11 @@ acsd verify-identity-set <release-dir> --disclosure D --signature S [...] [--req
   合法子集返回 `PARTIAL_BYLINE_KEY_ASSENT`；覆盖所有且仅有的作者 slot 才返回
   `FULL_BYLINE_KEY_ASSENT`。`--require-full-byline` 将合法但不完整的集合映射为
   exit 5。重复 slot、签名错误、release/key 作用域不匹配均拒绝。
+- 三个 `submission-*` 命令形成可选的投稿关联 profile：场馆签名挑战精确绑定
+  release、投稿文件、场馆、轮次、nonce、有效期、披露模式和有序署名；每位作者
+  只用自己的 slot key 响应。通讯作者可以组包，但不能代签。只有覆盖 release
+  全部 slot 的同一挑战才得到 `SUBMISSION_LINEAGE_LINKED`；该结论不证明现实身份、
+  原创性、稿件发现或场馆录用。
 
 ## 2. 目录结构（发布包）
 
