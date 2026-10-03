@@ -1,0 +1,22 @@
+{
+  "generation_time_utc": "2026-10-03T02:45:13+00:00",
+  "non_claims": [
+    "does not prove authorship",
+    "does not prove novelty or correctness",
+    "does not prove peer review, acceptance, or academic priority"
+  ],
+  "nonce_hex": "2ee7547764a12a9be05578df98bd0a16",
+  "policy_oid": "1.2.3.4.1",
+  "request_sha256": "846a950b10c23ccc436294b100962e190a82dc2ba9c125f7382474dd553504a6",
+  "response_sha256": "d27a9a4392ca05cf05cce10723662191b61e81f34da2b237916f4c3540499bdc",
+  "schema": "acsd-srl-release-rfc3161/v1",
+  "serial_hex": "8d07a6b",
+  "subject": "RELEASE-MANIFEST.sha256",
+  "subject_sha256": "3ffa5c6161ac71d4c2445b1df53cc848c1734f557c59a4ad87a3547f526f5fcc",
+  "trust_model": "exact-signer-certificate-pin",
+  "tsa_certificate_fingerprint_sha256": "32e841a95cc1164101ffde41298ef2fc75c1c4372ef095e88a6bbd47dfb191fc",
+  "tsa_certificate_sha256": "32e841a95cc1164101ffde41298ef2fc75c1c4372ef095e88a6bbd47dfb191fc",
+  "tsa_certificate_url": "https://freetsa.org/files/tsa.crt",
+  "tsa_url": "https://freetsa.org/tsr",
+  "verification": "OK"
+}
